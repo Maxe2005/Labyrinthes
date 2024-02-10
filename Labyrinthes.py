@@ -26,8 +26,8 @@ class Laby_fen (Tk) :
         for i in range (self.nb_lignes) :
             self.grid_rowconfigure(i, weight= 1, minsize= 1/self.nb_lignes*400)
         self.canvas = Laby_canvas(self, x= x * (self.nb_colones-6)/self.nb_colones,
-                                  y= y * (self.nb_lignes-1)/self.nb_lignes,
-                                  param = [0,1,self.nb_colones-6,self.nb_lignes-1])
+                                    y= y * (self.nb_lignes-1)/self.nb_lignes,
+                                    param = [0,1,self.nb_colones-6,self.nb_lignes-1])
         self.grille = Laby_grille(self)
         self.init_boutons ()
         self.nb_lab = 1 # le premier Labyrinthe à afficher
@@ -44,7 +44,7 @@ class Laby_fen (Tk) :
         self.chrono = Chrono(self)
         self.chrono.grid(column= 51, row= 0, columnspan= 6, rowspan=2)
         self.canvas.nouvelle_partie ()
-               
+            
     def init_boutons (self) :
         "Initalise et affiche tous les boutons de la fenêtre"
         self.boutons = [0]*17
@@ -210,7 +210,7 @@ class Laby_fen (Tk) :
         return
 
     def difficulte_plus (self) :
-        if self.Niveau_max == False :
+        if self.Niveau_max is False :
             if self.Niveau > 1 :
                 if self.Difficultee < 3 :
                     self.Difficultee += 1
@@ -227,7 +227,7 @@ class Laby_fen (Tk) :
             messagebox.showinfo ('Changer de difficultée','La Difficultée est déjà au max !',icon = 'error')
 
     def difficulte_moins (self) :
-        if self.Niveau_max == False :
+        if self.Niveau_max is False :
             if self.Niveau > 1 :
                 if self.Difficultee == 1 :
                     self.Difficultee = 3
@@ -269,7 +269,7 @@ class Laby_fen (Tk) :
         else :
             self.deplace.set("Déplacement\nSec")
             self.canvas.balle.dep = 0
-       
+    
     def recomencer (self) :
         MsgBox = messagebox.askquestion ('Recommencer','Voulez-vous vraiment recommencer ce Labyrinthe depuis le début?',icon = 'warning')
         if MsgBox == 'yes':
@@ -314,7 +314,7 @@ class Laby_fen (Tk) :
             self.button_reglages_lab_alea.grid_forget()
             self.button_aller_a.grid(column= 52, row= 5, columnspan= 4)
         self.canvas.nouvelle_partie()
-  
+
     def difficultees_fen (self) :
         return
 
@@ -484,9 +484,9 @@ class Laby_canvas (Canvas) :
         self.trace_grille ()
         self.boss.affichage_barre_principale ()
         self.balle.init_var ()
-          
+        
     def taille_auto (self) :
-        "Calcule la taille en pixel d´un coté des cases carré à partir de la hauteur h et le la longeur l de la grille de définition"
+        "Calcule la taille en pixel d'un coté des cases carré à partir de la hauteur h et le la longeur l de la grille de définition"
         if self.y / self.boss.grille.y < self.x / self.boss.grille.x :
             self.taille = self.y / (self.boss.grille.y+1)
         else :
