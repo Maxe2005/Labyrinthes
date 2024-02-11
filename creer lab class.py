@@ -16,49 +16,71 @@ class Lab_fen_crea (tk.Tk) :
         self.y = y #= self.winfo_screenheight() -100
         self.title("The Maze Builder")
         self.geometry (str(self.x)+"x"+str(self.y))
-        min_x = 500
-        min_y = 400
-        self.minsize(min_x, min_y)
+        self.min_x = 500
+        self.min_y = 400
+        self.minsize(self.min_x, self.min_y)
+        self.init_config_grid()
+        self.init_autres_classes()
+        self.init_variables_globales()
+        self.init_barres_boutons_et_text()
+        self.bind("<space>", self.Deplacement)
+        self.bind("<KeyRelease-m>", self.Modification)
+    
+    def init_config_grid (self) :
         self.nb_lignes = 20
         self.nb_colones = 10
+        self.proportion_canvas_x = 80/100
+        self.proportion_canvas_y = 90/100
         for i in range (self.nb_colones) :
-            self.grid_columnconfigure(i, weight= 1, minsize= 1/self.nb_colones*min_x)
+            self.grid_columnconfigure(i, weight= 1, minsize= 1/self.nb_colones*self.min_x)
         for i in range (self.nb_lignes) :
-            self.grid_rowconfigure(i, weight= 1, minsize= 1/self.nb_lignes*min_y)
+            self.grid_rowconfigure(i, weight= 1, minsize= 1/self.nb_lignes*self.min_y)
+
+    def init_autres_classes (self) :
         self.grille = Lab_grille_crea(self)
         self.canvas = Lab_canvas_crea(self, self.grille, 
-                                    x= x * (self.nb_colones-1)/self.nb_colones,
-                                    y= y * (self.nb_lignes-1)/self.nb_lignes,
-                                    param = [0,1,self.nb_colones-1,self.nb_lignes-1])
+                                    x= self.x * round(self.nb_colones * self.proportion_canvas_x)/self.nb_colones,
+                                    y= self.y * round(self.nb_lignes * self.proportion_canvas_y)/self.nb_lignes,
+                                    param = [0, round(self.nb_lignes * (1 - self.proportion_canvas_y)),
+                                            round(self.nb_colones * self.proportion_canvas_x), round(self.nb_lignes * self.proportion_canvas_y)])
         self.balle = Lab_balle_crea(self, self.canvas, self.grille)
         self.grille.init_entitees(self.canvas, self.balle)
         self.canvas.init_entitees(self.balle)
 
+    def init_barres_boutons_et_text (self) :
+        self.barre_laterale = tk.Frame(self)
+        self.barre_laterale.grid(column=round(self.nb_colones * self.proportion_canvas_x), row=0,
+                                columnspan= round(self.nb_colones * (1 - self.proportion_canvas_x)), rowspan=self.nb_lignes, sticky=tk.NSEW)
+        self.barre_laterale.grid_columnconfigure(0, weight= 1)
+        self.barre_laterale.grid_rowconfigure(0, weight= 1)
+        self.barre_laterale.grid_rowconfigure(1, weight= 4)
+        self.boutons = Boutons(self.barre_laterale, self, self.canvas, self.grille, self.balle)
+        self.boutons.grid(column=0, row=1, sticky=tk.NSEW)
+
+        self.init_barres_text()
+        self.refresh_barre_de_texte()
+
+    def init_variables_globales (self) :
         self.Modif = False
         self.dep = 1
-        
-        self.init_barres_text()
-        self.boutons = Boutons(self, self.canvas, self.grille, self.balle)
-        self.refresh_barre_de_texte()
-        
-        self.bind("<space>", self.Deplacement)
-        self.bind("<KeyRelease-m>", self.Modification)
-        
+
     def init_barres_text (self) :
         self.barre_de_texte = tk.StringVar()
         self.barre_de_texte.set("Début")
         self.barre_affichage_texte = tk.Label(self, textvariable= self.barre_de_texte)
-        self.barre_affichage_texte.grid(column= 4, row= 1)
+        self.barre_affichage_texte.grid(column= 0, row= 0,
+                                        columnspan= round(self.nb_colones * self.proportion_canvas_x),
+                                        rowspan= round(self.nb_lignes * (1 - self.proportion_canvas_y)))
 
         self.position_sortie = tk.StringVar()
         self.position_sortie.set("Sortie")
-        self.affichage_position_sortie = tk.Label(self, textvariable= self.position_sortie)
-        self.affichage_position_sortie.grid(column= 8, row= 1)
+        self.affichage_position_sortie = tk.Label(self.boutons, textvariable= self.position_sortie)
+        self.affichage_position_sortie.grid(column= 0, row= 3)
 
         self.position_entree = tk.StringVar()
         self.position_entree.set("Entrée")
-        self.affichage_position_entree = tk.Label(self, textvariable= self.position_entree)
-        self.affichage_position_entree.grid(column= 7, row= 1)
+        self.affichage_position_entree = tk.Label(self.boutons, textvariable= self.position_entree)
+        self.affichage_position_entree.grid(column= 0, row= 6)
         
     def refresh_barre_de_texte (self) :
         self.barre_de_texte.set("Labirinthe "+" "*10+str(self.balle.x)+" "+str(self.balle.y))
@@ -213,7 +235,7 @@ class Lab_canvas_crea (tk.Canvas) :
         self.grille = grille
         self.x = x 
         self.y = y
-        self.configure(width=self.x, height=self.y)
+        #self.configure(width=self.x, height=self.y)
         self.couleurs(change=False, initial_value="white")
         self.grid(column= param[0], row= param[1], columnspan= param[2], rowspan= param[3], sticky=tk.NSEW)
         
@@ -555,22 +577,24 @@ class Lab_balle_crea () :
 
 
 class Boutons(tk.Frame) :
-    def __init__(self, fenetre, canvas, grille, balle) :
+    def __init__(self, boss, fenetre, canvas, grille, balle) :
         self.fenetre = fenetre
         self.canvas = canvas
         self.grille = grille
         self.balle = balle
-        tk.Frame.__init__(self, self.fenetre)
+        tk.Frame.__init__(self, boss)
         self.nb_lignes = 10
-        #self.grid_columnconfigure(0, weight= 1, minsize= (1-self.fenetre.proportion_canvas_x)*self.fenetre.min_x)
-        #for i in range (self.nb_lignes) :
-            #self.grid_rowconfigure(i, weight= 1, minsize= 1/self.nb_lignes*self.fenetre.min_y)
+        self.grid_columnconfigure(0, weight= 1, minsize= (1-self.fenetre.proportion_canvas_x)*self.fenetre.min_x)
+        for i in range (self.nb_lignes) :
+            self.grid_rowconfigure(i, weight= 1, minsize= 1/self.nb_lignes*self.fenetre.min_y)
         
         self.items = {}
         
         self.def_bouton('Aller à', self.fenetre.aller_a, 4)
         self.def_bouton('Créer', partial(self.fenetre.Deplacement,None), 5, nom_diminutif= 'type deplacement')
-        self.def_bouton('Créer une entrée', self.fenetre.entree, 7)
+        self.frame_entree = tk.Frame(self)
+        self.frame_entree.grid(row= 7)
+        self.def_bouton('Créer une entrée', self.fenetre.entree, 7, boss= self.frame_entree)
         self.def_bouton('Créer une sortie', self.fenetre.sortie, 8)
         #self.def_bouton('Nouveau Labyrinthe', self.fenetre.new_lab, 3)
         self.def_bouton('Sauvegarder', self.fenetre.save, 2)
@@ -584,10 +608,12 @@ class Boutons(tk.Frame) :
             if self.items[bout][2] == "Visible" :
                 self.is_visible_debut.append(bout)
 
-    def def_bouton (self, nom_affiche, effet, position, nom_diminutif=None, visibilite="Visible") :
+    def def_bouton (self, nom_affiche, effet, position, boss=None, nom_diminutif=None, visibilite="Visible") :
         if nom_diminutif is None :
             nom_diminutif = nom_affiche
-        self.items[nom_diminutif] = [tk.Button (self, text=nom_affiche, command=effet), position, visibilite]
+        if boss is None :
+            boss = self
+        self.items[nom_diminutif] = [tk.Button (boss, text=nom_affiche, command=effet), position, visibilite]
         if visibilite == "Visible" :
             self.items[nom_diminutif][0].grid(row= self.items[nom_diminutif][1])
 
@@ -595,7 +621,7 @@ class Boutons(tk.Frame) :
         text_size = int(5*log(self.fenetre.winfo_width()/100))
         for bout in self.items :
             self.items[bout][0].config(font=("Verdana", text_size))
-                
+
     def afficher (self, nom_bouton) :
         self.items[nom_bouton][0].grid(row= self.items[nom_bouton][1])
         self.items[nom_bouton][2] = "Visible"
@@ -620,7 +646,7 @@ class Boutons(tk.Frame) :
         return self.items[nom_bouton][2] == "Visible"
 
 
-    
+
 if __name__ == "__main__" :
     fen_lab = Lab_fen_crea()
     fen_lab.mainloop()

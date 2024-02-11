@@ -621,7 +621,7 @@ up = fen.bind("<KeyRelease-Up>", haut)
 down = fen.bind("<KeyRelease-Down>", bas)
 right = fen.bind("<KeyRelease-Right>", droite)
 left = fen.bind("<KeyRelease-Left>", gauche)
-space = fen.bind("<space>", Deplacement)
+space = fen.bind("<KeyRelease-space>", Deplacement)
 m = fen.bind("<KeyRelease-m>", Modification)
 
 programme()
