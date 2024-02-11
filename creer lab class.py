@@ -10,23 +10,33 @@ from math import log
 
 
 class Lab_fen_crea (tk.Tk) :
-    def __init__ (self, x_fen:int = 1000, y_fen:int = 800) :
+    def __init__ (self, x:int = 1000, y:int = 800) :
         tk.Tk.__init__(self)
-        self.x = x_fen #= self.winfo_screenwidth() -200
-        self.y = y_fen #= self.winfo_screenheight() -100
+        self.x = x #= self.winfo_screenwidth() -200
+        self.y = y #= self.winfo_screenheight() -100
         self.title("The Maze Builder")
         self.geometry (str(self.x)+"x"+str(self.y))
-        self.minsize(500, 400)
-
-        self.Modif = False
-        self.dep = 1
-
+        min_x = 500
+        min_y = 400
+        self.minsize(min_x, min_y)
+        self.nb_lignes = 20
+        self.nb_colones = 10
+        for i in range (self.nb_colones) :
+            self.grid_columnconfigure(i, weight= 1, minsize= 1/self.nb_colones*min_x)
+        for i in range (self.nb_lignes) :
+            self.grid_rowconfigure(i, weight= 1, minsize= 1/self.nb_lignes*min_y)
         self.grille = Lab_grille_crea(self)
-        self.canvas = Lab_canvas_crea(self, self.grille)
+        self.canvas = Lab_canvas_crea(self, self.grille, 
+                                    x= x * (self.nb_colones-1)/self.nb_colones,
+                                    y= y * (self.nb_lignes-1)/self.nb_lignes,
+                                    param = [0,1,self.nb_colones-1,self.nb_lignes-1])
         self.balle = Lab_balle_crea(self, self.canvas, self.grille)
         self.grille.init_entitees(self.canvas, self.balle)
         self.canvas.init_entitees(self.balle)
 
+        self.Modif = False
+        self.dep = 1
+        
         self.init_barres_text()
         self.boutons = Boutons(self, self.canvas, self.grille, self.balle)
         self.refresh_barre_de_texte()
@@ -550,7 +560,7 @@ class Boutons(tk.Frame) :
         self.canvas = canvas
         self.grille = grille
         self.balle = balle
-        tk.Frame.__init__(self,self.fenetre)
+        tk.Frame.__init__(self, self.fenetre)
         self.nb_lignes = 10
         #self.grid_columnconfigure(0, weight= 1, minsize= (1-self.fenetre.proportion_canvas_x)*self.fenetre.min_x)
         #for i in range (self.nb_lignes) :
