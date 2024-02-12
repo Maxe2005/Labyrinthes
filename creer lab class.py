@@ -6,6 +6,7 @@ import csv
 import tkinter as tk
 from tkinter.simpledialog import askinteger
 from functools import partial
+from PIL import Image,ImageTk
 from math import log
 
 
@@ -23,8 +24,11 @@ class Lab_fen_crea (tk.Tk) :
         self.init_autres_classes()
         self.init_variables_globales()
         self.init_barres_boutons_et_text()
-        self.bind("<space>", self.Deplacement)
+        self.bind("<space>", self.Change_type_deplacement)
         self.bind("<KeyRelease-m>", self.Modification)
+        self.bind("<Button-3>", self.redimentionner)
+        
+        self.canvas.init_affichage_grille()
     
     def init_config_grid (self) :
         self.nb_lignes = 20
@@ -54,15 +58,37 @@ class Lab_fen_crea (tk.Tk) :
         self.barre_laterale.grid_columnconfigure(0, weight= 1)
         self.barre_laterale.grid_rowconfigure(0, weight= 1)
         self.barre_laterale.grid_rowconfigure(1, weight= 4)
+        self.init_logo()
         self.boutons = Boutons(self.barre_laterale, self, self.canvas, self.grille, self.balle)
         self.boutons.grid(column=0, row=1, sticky=tk.NSEW)
 
         self.init_barres_text()
         self.refresh_barre_de_texte()
 
+    def init_logo (self) :
+        self.logo = tk.Label(self.barre_laterale)
+        self.logo.grid(column=0, row=0, sticky=tk.NSEW)
+        self.open_image()
+
+    def open_image (self) :
+        self.image = Image.open("Idées LOGO/logo buitder 3.jpg")
+        xx, yy = self.image.size
+        ratio = xx / yy
+        x_max = self.x * round(self.nb_colones * (1 - self.proportion_canvas_x)) / self.nb_colones
+        y_max = self.y * round(self.nb_lignes * (1 - self.proportion_canvas_y)) / self.nb_lignes
+        if ratio <= x_max / y_max :
+            x = round(80/100 * x_max)
+            y = round(x / ratio)
+        else :
+            y = round(80/100 * y_max)
+            x = round(ratio * y)
+        self.image = self.image.resize((x,y))
+        self.image_photo = ImageTk.PhotoImage(self.image)
+        self.logo["image"] = self.image_photo
+        
     def init_variables_globales (self) :
         self.Modif = False
-        self.dep = 1
+        self.dep = "Casse"
 
     def init_barres_text (self) :
         self.barre_de_texte = tk.StringVar()
@@ -74,13 +100,16 @@ class Lab_fen_crea (tk.Tk) :
 
         self.position_sortie = tk.StringVar()
         self.position_sortie.set("Sortie")
-        self.affichage_position_sortie = tk.Label(self.boutons, textvariable= self.position_sortie)
-        self.affichage_position_sortie.grid(column= 0, row= 3)
+        self.affichage_position_sortie = tk.Label(self.boutons.frame_sortie, textvariable= self.position_sortie)
+        self.affichage_position_sortie.grid(column= 0, row= 0)
 
         self.position_entree = tk.StringVar()
         self.position_entree.set("Entrée")
-        self.affichage_position_entree = tk.Label(self.boutons, textvariable= self.position_entree)
-        self.affichage_position_entree.grid(column= 0, row= 6)
+        self.affichage_position_entree = tk.Label(self.boutons.frame_entree, textvariable= self.position_entree)
+        self.affichage_position_entree.grid(column= 0, row= 0)
+        
+        self.affichage_mode = tk.Label(self.boutons.frame_dep, text= "Mode :")
+        self.affichage_mode.grid(column= 0, row= 0)
         
     def refresh_barre_de_texte (self) :
         self.barre_de_texte.set("Labirinthe "+" "*10+str(self.balle.x)+" "+str(self.balle.y))
@@ -106,18 +135,18 @@ class Lab_fen_crea (tk.Tk) :
         n = tk.messagebox.askyesno ('Sauvegarder','Voulez-vous sauvegarder votre labirinthe comme un croquis (Yes : incomplet donc possibilité de le modifier plus tard) ou comme un labirinthe terminé (No : pas de possibilité de le modifier plus tard) ?')
         if n :
             e = tk.simpledialog.askstring ( title = "Numero du labirinthe"  , prompt = "Quel sera le numéro de votre croquis de labirinthe" , initialvalue = "")
-            self.save_as (e, True, self.grille.lab, Entrée, Sortie)
+            self.save_as (e, True, self.grille.lab, self.grille.Entree, self.grille.Sortie)
         elif n is False :
-            if Entrée == 0 or Sortie == 0 :
-                if Entrée == 0 and type(Sortie) == tuple :
+            if self.grille.Entree == "off" or self.grille.Sortie == "off" :
+                if self.grille.Entree == "off" and type(self.grille.Sortie) == tuple :
                     tk.messagebox.showinfo ('Sauvegarder','Pour sauvegrder la labirinthe il faut absolument une entrée valide !', icon= "error")
-                elif Sortie == 0 and type(Entrée) == tuple :
+                elif self.grille.Sortie == "off" and type(self.grille.Entree) == tuple :
                     tk.messagebox.showinfo ('Sauvegarder','Pour sauvegrder la labirinthe il faut absolument une sortie valide !', icon= "error")
                 else :
                     tk.messagebox.showinfo ('Sauvegarder','Pour sauvegrder la labirinthe il faut absolument une entrée et une sortie valide !', icon= "error")
             else :
                 n = tk.simpledialog.askstring ( title = "Numero du labirinthe"  , prompt = "Quel sera le numéro de votre labirinthe" , initialvalue = "")
-                self.save_as (n, False, self.grille.lab, Entrée, Sortie)
+                self.save_as (n, False, self.grille.lab, self.grille.Entree, self.grille.Sortie)
         return
 
     def nouveau_lab (self) :
@@ -137,10 +166,10 @@ class Lab_fen_crea (tk.Tk) :
                         lab = a
                         self.grille.x = len(lab[0])
                         self.grille.y = len(lab)
-                        self.balle.def_position(Entrée[0], Entrée[1])
+                        self.balle.def_position(self.grille.Entree[0], self.grille.Entree[1])
                         #programme()
-                        deplace.set("Déplacement")
-                        self.dep = 1
+                        self.boutons.renommer("type deplacement", "Déplacement")
+                        self.dep = "Passe"
         elif n is False :
             n = tk.simpledialog.askstring ( title = "Nouveau labirinthe" , prompt = "Entrez le nombre de cases en largeur et en hauteur de votre labirinthe :" , initialvalue = "largeur,hauteur")
             if n is not None :
@@ -151,7 +180,7 @@ class Lab_fen_crea (tk.Tk) :
                     self.grille.init_lab(x,y)
                     #programme()
                 else :
-                    tk.messagebox.showinfo ('Nouveau labirinthe','Ce labirinthe n´a pas de dimentions valides : x(min:3, max:50) et y(min:3, max:35) !', icon= "error")
+                    tk.messagebox.showinfo ('Nouveau labirinthe','Ce labirinthe n\'a pas de dimentions valides : x(min:3, max:50) et y(min:3, max:35) !', icon= "error")
         return
 
     def Quitter () :
@@ -163,14 +192,14 @@ class Lab_fen_crea (tk.Tk) :
 
     def sortie (self) :
         if self.Modif :
-            tk.messagebox.showinfo ('Instaler une sortie','Impossible car déjà en cours de création d´un mur !',icon = 'error')
+            tk.messagebox.showinfo ('Instaler une sortie','Impossible car déjà en cours de création d\'un mur !',icon = 'error')
         else :
-            if type(self.Sortie) == tuple :
+            if type(self.grille.Sortie) == tuple :
                 tk.messagebox.showinfo ('Instaler une sortie','La sortie à déjà été définie !',icon = 'error')
             else :
                 if self.balle.x == 0 or self.balle.x == self.grille.x-2 or self.balle.y == 0 or self.balle.y == self.grille.y-2 :
-                    self.Sortie = 1
-                    self.dep = 0
+                    self.grille.Sortie = "on"
+                    self.dep = "Casse"
                     tk.messagebox.showinfo ('Instaler une sortie','Vous pouvez créer votre sortie avec les flèches !')
                     self.barre_de_texte.set("Vous pouver créer la sortie avec les flèches")
                 else :
@@ -178,35 +207,33 @@ class Lab_fen_crea (tk.Tk) :
         return
 
     def sortie2 (self) :
-        Sortie = (self.balle.x, self.balle.y)
-        self.position_sortie.set("Sortie : {};{}".format(Sortie[0],Sortie[1]))
+        self.grille.Sortie = (self.balle.x, self.balle.y)
+        self.position_sortie.set("Sortie : {};{}".format(self.grille.Sortie[0],self.grille.Sortie[1]))
         self.refresh_barre_de_texte()
-        self.Deplacement (None)
+        self.Change_type_deplacement (None)
         return
 
     def entree (self) :
-        if Entrée == 0 :
-            Entrée = (self.balle.x, self.balle.y)
-            self.position_entree.set("Entrée : {};{}".format(Entrée[0],Entrée[1]))
+        if self.grille.Entree == "off" :
+            self.grille.Entree = (self.balle.x, self.balle.y)
+            self.position_entree.set("Entrée : {};{}".format(self.grille.Entree[0],self.grille.Entree[1]))
         else :
-            MsgBox = tk.messagebox.askquestion ('Nouvelle entrée','Voulez-vous vraiment redefinir l\'entrée de votre labirinthe qui est à {};{} par {};{} ?'.format(Entrée[0],Entrée[1],self.balle.x,self.balle.y))
+            MsgBox = tk.messagebox.askquestion ('Nouvelle entrée','Voulez-vous vraiment redefinir l\'entrée de votre labirinthe qui est à {};{} par {};{} ?'.format(self.grille.Entree[0],self.grille.Entree[1],self.balle.x,self.balle.y))
             if MsgBox == 'yes':
-                Entrée = (self.balle.x, self.balle.y)
-                self.position_entree.set("Entrée : {};{}".format(Entrée[0],Entrée[1]))
+                self.grille.Entree = (self.balle.x, self.balle.y)
+                self.position_entree.set("Entrée : {};{}".format(self.grille.Entree[0],self.grille.Entree[1]))
         return
 
-    def Deplacement (self, event) :
-        global deplace, dep
-        if dep == 0 :
-            deplace.set("Déplacement")
-            dep = 1
+    def Change_type_deplacement (self, event) :
+        if self.dep == "Casse" :
+            self.boutons.renommer("type deplacement", "Déplacement")
+            self.dep = "Passe"
         else :
-            deplace.set("Créer")
-            dep = 0
-        return
+            self.boutons.renommer("type deplacement", "Créer")
+            self.dep = "Casse"
 
     def Modifiant (self) :
-        if self.Sortie == 1 :
+        if self.grille.Sortie == "on" :
             tk.messagebox.showinfo ('Créer un mur',"Impossible car déjà en cours de création d'une sortie !",icon = 'error')
         else :
             self.Modif =  True
@@ -221,6 +248,18 @@ class Lab_fen_crea (tk.Tk) :
             self.Modifiant ()
         return
 
+    def redimentionner (self,event=None) :
+        self.x = self.winfo_width()
+        self.y = self.winfo_height()
+        text_size_1 = int(5*log(self.winfo_width()/100))
+        text_size_2 = int(4*log(self.winfo_width()/100))
+        self.barre_affichage_texte.config(font=("Verdana", text_size_1))
+        self.affichage_position_sortie.config(font=("Verdana", text_size_2))
+        self.affichage_position_entree.config(font=("Verdana", text_size_2))
+        self.affichage_mode.config(font=("Verdana", text_size_1))
+        self.canvas.redimentionner()
+        self.boutons.redimentionner(text_size = text_size_1)
+        self.open_image()
 
 class Lab_canvas_crea (tk.Canvas) :
     def __init__ (self, fenetre, grille, x=700, y=500, param=[0,1,10,7]) :
@@ -275,9 +314,9 @@ class Lab_canvas_crea (tk.Canvas) :
     
     def refresh_lab (self) :
         self.delete("all")
-        self.balle.init()
         self.trace_grille ()
-        self.fenetre.affichage_barre_principale ()
+        self.balle.init()
+        self.fenetre.refresh_barre_de_texte ()
 
     def couleurs (self, change=True, initial_value=False) :
         if change :
@@ -301,18 +340,20 @@ class Lab_canvas_crea (tk.Canvas) :
             self.refresh_lab()
 
     def redimentionner (self) :
-        self.x = self.fenetre.x * (self.fenetre.nb_colones-6)/self.fenetre.nb_colones
-        self.y = self.fenetre.y * (self.fenetre.nb_lignes-1)/self.fenetre.nb_lignes
+        self.y = self.winfo_height()
+        self.x = self.winfo_width()
+        self.init_affichage_grille()
+    
+    def init_affichage_grille (self) :
         self.taille_auto ()
         self.origines ()
         self.refresh_lab ()
-    
 
 class Lab_grille_crea () :
     def __init__(self, fenetre, x=10, y=10) :
         self.fenetre = fenetre
-        self.Entrée = 0
-        self.Sortie = 0
+        self.Entree = "off"
+        self.Sortie = "off"
         self.init_lab(x,y)
     
     def init_entitees (self, canvas, balle) :
@@ -328,7 +369,6 @@ class Lab_grille_crea () :
         self.y = y + 1
         
     def ouvrir_lab (self, nom_du_lab) :
-        global Entrée, Sortie
         nom = "Labyrinthes croquis/Croquis "+nom_du_lab
         try :
             fichier = open (nom, "r")
@@ -344,12 +384,12 @@ class Lab_grille_crea () :
                     for i in range (len(tab)) :
                         tab[i] = int(tab[i])
                     if count == 1 :
-                        Entrée = tab
-                        self.fenetre.position_entree.set("Entrée : {};{}".format(Entrée[0],Entrée[1]))
+                        self.Entree = tab
+                        self.fenetre.position_entree.set("Entrée : {};{}".format(self.Entree[0],self.Entree[1]))
                         count += 1
                     elif count == 2 :
-                        Sortie = tab
-                        self.position_sortie.set("Sortie : {};{}".format(Sortie[0],Sortie[1]))
+                        self.Sortie = tab
+                        self.position_sortie.set("Sortie : {};{}".format(self.Sortie[0],self.Sortie[1]))
                         count += 1
                 else :
                     table.append(tab)
@@ -418,10 +458,10 @@ class Lab_balle_crea () :
         self.fenetre.bind("<KeyRelease-Right>", self.droite)
         self.fenetre.bind("<KeyRelease-Left>", self.gauche)
         
-        self.fenetre.bind("<KeyRelease-o>", self.haut)
-        self.fenetre.bind("<KeyRelease-l>", self.bas)
-        self.fenetre.bind("<KeyRelease-m>", self.droite)
-        self.fenetre.bind("<KeyRelease-k>", self.gauche)
+        self.fenetre.bind("<KeyRelease-i>", self.haut)
+        self.fenetre.bind("<KeyRelease-k>", self.bas)
+        self.fenetre.bind("<KeyRelease-l>", self.droite)
+        self.fenetre.bind("<KeyRelease-j>", self.gauche)
         
     def init (self) :
         bordure = 1/10 *self.canvas.taille
@@ -446,7 +486,7 @@ class Lab_balle_crea () :
         self.fenetre.refresh_barre_de_texte()
 
     def haut (self, event) :
-        if self.y > 0 and 0 <= self.x <= self.grille.x-2 or Sortie == 1 :
+        if self.y > 0 and 0 <= self.x <= self.grille.x-2 or self.grille.Sortie == "on" :
             if self.fenetre.Modif :
                 if self.grille.lab[self.y][self.x] == "2" :
                     self.grille.lab[self.y][self.x] = "3"
@@ -458,17 +498,17 @@ class Lab_balle_crea () :
                 self.fenetre.refresh_barre_de_texte()
                 self.canvas.refresh_lab ()
             else :
-                if dep == 0 :
+                if self.fenetre.dep == "Casse" :
                     if self.grille.lab[self.y][self.x] == "3" :
                         self.grille.lab[self.y][self.x] = "2"
                     elif self.grille.lab[self.y][self.x] == "1" :
                         self.grille.lab[self.y][self.x] = "0"
                     self.canvas.refresh_lab ()
                 self.move(0,-1)
-                if Sortie == 1 :
+                if self.grille.Sortie == "on" :
                     self.fenetre.sortie2 ()
-        elif type(Sortie) == tuple :
-            if self.y-1 == Sortie[1] and self.x == Sortie[0] :
+        elif type(self.grille.Sortie) == tuple :
+            if self.y-1 == self.grille.Sortie[1] and self.x == self.grille.Sortie[0] :
                 MsgBox = tk.messagebox.askquestion ('Supprimer une sortie','Ceci est la sortie, voulez-vous la supprimer pour en recréer une autre par la suite ?',icon = 'warning')
                 if MsgBox == 'yes':
                     if self.grille.lab[self.y][self.x] == "2" :
@@ -476,11 +516,11 @@ class Lab_balle_crea () :
                     elif self.grille.lab[self.y][self.x] == "0" :
                         self.grille.lab[self.y][self.x] = "1"
                     self.canvas.refresh_lab ()
-                    Sortie = 0
+                    self.grille.Sortie = "off"
                     self.position_sortie.set("Sortie")
 
     def bas (self, event) :
-        if self.y < self.grille.y-2 and 0 <= self.x <= self.grille.x-2 or Sortie == 1 :
+        if self.y < self.grille.y-2 and 0 <= self.x <= self.grille.x-2 or self.grille.Sortie == "on" :
             if self.fenetre.Modif :
                 if self.grille.lab[self.y+1][self.x] == "2" :
                     self.grille.lab[self.y+1][self.x] = "3"
@@ -491,26 +531,27 @@ class Lab_balle_crea () :
                 self.fenetre.Modif = False
                 self.fenetre.refresh_barre_de_texte()
                 self.canvas.refresh_lab ()
-                if dep == 0 :
+            else:
+                if self.fenetre.dep == "Casse" :
                     if self.grille.lab[self.y+1][self.x] == "3" :
                         self.grille.lab[self.y+1][self.x] = "2"
                     elif self.grille.lab[self.y+1][self.x] == "1" :
                         self.grille.lab[self.y+1][self.x] = "0"
                     self.canvas.refresh_lab ()
                 self.move(0,1)
-                if Sortie == 1 :
+                if self.grille.Sortie == "on" :
                     self.fenetre.sortie2 ()
-        elif type(Sortie) == tuple :
-            if self.y+1 == Sortie[1] and self.x == Sortie[0]:
+        elif type(self.grille.Sortie) == tuple :
+            if self.y+1 == self.grille.Sortie[1] and self.x == self.grille.Sortie[0]:
                 MsgBox = tk.messagebox.askquestion ('Supprimer une sortie','Ceci est la sortie, voulez-vous la supprimer pour en recréer une autre par la suite ?',icon = 'warning')
                 if MsgBox == 'yes':
                     self.grille.lab[self.y+1][self.x] = "1"
                     self.canvas.refresh_lab ()
-                    Sortie = 0
+                    self.grille.Sortie = "off"
                     self.position_sortie.set("Sortie")
 
     def droite (self, event) :
-        if self.x < self.grille.x-2 and 0 <= self.y <= self.grille.y-2 or Sortie == 1 :
+        if self.x < self.grille.x-2 and 0 <= self.y <= self.grille.y-2 or self.grille.Sortie == "on" :
             if self.fenetre.Modif :
                 if self.grille.lab[self.y][self.x+1] == "1" :
                     self.grille.lab[self.y][self.x+1] = "3"
@@ -522,26 +563,26 @@ class Lab_balle_crea () :
                 self.fenetre.refresh_barre_de_texte()
                 self.canvas.refresh_lab ()
             else :
-                if dep == 0 :
+                if self.fenetre.dep == "Casse" :
                     if self.grille.lab[self.y][self.x+1] == "3" :
                         self.grille.lab[self.y][self.x+1] = "1"
                     elif self.grille.lab[self.y][self.x+1] == "2" :
                         self.grille.lab[self.y][self.x+1] = "0"
                     self.canvas.refresh_lab ()
                 self.move(1,0)
-                if Sortie == 1 :
+                if self.grille.Sortie == "on" :
                     self.fenetre.sortie2 ()
-        elif type(Sortie) == tuple :
-            if self.x+1 == Sortie[0] and self.y == Sortie[1] :
+        elif type(self.grille.Sortie) == tuple :
+            if self.x+1 == self.grille.Sortie[0] and self.y == self.grille.Sortie[1] :
                 MsgBox = tk.messagebox.askquestion ('Supprimer une sortie','Ceci est la sortie, voulez-vous la supprimer pour en recréer une autre par la suite ?',icon = 'warning')
                 if MsgBox == 'yes':
                     self.grille.lab[self.y][self.x+1] = "2"
                     self.canvas.refresh_lab ()
-                    Sortie = 0
+                    self.grille.Sortie = "off"
                     self.position_sortie.set("Sortie")
 
     def gauche (self, event) :
-        if self.x > 0 and 0 <= self.y <= self.grille.y-2 or Sortie == 1 :
+        if self.x > 0 and 0 <= self.y <= self.grille.y-2 or self.grille.Sortie == "on" :
             if self.fenetre.Modif :
                 if self.grille.lab[self.y][self.x] == "1" :
                     self.grille.lab[self.y][self.x] = "3"
@@ -553,17 +594,17 @@ class Lab_balle_crea () :
                 self.fenetre.refresh_barre_de_texte()
                 self.canvas.refresh_lab ()
             else :
-                if dep == 0 :
+                if self.fenetre.dep == "Casse" :
                     if self.grille.lab[self.y][self.x] == "3" :
                         self.grille.lab[self.y][self.x] = "1"
                     elif self.grille.lab[self.y][self.x] == "2" :
                         self.grille.lab[self.y][self.x] = "0"
                     self.canvas.refresh_lab ()
                 self.move(-1,0)
-                if Sortie == 1 :
+                if self.grille.Sortie == "on" :
                     self.fenetre.sortie2 ()
-        elif type(Sortie) == tuple :
-            if self.x-1 == Sortie[0] and self.y == Sortie[1] :
+        elif type(self.grille.Sortie) == tuple :
+            if self.x-1 == self.grille.Sortie[0] and self.y == self.grille.Sortie[1] :
                 MsgBox = tk.messagebox.askquestion ('Supprimer une sortie','Ceci est la sortie, voulez-vous la supprimer pour en recréer une autre par la suite ?',icon = 'warning')
                 if MsgBox == 'yes':
                     if self.grille.lab[self.y][self.x] == "1" :
@@ -571,7 +612,7 @@ class Lab_balle_crea () :
                     elif self.grille.lab[self.y][self.x] == "0" :
                         self.grille.lab[self.y][self.x] = "2"
                     self.canvas.refresh_lab ()
-                    Sortie = 0
+                    self.grille.Sortie = "off"
                     self.position_sortie.set("Sortie")
 
 
@@ -591,11 +632,15 @@ class Boutons(tk.Frame) :
         self.items = {}
         
         self.def_bouton('Aller à', self.fenetre.aller_a, 4)
-        self.def_bouton('Créer', partial(self.fenetre.Deplacement,None), 5, nom_diminutif= 'type deplacement')
+        self.frame_dep = tk.Frame(self)
+        self.frame_dep.grid(row= 5)
+        self.def_bouton('Créer', partial(self.fenetre.Change_type_deplacement,None), 1, nom_diminutif= 'type deplacement', boss= self.frame_dep)
         self.frame_entree = tk.Frame(self)
         self.frame_entree.grid(row= 7)
-        self.def_bouton('Créer une entrée', self.fenetre.entree, 7, boss= self.frame_entree)
-        self.def_bouton('Créer une sortie', self.fenetre.sortie, 8)
+        self.def_bouton('Créer une entrée', self.fenetre.entree, 1, boss= self.frame_entree)
+        self.frame_sortie = tk.Frame(self)
+        self.frame_sortie.grid(row= 8)
+        self.def_bouton('Créer une sortie', self.fenetre.sortie, 1, boss= self.frame_sortie)
         #self.def_bouton('Nouveau Labyrinthe', self.fenetre.new_lab, 3)
         self.def_bouton('Sauvegarder', self.fenetre.save, 2)
         self.def_bouton('Modifier lab', self.fenetre.Modifiant, 0)
@@ -617,8 +662,9 @@ class Boutons(tk.Frame) :
         if visibilite == "Visible" :
             self.items[nom_diminutif][0].grid(row= self.items[nom_diminutif][1])
 
-    def redimentionner (self) :
-        text_size = int(5*log(self.fenetre.winfo_width()/100))
+    def redimentionner (self, text_size = None) :
+        if text_size is None :
+            text_size = int(5*log(self.fenetre.winfo_width()/100))
         for bout in self.items :
             self.items[bout][0].config(font=("Verdana", text_size))
 
