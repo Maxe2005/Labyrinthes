@@ -371,8 +371,8 @@ class Niveaux_fen (Toplevel) :
         y = 150
         titre = "Informations Niveau 1"
         texte = ["Le Niveau 1 permet de parcourir les labyrinthes 'normalement'",
-                 "c´est à dire sans aucune gène particulière.",
-                 "Le Niveau 1 ne contient pas de Difficultées"]
+                "c'est à dire sans aucune gène particulière.",
+                "Le Niveau 1 ne contient pas de Difficultées"]
         division = 10
         positions = [2,4,6]
         for i in range (len(positions)) :
@@ -384,13 +384,13 @@ class Niveaux_fen (Toplevel) :
         x = 800
         y = 300
         titre = "Informations Niveau 2"
-        texte = ["Dans le Niveau 2 les labyrinthes (qui sont les mêmes qu´au niveau 1!) sont divisés/découpés ",
-                 "en plusieurs morceaux. Au début, seul un morceau est visible, puis à chaque fois que vous ",
-                 "'découvrez' un nouveaux morceau, il apparait. Cependant, si vous découvrez plus de ",
-                 "la moitié des morceaux, ils re-disparaissent !",
-                 "Dans ce niveau, plus on augmente la Difficultée, plus les labyrinthes sont divisés/découpés en plus de ",
-                 "morceaux (et donc les morceaux sont plus petits). A la Difficultée 1(respectivement 2 et 3), les morceaux ",
-                 "découverts disparaissent quand la moitiée (respectivement 1/4 et 1/8) des morceaux ont été découverts."]
+        texte = ["Dans le Niveau 2 les labyrinthes (qui sont les mêmes qu'au niveau 1!) sont divisés/découpés ",
+                "en plusieurs morceaux. Au début, seul un morceau est visible, puis à chaque fois que vous ",
+                "'découvrez' un nouveaux morceau, il apparait. Cependant, si vous découvrez plus de ",
+                "la moitié des morceaux, ils re-disparaissent !",
+                "Dans ce niveau, plus on augmente la Difficultée, plus les labyrinthes sont divisés/découpés en plus de ",
+                "morceaux (et donc les morceaux sont plus petits). A la Difficultée 1(respectivement 2 et 3), les morceaux ",
+                "découverts disparaissent quand la moitiée (respectivement 1/4 et 1/8) des morceaux ont été découverts."]
         division = 10
         positions = [1,2,3,4,6,7,8]
         for i in range (len(positions)) :
@@ -402,12 +402,12 @@ class Niveaux_fen (Toplevel) :
         y = 300
         titre = "Informations Niveau 3"
         texte = ["Dans le Niveau 3 les labyrinthes (qui sont les mêmes qu´au niveau 1!) ",
-                 "sont divisés/découpés en plusieurs morceaux. UN seul morceau est ",
-                 "visible : à chaque fois que vous vous déplacez vers un nouveaux ",
-                 "morceau, seul le morceau que vous parcourez est visible. ",
-                 "Dans ce niveau, plus on augmente la Difficultée, ",
-                 "plus les labyrinthes sont divisés/découpés en plus de",
-                 "morceaux (et donc les morceaux sont plus petits)"]
+                "sont divisés/découpés en plusieurs morceaux. UN seul morceau est ",
+                "visible : à chaque fois que vous vous déplacez vers un nouveaux ",
+                "morceau, seul le morceau que vous parcourez est visible. ",
+                "Dans ce niveau, plus on augmente la Difficultée, ",
+                "plus les labyrinthes sont divisés/découpés en plus de",
+                "morceaux (et donc les morceaux sont plus petits)"]
         division = 10
         positions = [1,2,3,4,6,7,8]
         for i in range (len(positions)) :
@@ -419,12 +419,12 @@ class Niveaux_fen (Toplevel) :
         y = 300
         titre = "Informations Niveau 4"
         texte = ["Dans le Niveau 4 les labyrinthes sont les mêmes qu'à tous les niveaux, ",
-                 "mais au début, aucun mur n´est visible, puis à chaque fois que vous ",
-                 "rentrez dans un nouveau mur, il apparait. Cependant, si vous ",
-                 "découvrez plus de la moitié des murs, ils re-disparaissent !",
-                 "Dans ce niveau, plus on augmente la Difficultée, plus les murs disparaissent tôt :",
-                 "à la Difficultée 1(respectivement 2 et 3), les murs découverts disparaissent ",
-                 "quand la moitiée (respectivement 1/4 et 1/8) des murs ont été découverts."]
+                "mais au début, aucun mur n'est visible, puis à chaque fois que vous ",
+                "rentrez dans un nouveau mur, il apparait. Cependant, si vous ",
+                "découvrez plus de la moitié des murs, ils re-disparaissent !",
+                "Dans ce niveau, plus on augmente la Difficultée, plus les murs disparaissent tôt :",
+                "à la Difficultée 1(respectivement 2 et 3), les murs découverts disparaissent ",
+                "quand la moitiée (respectivement 1/4 et 1/8) des murs ont été découverts."]
         division = 10
         positions = [1,2,3,4,6,7,8]
         for i in range (len(positions)) :
@@ -434,7 +434,7 @@ class Niveaux_fen (Toplevel) :
         
 class Infos (Toplevel) :
     def __init__(self, boss=None, x=400, y=200, titre="test", texte=["test"],
-                 positions=(2/10), pos_max=(9/10,9/10), police="arial", color="white") :
+                positions=(2/10), pos_max=(9/10,9/10), police="arial", color="white") :
         Toplevel.__init__(self,boss)
         self.boss = boss
         self.canvas_x = self.x = x
