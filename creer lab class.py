@@ -4,10 +4,13 @@
 
 import csv
 import tkinter as tk
+from tkinter import ttk
 from tkinter.simpledialog import askinteger
 from functools import partial
 from PIL import Image,ImageTk
 from math import log
+import os.path
+from os import path
 
 
 class Lab_fen_crea (tk.Tk) :
@@ -105,7 +108,7 @@ class Lab_fen_crea (tk.Tk) :
         self.affichage_mode.grid(column= 0, row= 0)
         
     def refresh_barre_de_texte (self) :
-        self.barre_de_texte.set("Labirinthe "+" "*10+str(self.balle.x)+" "+str(self.balle.y))
+        self.barre_de_texte.set("Labirinthe  "+self.lab_name+" "*10+str(self.balle.x)+" "+str(self.balle.y))
         
     def aller_a (self, event=None) :
         """
@@ -126,81 +129,61 @@ class Lab_fen_crea (tk.Tk) :
         return
 
     def save (self, event=None) :
-        n = tk.messagebox.askyesno ('Sauvegarder','Voulez-vous sauvegarder votre labirinthe comme un croquis (Yes : incomplet donc possibilité de le modifier plus tard) ou comme un labirinthe terminé (No : pas de possibilité de le modifier plus tard) ?')
-        if n :
-            e = tk.simpledialog.askstring ( title = "Numero du labirinthe"  , prompt = "Quel sera le numéro de votre croquis de labirinthe" , initialvalue = "")
-            self.grille.save_as (e, True, self.grille.lab, self.grille.Entree, self.grille.Sortie)
-        elif n is False :
-            if self.grille.Entree == "off" or self.grille.Sortie == "off" :
-                if self.grille.Entree == "off" and type(self.grille.Sortie) == tuple :
-                    tk.messagebox.showinfo ('Sauvegarder','Pour sauvegrder la labirinthe il faut absolument une entrée valide !', icon= "error")
-                elif self.grille.Sortie == "off" and type(self.grille.Entree) == tuple :
-                    tk.messagebox.showinfo ('Sauvegarder','Pour sauvegrder la labirinthe il faut absolument une sortie valide !', icon= "error")
-                else :
-                    tk.messagebox.showinfo ('Sauvegarder','Pour sauvegrder la labirinthe il faut absolument une entrée et une sortie valide !', icon= "error")
-            else :
-                n = tk.simpledialog.askstring ( title = "Numero du labirinthe"  , prompt = "Quel sera le numéro de votre labirinthe" , initialvalue = "")
-                self.grille.save_as (n, False, self.grille.lab, self.grille.Entree, self.grille.Sortie)
-        return
-
+        self.chose_save = Fen_chose_save(self, self, self.grille)
+        self.chose_save.mainloop()
+    
     def new_lab (self, event=None) :
         self.chose_new_lab = Fen_chose_new_lab(self, self)
         self.chose_new_lab.mainloop()
     
-    def open_lab_croquis (self) :
+    def open_lab_croquis (self, selector:ttk.Combobox) :
+        name_lab = selector.get()
+        self.grille.ouvrir_lab(name_lab)
         self.chose_new_lab.destroy()
-        n = tk.simpledialog.askstring ( title = "Nouveau labirinthe" , prompt = "Entrez le nom du croquis que vous voulez récupérer (ce qui est écrit après 'Croquis ') :" , initialvalue = "")
-        if n is None :
-            a = True
+        self.grille.x = len(self.grille.lab[0]) - 1
+        self.grille.y = len(self.grille.lab) - 1
+        self.balle.def_position(self.grille.Entree[0], self.grille.Entree[1])
+        self.boutons.renommer("type deplacement", "Déplacement")
+        self.dep = "Passe"
+        self.redimentionner()
+
+    def init_new_lab (self, nb_colones, nb_lignes, nb_colones_min:int, nb_colones_max:int, nb_lignes_min:int, nb_lignes_max:int, nom_lab:tk.Entry) :
+        try :
+            nb_colones = int(nb_colones.get())
+            nb_lignes = int(nb_lignes.get())
+            assert nb_colones_min <= nb_colones <= nb_colones_max
+            assert nb_lignes_min <= nb_lignes <= nb_lignes_max
+        except :
+            tk.messagebox.showinfo ('Nouveau labirinthe','Ce labirinthe n\'a pas de dimentions valides : x(min:'+str(nb_colones_min)+', max:'+str(nb_colones_max)+') et y(min:'+str(nb_lignes_min)+', max:'+str(nb_lignes_max)+') !', icon= "error")
         else :
-            a = self.grille.ouvrir_lab(n)
-            print(a)
-            if a == "fichier introuvable" :
-                a = False
-                tk.messagebox.showinfo ('Croqui introuvable','Le Croqui nommé : '+n+' est introuvable !',icon="error")
-            else :
-                self.grille.x = len(self.grille.lab[0]) - 1
-                self.grille.y = len(self.grille.lab) - 1
-                self.balle.def_position(self.grille.Entree[0], self.grille.Entree[1])
-                self.canvas.init_affichage_grille()
-                self.boutons.renommer("type deplacement", "Déplacement")
-                self.dep = "Passe"
+            lab_nom = nom_lab.get()
+            if " " in lab_nom :
+                lab_nom = "_".join(lab_nom.split(" "))
+            self.grille.init_lab(nb_colones, nb_lignes, nom_lab=lab_nom)
+            self.balle.def_position(0,0)
+            self.chose_new_lab.destroy()
+            self.redimentionner()
 
-    def init_new_lab (self) :
-        self.chose_new_lab.destroy()
-        n = tk.simpledialog.askstring ( title = "Nouveau labirinthe" , prompt = "Entrez le nombre de cases en largeur et en hauteur de votre labirinthe :" , initialvalue = "largeur,hauteur")
-        if n is not None :
-            n = n.split(",")
-            x = int(n[0])
-            y = int(n[1])
-            if 3 <= x <= 50 and 3 <= y <= 35 :
-                self.grille.init_lab(x,y)
-                self.canvas.init_affichage_grille()
-            else :
-                tk.messagebox.showinfo ('Nouveau labirinthe','Ce labirinthe n\'a pas de dimentions valides : x(min:3, max:50) et y(min:3, max:35) !', icon= "error")
-
-    def sortie (self, event=None) :
+    def sortie_start (self, event=None) :
         if self.Modif :
             tk.messagebox.showinfo ('Instaler une sortie','Impossible car déjà en cours de création d\'un mur !',icon = 'error')
+        elif self.grille.Sortie == "on" :
+            self.grille.Sortie = "off"
+            self.position_sortie.set("Sortie")
+            self.barre_de_texte.set("Le mode création de sortie à été arrêté")
+            self.after(2000, self.refresh_barre_de_texte)
+        elif self.balle.x == 0 or self.balle.x == self.grille.x-1 or self.balle.y == 0 or self.balle.y == self.grille.y-1 :
+            self.grille.Sortie = "on"
+            self.dep = "Casse"
+            self.barre_de_texte.set("Vous pouver créer la sortie avec les flèches")
         else :
-            if type(self.grille.Sortie) == tuple :
-                tk.messagebox.showinfo ('Instaler une sortie','La sortie à déjà été définie !',icon = 'error')
-            else :
-                if self.balle.x == 0 or self.balle.x == self.grille.x-1 or self.balle.y == 0 or self.balle.y == self.grille.y-1 :
-                    self.grille.Sortie = "on"
-                    self.dep = "Casse"
-                    tk.messagebox.showinfo ('Instaler une sortie','Vous pouvez créer votre sortie avec les flèches !')
-                    self.barre_de_texte.set("Vous pouver créer la sortie avec les flèches")
-                else :
-                    tk.messagebox.showinfo ('Instaler une sortie',"Pour instaler une sortie vous devez positionner la balle à l'endroit ou sera crée la sortie c'est à dire près d'un bord !",icon = 'error')
-        return
+            tk.messagebox.showinfo ('Instaler une sortie',"Pour instaler une sortie vous devez positionner la balle à l'endroit ou sera crée la sortie c'est à dire près d'un bord !",icon = 'error')
 
-    def sortie2 (self) :
+    def sortie_end (self) :
         self.grille.Sortie = (self.balle.x, self.balle.y)
         self.position_sortie.set("Sortie : {};{}".format(self.grille.Sortie[0],self.grille.Sortie[1]))
         self.refresh_barre_de_texte()
         self.Change_type_deplacement ()
-        return
 
     def entree (self, event=None) :
         if self.grille.Entree == "off" :
@@ -233,6 +216,7 @@ class Lab_fen_crea (tk.Tk) :
         if self.Modif :
             self.Modif = False
             self.barre_de_texte.set("Le mode modification à été arrêté")
+            self.after(2000, self.refresh_barre_de_texte)
         elif self.grille.Sortie == "on" :
             tk.messagebox.showinfo ('Créer un mur',"Impossible car déjà en cours de création d'une sortie !",icon = 'error')
         else :
@@ -244,15 +228,15 @@ class Lab_fen_crea (tk.Tk) :
     def redimentionner (self,event=None) :
         self.x = self.winfo_width()
         self.y = self.winfo_height()
-        text_size_1 = int(5*log(self.winfo_width()/100))
-        text_size_2 = int(4*log(self.winfo_width()/100))
-        self.barre_affichage_texte.config(font=("Verdana", text_size_1))
-        self.affichage_position_sortie.config(font=("Verdana", text_size_2))
-        self.affichage_position_entree.config(font=("Verdana", text_size_2))
-        self.affichage_mode.config(font=("Verdana", text_size_1))
+        text_size = int(log(self.winfo_width()/100))
+        self.barre_affichage_texte.config(font=("Verdana", text_size * 6))
+        self.affichage_position_sortie.config(font=("Verdana", text_size * 4))
+        self.affichage_position_entree.config(font=("Verdana", text_size * 4))
+        self.affichage_mode.config(font=("Verdana", text_size * 5))
         self.canvas.redimentionner()
-        self.boutons.redimentionner(text_size = text_size_1)
+        self.boutons.redimentionner(text_size = int(text_size * 5.5))
         self.open_image()
+
 
 class Lab_canvas_crea (tk.Canvas) :
     def __init__ (self, fenetre, grille, x=700, y=500, param=[0,1,10,7]) :
@@ -347,6 +331,7 @@ class Lab_canvas_crea (tk.Canvas) :
             if 0 <= x <= self.grille.x-1 and 0 <= y <= self.grille.y-1 :
                 pass
 
+
 class Lab_grille_crea () :
     def __init__(self, fenetre, x=10, y=10) :
         self.fenetre = fenetre
@@ -358,16 +343,17 @@ class Lab_grille_crea () :
         self.canvas = canvas
         self.balle = balle
     
-    def init_lab (self, x,y) :
+    def init_lab (self, x,y, nom_lab:str = "<sans-nom>") :
         """
         Initialise le labirinthe à afficher
         """
         self.lab = self.grille_pleine (x,y)
+        self.fenetre.lab_name = nom_lab
         self.x = x
         self.y = y
         
     def ouvrir_lab (self, nom_du_lab) :
-        nom = "Labyrinthes croquis/Croquis "+nom_du_lab
+        nom = "Labyrinthes_croquis/Croquis__"+nom_du_lab+".csv"
         try :
             fichier = open (nom, "r")
         except :  
@@ -397,6 +383,7 @@ class Lab_grille_crea () :
                 else :
                     table.append(tab)
             fichier.close()
+            self.fenetre.lab_name = nom_du_lab
             self.lab = table
             return
         
@@ -433,11 +420,17 @@ class Lab_grille_crea () :
                 count = "fin"
         return g
 
-    def save_as (self, numero_du_lab, croquis, lab, entrée, sortie) :
-        if croquis is True :
-            nom = "Labyrinthes croquis/Croquis "+numero_du_lab
+    def save_as (self, nom_du_lab, croquis, lab, entrée, sortie) :
+        if croquis:
+            nom = "Labyrinthes_croquis/Croquis__"+nom_du_lab+".csv"
+            if not(path.exists(nom)) :
+                with open("Labyrinthes_croquis/#_Doc_index.csv", "a") as d :
+                    d.write(nom_du_lab+"\n")
         else :
-            nom = "Labyrinthes classiques/Labyrinthe "+numero_du_lab
+            nom = "Labyrinthes_creation/Labyrinthe__"+nom_du_lab+".csv"
+            if not(path.exists(nom)) :
+                with open("Labyrinthes_creation/#_Doc_index.csv", "a") as d :
+                    d.write(nom_du_lab+"\n")
         with open (nom, "w", newline = "") as f :
             for i in range (-2,len(lab)) :
                 writer = csv.writer (f, delimiter = ",", lineterminator = "\n")
@@ -514,7 +507,9 @@ class Lab_balle_crea () :
             conbinaisons = ["2", "3", "0", "1"]
             x_ciblage, y_ciblage = 0, 1
             mouvement_x, mouvement_y = 0, 1
-        if condition_de_non_sortie or self.grille.Sortie == "on" :
+        if self.grille.Sortie == "on" :
+            mode_sortie = True
+        if condition_de_non_sortie or mode_sortie :
             if self.fenetre.Modif :
                 if self.grille.lab[self.y + y_ciblage][self.x + x_ciblage] == conbinaisons[0] :
                     self.grille.lab[self.y + y_ciblage][self.x + x_ciblage] = conbinaisons[1]
@@ -534,7 +529,7 @@ class Lab_balle_crea () :
                     self.canvas.refresh_lab ()
                 self.move(mouvement_x, mouvement_y)
                 if self.grille.Sortie == "on" :
-                    self.fenetre.sortie2 ()
+                    self.fenetre.sortie_end ()
         elif type(self.grille.Sortie) == tuple and (self.y + mouvement_y) == self.grille.Sortie[1] and (self.x + mouvement_x) == self.grille.Sortie[0] :
             MsgBox = tk.messagebox.askquestion ('Supprimer une sortie','Ceci est la sortie, voulez-vous la supprimer pour en recréer une autre par la suite ?',icon = 'warning')
             if MsgBox == 'yes':
@@ -557,7 +552,6 @@ class Lab_balle_crea () :
 
     def gauche (self, event) :
         self.fleches("left")
-
 
 
 class Boutons(tk.Frame) :
@@ -595,8 +589,8 @@ class Boutons(tk.Frame) :
         
         self.frame_sortie = tk.Frame(self)
         self.frame_sortie.grid(row= 9)
-        self.def_bouton('Créer une sortie', self.fenetre.sortie, 1, boss= self.frame_sortie)
-        self.fenetre.bind("<KeyRelease-s>", self.fenetre.sortie)
+        self.def_bouton('Créer une sortie', self.fenetre.sortie_start, 1, boss= self.frame_sortie)
+        self.fenetre.bind("<KeyRelease-s>", self.fenetre.sortie_start)
         
         self.def_bouton('Nouveau Labyrinthe', self.fenetre.new_lab, 3)
         self.fenetre.bind("<KeyRelease-n>", self.fenetre.new_lab)
@@ -659,28 +653,198 @@ class Fen_chose_new_lab (tk.Toplevel) :
     def __init__ (self, boss, fenetre) :
         tk.Toplevel.__init__(self, boss)
         self.fenetre = fenetre
-        self.title("Nouveau labirinthe")
+        self.title("Nouveau labyrinthe")
         self.nb_lignes = 2
         self.nb_colones = 2
         for i in range (self.nb_colones) :
             self.grid_columnconfigure(i, weight= 1) 
         for i in range (self.nb_lignes) :
             self.grid_rowconfigure(i, weight= 1)
-            
-        self.text = tk.Text(self, wrap= tk.WORD, width=25, height=3, padx=50, pady=20, font=("Helvetica", 15))
-        self.text.insert(0.1, "Voulez-vous ouvrir un croquis déjà existant ou voulez-vous créer un nouveau labirinthe ?")
-        self.text['state'] = 'disabled'
-        self.text.grid(column=0, row=0, columnspan=2)
         
-        self.bouton_2 = tk.Button (self, text="Croquis", padx=20, pady=10, font=("Helvetica", 13), command=self.fenetre.open_lab_croquis)
-        self.bouton_2.grid(column=0, row=1)
-        self.bouton_1 = tk.Button (self, text="Nouveau", padx=20, pady=10, font=("Helvetica", 13), command=self.fenetre.init_new_lab)
-        self.bouton_1.grid(column=1, row=1)
+        self.init_premier_choix()
+        self.partie_premier_choix.grid(column=0, row=0, sticky=tk.NSEW)
+        
+        self.is_open_lab_croquis = False
+        self.is_init_new_lab = False
+        self.is_separation = False
+        
+        self.nb_colones_min = 3
+        self.nb_colones_max = 50
+        self.nb_lignes_min = 3
+        self.nb_lignes_max = 35
+        
+        self.init_open_lab_croquis()
+        self.init_init_new_lab()
         
         self.resizable(False, False)
         self.focus_set()
+    
+    def init_premier_choix (self) :
+        self.partie_premier_choix = tk.Frame(self, border=10)
+        text = tk.Text(self.partie_premier_choix, wrap= tk.WORD, width=25, height=3, padx=50, pady=20, font=("Helvetica", 15))
+        text.insert(0.1, "Voulez-vous ouvrir un Croquis déjà existant ou voulez-vous créer un nouveau Labirinthe ?")
+        text['state'] = 'disabled'
+        text.grid(column=0, row=0, columnspan=2)
         
+        bouton_2 = tk.Button (self.partie_premier_choix, text="Croquis", padx=20, pady=10, font=("Helvetica", 13), bg="green", fg="white", command=self.open_lab_croquis)
+        bouton_2.grid(column=0, row=1)
+        bouton_1 = tk.Button (self.partie_premier_choix, text="Nouveau", padx=20, pady=10, font=("Helvetica", 13), bg="blue", fg="white", command=self.init_new_lab)
+        bouton_1.grid(column=1, row=1)
+    
+    def ajout_separation (self) :
+        separation = tk.Text(self, bg="grey", pady=5, height=1, font=("Helvetica", 1))
+        separation['state'] = 'disabled'
+        separation.grid(column=0, row=1, sticky=tk.NSEW)
+        self.is_separation = True
+    
+    def open_lab_croquis (self) :
+        if self.is_init_new_lab :
+            self.partie_init_new_lab.grid_forget()
+            self.is_init_new_lab = False
+        if not(self.is_open_lab_croquis) :
+            if not(self.is_separation) :
+                self.ajout_separation()
+            self.partie_open_lab_croquis.grid(column=0, row=2, sticky=tk.NSEW)
+            self.is_open_lab_croquis = True
+    
+    def init_open_lab_croquis (self) :
+        self.partie_open_lab_croquis = tk.Frame(self, border=10)
+        self.text_open_lab_croquis = tk.Text(self.partie_open_lab_croquis, wrap= tk.WORD, width=25, height=1, padx=50, pady=20, font=("Helvetica", 15))
+        self.text_open_lab_croquis.insert(0.1, "Choisissez le Croquis à éditer :")
+        self.text_open_lab_croquis['state'] = 'disabled'
+        self.text_open_lab_croquis.grid(column=0, row=0, sticky=tk.NSEW)
         
+        liste_nom = []
+        with open("Labyrinthes_croquis/#_Doc_index.csv", "r") as f :
+            for el in f.readlines() :
+                liste_nom.append(el[:-1])
+        self.liste_frame = tk.Frame(self.partie_open_lab_croquis, pady=30)
+        liste = ttk.Combobox(self.liste_frame, values=liste_nom, state="readonly", justify="left", width=20, height=10, font=("Helvetica", 15))
+        liste.current(0)
+        liste.pack()
+        self.liste_frame.grid(column=0, row=1)
+        self.bouton_go_croquis = tk.Button (self.partie_open_lab_croquis, text="Ouvrir le Croquis", padx=20, pady=10, font=("Helvetica", 13),\
+            command=partial(self.fenetre.open_lab_croquis, liste), bg="green", fg="white")
+        self.bouton_go_croquis.grid(column=0, row=2)
+    
+    def init_new_lab (self) :
+        if self.is_open_lab_croquis :
+            self.partie_open_lab_croquis.grid_forget()
+            self.is_open_lab_croquis = False
+        if not(self.is_init_new_lab) :
+            if not(self.is_separation) :
+                self.ajout_separation()
+            self.partie_init_new_lab.grid(column=0, row=2, sticky=tk.NSEW)
+            self.is_init_new_lab = True
+    
+    def init_init_new_lab (self) :
+        self.partie_init_new_lab = tk.Frame(self)
+        text_init_new_lab = tk.Text(self.partie_init_new_lab, wrap= tk.WORD, width=25, height=3, padx=50, pady=20, font=("Helvetica", 15))
+        text_init_new_lab.insert(0.1, "Entrez le nombre de colones et de lignes de votre nouveau labyrinthe :")
+        text_init_new_lab['state'] = 'disabled'
+        text_init_new_lab.grid(column=0, row=0, columnspan=2)
+        
+        largeur = tk.Frame(self.partie_init_new_lab, pady=20)
+        largeur.grid(column=0, row=1)
+        text_largeur = tk.Label(largeur, text="Colones :", font=("Helvetica", 13))
+        text_largeur.grid(column=0, row=0)
+        valeur_largeur = ttk.Spinbox(largeur, from_= self.nb_colones_min, to= self.nb_colones_max, wrap=True, font=("Helvetica", 15), width=4)
+        valeur_largeur.set(10)
+        valeur_largeur.grid(column=0, row=1)
+        
+        hauteur = tk.Frame(self.partie_init_new_lab, pady=20)
+        hauteur.grid(column=1, row=1)
+        text_hauteur = tk.Label(hauteur, text="Lignes :", font=("Helvetica", 13))
+        text_hauteur.grid(column=0, row=0)
+        valeur_hauteur = ttk.Spinbox(hauteur, from_= self.nb_lignes_min, to= self.nb_lignes_max, wrap=True, font=("Helvetica", 15), width=4)
+        valeur_hauteur.set(10)
+        valeur_hauteur.grid(column=0, row=1)
+        
+        nom_lab_frame = tk.Frame(self.partie_init_new_lab, pady=20)
+        nom_lab_frame.grid(column=0, row=2, columnspan=2)
+        texte_nom_lab = tk.Label(nom_lab_frame, text="Nom du Labyrinthe :", font=("Helvetica", 13))
+        texte_nom_lab.grid(column=0, row=0)
+        nom_lab = tk.Entry(nom_lab_frame, justify="center", font=("Helvetica", 15))
+        nom_lab.insert(0,"<sans-nom>")
+        nom_lab.grid(column=0, row=1)
+        
+        self.bouton_go_new_lab = tk.Button (self.partie_init_new_lab, text="Créer le Labyrinthe", padx=20, pady=10, font=("Helvetica", 13), bg="blue", fg="white",\
+            command=partial(self.fenetre.init_new_lab, valeur_largeur, valeur_hauteur, self.nb_colones_min, self.nb_colones_max, self.nb_lignes_min, self.nb_lignes_max, nom_lab))
+        self.bouton_go_new_lab.grid(column=0, row=3, columnspan=2)
+
+class Fen_chose_save (tk.Toplevel) :
+    def __init__ (self, boss, fenetre, grille) :
+        tk.Toplevel.__init__(self, boss)
+        self.fenetre = fenetre
+        self.grille = grille
+        self.title("Enregistrer Labyrinthe")
+        self.nb_lignes = 3
+        self.nb_colones = 2
+        for i in range (self.nb_colones) :
+            self.grid_columnconfigure(i, weight= 1) 
+        for i in range (self.nb_lignes) :
+            self.grid_rowconfigure(i, weight= 1)
+        
+        self.init_questionnaire()
+        
+        self.resizable(False, False)
+        self.focus_set()
+    
+    def init_questionnaire (self) :
+        nom_lab_frame = tk.Frame(self, pady=20)
+        nom_lab_frame.grid(column=0, row=0, sticky=tk.NSEW)
+        texte_nom_lab = tk.Label(nom_lab_frame, text="Nom du Labyrinthe :", font=("Helvetica", 13))
+        texte_nom_lab.pack(side="top")
+        self.nom_lab = tk.Entry(nom_lab_frame, justify="center", font=("Helvetica", 15))
+        self.nom_lab.insert(0,self.fenetre.lab_name)
+        self.nom_lab.pack(side="bottom")
+        
+        question = tk.Frame(self, border=10)
+        question.grid(column=0, row=1, sticky=tk.NSEW)
+        text = tk.Text(question, wrap= tk.WORD, width=33, height=8, padx=50, pady=20, font=("Helvetica", 15))
+        text.insert(0.1, "Comment voulez-vous sauvegarder votre labirinthe ?\n\n- Comme un Croquis : INCOMPLET donc possibilité de le modifier plus tard\n\n- Comme un Labyrinthe : TERMINÉ donc possibilité de l'ouvrir avec le jeu Laby")
+        text['state'] = 'disabled'
+        text.grid(column=0, row=0, columnspan=2, sticky=tk.NSEW)
+        text.tag_add("croquis", "3.11", "3.18")
+        text.tag_add("labyrinthe", "5.11", "5.21")
+        text.tag_config("croquis", foreground="green")
+        text.tag_config("labyrinthe", foreground="blue")
+        
+        bouton_2 = tk.Button (question, text="Croquis", padx=20, pady=10, font=("Helvetica", 13), bg="green", fg= "white", \
+            command=partial(self.save, True))
+        bouton_2.grid(column=0, row=1)
+        bouton_1 = tk.Button (question, text="Labyrinthe", padx=20, pady=10, font=("Helvetica", 13), bg="blue", fg= "white", \
+            command=partial(self.save, False))
+        bouton_1.grid(column=1, row=1)
+    
+    def save (self, is_croquis:bool) :
+        name_lab = self.nom_lab.get()
+        if is_croquis :
+            type_ = "Croquis"
+            path = "Labyrinthes_croquis/#_Doc_index.csv"
+        else :
+            type_ = "Labyrinthe"
+            path = "Labyrinthes_creation/#_Doc_index.csv"
+        if name_lab == "<sans-nom>" :
+            tk.messagebox.showinfo ('Enregistrement Labirinthe',"Il faut donner un nom au "+type_+" !", icon="warning", parent=self)
+        else :
+            if " " in name_lab :
+                name_lab = "_".join(name_lab.split(" "))
+            liste_nom = []
+            with open(path, "r") as f :
+                for el in f.readlines() :
+                    liste_nom.append(el[:-1])
+            if name_lab in liste_nom :
+                reponse = tk.messagebox.askquestion ('Enregistrement Labirinthe',"Le nom '"+name_lab+"' existe déjà !\nVoulez-vous le remplacer ?", icon="warning", parent=self)
+                if reponse == "yes" :
+                    self.grille.save_as (name_lab, is_croquis, self.grille.lab, self.grille.Entree, self.grille.Sortie)
+                    self.destroy()
+                    tk.messagebox.showinfo ('Enregistrement Labirinthe',"Le "+type_+" "+name_lab+" à bien été enregistré !", icon="info")
+            else :
+                self.grille.save_as (name_lab, is_croquis, self.grille.lab, self.grille.Entree, self.grille.Sortie)
+                self.destroy()
+                tk.messagebox.showinfo ('Enregistrement Labirinthe',"Le "+type_+" "+name_lab+" à bien été enregistré !", icon="info")
+
 
 
 

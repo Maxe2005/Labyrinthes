@@ -570,7 +570,7 @@ class Laby_grille () :
     "Effectue diverses opérations sur la grille contenant le labyrinthe"
     def __init__(self, boss=None, lab=[[]]) :
         self.boss = boss
-        self.docu_lab = self.ouvrir_doc("Labyrinthes classiques/#docu lab")
+        self.docu_lab = self.ouvrir_doc("Labyrinthes classiques/#_Doc_index.csv")
         self.lab = lab
         self.x = len(lab[0])
         self.y = len(lab)
