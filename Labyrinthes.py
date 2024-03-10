@@ -570,7 +570,7 @@ class Laby_grille () :
     "Effectue diverses opérations sur la grille contenant le labyrinthe"
     def __init__(self, boss=None, lab=[[]]) :
         self.boss = boss
-        self.docu_lab = self.ouvrir_doc("Labyrinthes classiques/#_Doc_index.csv")
+        self.docu_lab = self.ouvrir_doc("Labyrinthes_classiques/#_Doc_index.csv")
         self.lab = lab
         self.x = len(lab[0])
         self.y = len(lab)
@@ -647,7 +647,7 @@ class Laby_grille () :
         return g
 
     def ouvrir_lab (self,numéro_du_lab) :
-        nom = "Labyrinthes classiques/"+self.docu_lab[numéro_du_lab-1]
+        nom = "Labyrinthes_classiques/"+self.docu_lab[numéro_du_lab-1]
         fichier = open (nom, "r")
         table = []
         count = 1
