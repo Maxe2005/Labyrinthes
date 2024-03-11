@@ -1,9 +1,9 @@
-# Créé le 10/02/23
-# Dernière modification : 14/01/24
-# Auteur : Maxence CHOISEL
+# Created on 10/02/23
+# Last modified on 11/03/24
+# Author : Maxence CHOISEL
 
-from tkinter import*
-import tkinter.messagebox as messagebox
+import tkinter as tk
+from tkinter import messagebox
 from tkinter.simpledialog import askinteger, askstring
 from math import log
 from functools import partial
@@ -11,9 +11,9 @@ from random import randint
 from csv import writer
 
 
-class Laby_fen (Tk) :
-    def __init__(self,x=1000 ,y=800 ):
-        Tk.__init__(self)
+class Laby_fen (tk.Tk) :
+    def __init__(self,x=1000 ,y=800):
+        tk.Tk.__init__(self)
         self.x = x = self.winfo_screenwidth() -200
         self.y = y = self.winfo_screenheight() -100
         self.title("The Labyrinthe")
@@ -36,9 +36,9 @@ class Laby_fen (Tk) :
         self.Difficultee = 1
         self.Niveau_max = False
         self.type_lab = "classique"
-        self.texte_barre_principale = StringVar()
+        self.texte_barre_principale = tk.StringVar()
         self.texte_barre_principale.set("Début")
-        self.barre_principale = Label(self, textvariable= self.texte_barre_principale)
+        self.barre_principale = tk.Label(self, textvariable= self.texte_barre_principale)
         self.barre_principale.grid(column= 14, row= 0, columnspan= 21)
         self.bind("<Button-3>", self.redimentionner)
         self.chrono = Chrono(self)
@@ -49,54 +49,54 @@ class Laby_fen (Tk) :
         "Initalise et affiche tous les boutons de la fenêtre"
         self.boutons = [0]*17
         
-        self.deplace = StringVar()
+        self.deplace = tk.StringVar()
         self.deplace.set("Déplacement\nSec")
         self.dep = 0
-        self.boutons[0] = Button (self, textvariable= self.deplace, command=self.deplacement)
+        self.boutons[0] = tk.Button (self, textvariable= self.deplace, command=self.deplacement)
         self.boutons[0].grid(column= 51, row= 16, columnspan= 6)
     
-        self.boutons[1] = Button (self, text='Couleurs', command=self.canvas.couleurs)
-        self.boutons[1].grid(column= 52, row= 2, columnspan= 4, sticky=EW)
+        self.boutons[1] = tk.Button (self, text='Couleurs', command=self.canvas.couleurs)
+        self.boutons[1].grid(column= 52, row= 2, columnspan= 4, sticky=tk.EW)
 
-        self.boutons[2] = self.button_aller_a = Button (self, text='Aller à', command=self.aller_a)
+        self.boutons[2] = self.button_aller_a = tk.Button (self, text='Aller à', command=self.aller_a)
         self.button_aller_a.grid(column= 52, row= 5, columnspan= 4)
         
-        self.texte_button_lab_alea = StringVar()
+        self.texte_button_lab_alea = tk.StringVar()
         self.texte_button_lab_alea.set("Labyrinthe\nAléatoire")
-        self.boutons[3] = Button (self, textvariable= self.texte_button_lab_alea, command=self.type_labyrinthe)
+        self.boutons[3] = tk.Button (self, textvariable= self.texte_button_lab_alea, command=self.type_labyrinthe)
         self.boutons[3].grid(column= 51, row= 4, columnspan= 6)
-        self.boutons[4] = self.button_new_lab_alea = Button (self, text='New Lab Aléa', command=self.canvas.nouvelle_partie)
+        self.boutons[4] = self.button_new_lab_alea = tk.Button (self, text='New Lab Aléa', command=self.canvas.nouvelle_partie)
         self.button_new_lab_alea.grid_forget()
-        self.boutons[5] = self.button_sauvegarder_lab_alea = Button (self, text='Sauvegarder Lab', command=self.grille.sauvegarder_lab_alea)
+        self.boutons[5] = self.button_sauvegarder_lab_alea = tk.Button (self, text='Sauvegarder Lab', command=self.grille.sauvegarder_lab_alea)
         self.button_sauvegarder_lab_alea.grid_forget()
-        self.boutons[6] = self.button_reglages_lab_alea = Button (self, text='Réglages\nLab Aléa', command=self.grille.reglages_lab_alea)
+        self.boutons[6] = self.button_reglages_lab_alea = tk.Button (self, text='Réglages\nLab Aléa', command=self.grille.reglages_lab_alea)
         self.button_reglages_lab_alea.grid_forget()
         
 
-        self.boutons[7] = Button (self, text='Suivant ->', command=self.suivant)
-        self.boutons[7].grid(column= 46, row= 0, columnspan= 5,sticky=EW)
-        self.boutons[8] = Button (self, text='Recommencer', command=self.recomencer)
-        self.boutons[8].grid(column= 41, row= 0, columnspan= 5, sticky=EW)
-        self.boutons[9] = Button (self, text='<- Précédent', command=self.precedent)
-        self.boutons[9].grid(column= 36, row= 0, columnspan= 5, sticky=EW)
+        self.boutons[7] = tk.Button (self, text='Suivant ->', command=self.suivant)
+        self.boutons[7].grid(column= 46, row= 0, columnspan= 5,sticky=tk.EW)
+        self.boutons[8] = tk.Button (self, text='Recommencer', command=self.recomencer)
+        self.boutons[8].grid(column= 41, row= 0, columnspan= 5, sticky=tk.EW)
+        self.boutons[9] = tk.Button (self, text='<- Précédent', command=self.precedent)
+        self.boutons[9].grid(column= 36, row= 0, columnspan= 5, sticky=tk.EW)
 
-        self.boutons[10] = Button (self, text='Niveau Max', command=self.niveau_max)
+        self.boutons[10] = tk.Button (self, text='Niveau Max', command=self.niveau_max)
         self.boutons[10].grid(column= 52, row= 18, columnspan= 4)
         
-        self.boutons[11] = Button (self, text="->", command=self.difficulte_plus)
-        self.boutons[11].grid(column= 12, row= 0, sticky=W)
-        self.boutons[12] = Button (self, text="Difficultée", command=self.difficultees_fen)
-        self.boutons[12].grid(column= 8, row= 0, columnspan= 4, sticky=EW)
-        self.boutons[13] = Button (self, text="<-", command=self.difficulte_moins)
-        self.boutons[13].grid(column= 7, row= 0, sticky=E)
+        self.boutons[11] = tk.Button (self, text="->", command=self.difficulte_plus)
+        self.boutons[11].grid(column= 12, row= 0, sticky=tk.W)
+        self.boutons[12] = tk.Button (self, text="Difficultée", command=self.difficultees_fen)
+        self.boutons[12].grid(column= 8, row= 0, columnspan= 4, sticky=tk.EW)
+        self.boutons[13] = tk.Button (self, text="<-", command=self.difficulte_moins)
+        self.boutons[13].grid(column= 7, row= 0, sticky=tk.E)
         
-        self.boutons[14] = Button (self, text="->", command=self.niveau_plus)
-        self.boutons[14].grid(column= 5, row= 0, sticky=W)
-        self.boutons[15] = Button (self, text="Niveau", command=partial(Niveaux_fen,self))
-        self.boutons[15].grid(column= 2, row= 0, columnspan= 3, sticky=EW)
-        self.boutons[16] = Button (self, text="<-", command=self.niveau_moins)
-        self.boutons[16].grid(column= 1, row= 0, sticky=E)
- 
+        self.boutons[14] = tk.Button (self, text="->", command=self.niveau_plus)
+        self.boutons[14].grid(column= 5, row= 0, sticky=tk.W)
+        self.boutons[15] = tk.Button (self, text="Niveau", command=partial(Niveaux_fen,self))
+        self.boutons[15].grid(column= 2, row= 0, columnspan= 3, sticky=tk.EW)
+        self.boutons[16] = tk.Button (self, text="<-", command=self.niveau_moins)
+        self.boutons[16].grid(column= 1, row= 0, sticky=tk.E)
+
     def redimentionner (self,event=None) :
         self.x = self.winfo_width()
         self.y = self.winfo_height()
@@ -108,7 +108,7 @@ class Laby_fen (Tk) :
         self.barre_principale.config(font=("Verdana", text_size))
         self.chrono.label.config(font=("Arial", text_chrono_size))
         self.canvas.redimentionner()
-      
+    
     def aller_a (self) :
         "Permet d´aller directement au Labyrinthe de son choix"
         n = askinteger("Aller directement", f"Numéro du Labyrinthe (max: {self.nombre_de_labs})", parent = self, minvalue = 1, maxvalue = self.nombre_de_labs)
@@ -145,7 +145,7 @@ class Laby_fen (Tk) :
                 else :
                     self.Niveau -= 1
         else :
-            self.messagebox.showinfo ('Changer de Niveau','Le Niveau est déjà au max !',icon = 'error')
+            messagebox.showinfo ('Changer de Niveau','Le Niveau est déjà au max !',icon = 'error')
 
     def niveau_moins (self) :
         if self.Niveau_max == False  :
@@ -159,7 +159,7 @@ class Laby_fen (Tk) :
                 else :
                     self.Niveau = 1
         else :
-            self.messagebox.showinfo ('Changer de Niveau','Le Niveau est déjà au max !',icon = 'error')
+            messagebox.showinfo ('Changer de Niveau','Le Niveau est déjà au max !',icon = 'error')
 
     def niveaux (self) :
         if self.Niveau == 1 :
@@ -319,9 +319,9 @@ class Laby_fen (Tk) :
         return
 
 
-class Niveaux_fen (Toplevel) :
+class Niveaux_fen (tk.Toplevel) :
     def __init__(self, boss=None, titre= "Informations Niveaux", color= "white") :
-        Toplevel.__init__(self,boss)
+        tk.Toplevel.__init__(self,boss)
         self.boss = boss
         self.x = 300
         self.y = 200
@@ -337,7 +337,7 @@ class Niveaux_fen (Toplevel) :
             self.grid_columnconfigure(i, weight= 1, minsize= 1/nb_colones*self.x)
         for i in range (nb_lignes) :
             self.grid_rowconfigure(i, weight= 1, minsize= 1/nb_lignes*self.y)
-        self.canvas = Canvas(self, width= str(self.canvas_x), height= str(self.canvas_y), bg=self.color_canvas)
+        self.canvas = tk.Canvas(self, width= str(self.canvas_x), height= str(self.canvas_y), bg=self.color_canvas)
         self.canvas.grid(column= 0, row= 0, columnspan= 1, rowspan=4)
         y1 = round(self.canvas_y*1/8)
         y3 = round(self.canvas_y*3/8)
@@ -351,15 +351,15 @@ class Niveaux_fen (Toplevel) :
         self.mainloop()
 
     def init_boutons (self) :
-        Button (self, text='Go', command=partial(self.go_niv,1)).grid(column= 1, row= 0)
-        Button (self, text='Go', command=partial(self.go_niv,2)).grid(column= 1, row= 1)
-        Button (self, text='Go', command=partial(self.go_niv,3)).grid(column= 1, row= 2)
-        Button (self, text='Go', command=partial(self.go_niv,4)).grid(column= 1, row= 3)
+        tk.Button (self, text='Go', command=partial(self.go_niv,1)).grid(column= 1, row= 0)
+        tk.Button (self, text='Go', command=partial(self.go_niv,2)).grid(column= 1, row= 1)
+        tk.Button (self, text='Go', command=partial(self.go_niv,3)).grid(column= 1, row= 2)
+        tk.Button (self, text='Go', command=partial(self.go_niv,4)).grid(column= 1, row= 3)
         
-        Button (self, text='Infos', command=self.info_niv1).grid(column= 2, row= 0)
-        Button (self, text='Infos', command=self.info_niv2).grid(column= 2, row= 1)
-        Button (self, text='Infos', command=self.info_niv3).grid(column= 2, row= 2)
-        Button (self, text='Infos', command=self.info_niv4).grid(column= 2, row= 3)
+        tk.Button (self, text='Infos', command=self.info_niv1).grid(column= 2, row= 0)
+        tk.Button (self, text='Infos', command=self.info_niv2).grid(column= 2, row= 1)
+        tk.Button (self, text='Infos', command=self.info_niv3).grid(column= 2, row= 2)
+        tk.Button (self, text='Infos', command=self.info_niv4).grid(column= 2, row= 3)
 
     def go_niv (self,n) :
         self.boss.Niveau = n
@@ -432,10 +432,10 @@ class Niveaux_fen (Toplevel) :
         Infos(self,x,y,titre,texte,positions)
 
         
-class Infos (Toplevel) :
+class Infos (tk.Toplevel) :
     def __init__(self, boss=None, x=400, y=200, titre="test", texte=["test"],
                 positions=(2/10), pos_max=(9/10,9/10), police="arial", color="white") :
-        Toplevel.__init__(self,boss)
+        tk.Toplevel.__init__(self,boss)
         self.boss = boss
         self.canvas_x = self.x = x
         self.canvas_y = self.y = y
@@ -443,7 +443,7 @@ class Infos (Toplevel) :
         self.color_canvas = color
         self.title(titre)
         self.geometry (f"{self.x}x{self.y}")
-        self.canvas = Canvas(self, width= str(self.canvas_x), height= str(self.canvas_y), bg=self.color_canvas)
+        self.canvas = tk.Canvas(self, width= str(self.canvas_x), height= str(self.canvas_y), bg=self.color_canvas)
         self.canvas.pack()
         for i in range (len(texte)) :
             self.canvas.create_text(self.canvas_x/2, round(self.canvas_y*positions[i]), text= texte[i], font= police)
@@ -451,10 +451,10 @@ class Infos (Toplevel) :
         self.mainloop()
     
     
-class Laby_canvas (Canvas) :
+class Laby_canvas (tk.Canvas) :
     "Canvas d´affichage du labyrinthe"
     def __init__(self, boss=None, x=700, y=500, param=[0,1,10,7]) :
-        Canvas.__init__(self)
+        tk.Canvas.__init__(self)
         self.boss = boss
         """
         self.couleur_mode = "white"
@@ -472,7 +472,7 @@ class Laby_canvas (Canvas) :
         self.configure(width=x, height=y, bg=self.color_canvas)
         self.x = x 
         self.y = y
-        self.grid(column= param[0], row= param[1], columnspan= param[2], rowspan= param[3], sticky=NSEW)
+        self.grid(column= param[0], row= param[1], columnspan= param[2], rowspan= param[3], sticky=tk.NSEW)
         self.balle = Laby_balle(self)
         
     def nouvelle_partie (self) :
@@ -542,7 +542,7 @@ class Laby_canvas (Canvas) :
         self.trace_grille ()
         self.boss.affichage_barre_principale ()
         return
-     
+    
     def couleurs (self) :
         if self.couleur_mode == "black" :
             self["bg"] = "white"
@@ -1162,10 +1162,10 @@ class Laby_balle () :
                 self.boss.boss.grille.test_nb_murs_niv_4 ()
             
 
-class Message_fin_lab (Toplevel) :
+class Message_fin_lab (tk.Toplevel) :
 
     def __init__ (self, boss=None) :
-        Toplevel.__init__(self)
+        tk.Toplevel.__init__(self)
         self.boss = boss
         self.canvas_x = 300
         self.canvas_y = 100
@@ -1173,7 +1173,7 @@ class Message_fin_lab (Toplevel) :
         self.y = self.canvas_y + 90
         self.title("Labyrinthe Réussi !")
         self.geometry (f"{self.x}x{self.y}")
-        self.canvas = Canvas(self, width= str(self.canvas_x), height= str(self.canvas_y), bg= "white")
+        self.canvas = tk.Canvas(self, width= str(self.canvas_x), height= str(self.canvas_y), bg= "white")
         self.canvas.pack()
         y30 = round(self.canvas_y*30/100)
         y50 = round(self.canvas_y*50/100)
@@ -1209,13 +1209,13 @@ class Message_fin_lab (Toplevel) :
 
     def init_boutons_page_win (self) :
         "Initalise et affiche dans la fenêtre fen_message_fin_lab les boutons quitter, suivant, recommencer et precedent"
-        Button (self, text='Quitter', command=self.quitter).pack(side= "left")
+        tk.Button (self, text='Quitter', command=self.quitter).pack(side= "left")
 
-        Button (self, text='Suivant ->', command=self.suivant).pack(side= "right") 
+        tk.Button (self, text='Suivant ->', command=self.suivant).pack(side= "right") 
 
-        Button (self, text='Recommencer', command=self.recomencer).pack(side= "right")
+        tk.Button (self, text='Recommencer', command=self.recomencer).pack(side= "right")
 
-        Button (self, text='<- Précédent', command=self.precedent).pack(side= "right")
+        tk.Button (self, text='<- Précédent', command=self.precedent).pack(side= "right")
 
     def quitter (self) :
         "Permet de quitter le jeu"
@@ -1249,9 +1249,9 @@ class Message_fin_lab (Toplevel) :
             messagebox.showinfo ('Labyrinthe précédent','Vous êtes déjà sur le 1er Labyrinthe',icon = 'error')
 
 
-class Chrono(Frame):
+class Chrono(tk.Frame):
     def __init__(self, boss=None, max_time=3600):
-        Frame.__init__(self,boss)
+        tk.Frame.__init__(self,boss)
         self.boss = boss
         self.time = 0
         self.max_time = max_time
@@ -1259,7 +1259,7 @@ class Chrono(Frame):
         self.create_widgets()
     
     def create_widgets(self):
-        self.label = Label(self, text="00:00", fg="red", font=("Arial", 30))
+        self.label = tk.Label(self, text="00:00", fg="red", font=("Arial", 30))
         self.label.pack()
         self.boss.bind("<q>",self.start)
         self.boss.bind("<w>",self.stop)
@@ -1297,9 +1297,9 @@ class Chrono(Frame):
             messagebox.showinfo ('Fin du temps impartis','Le temps accordé est dépassé !',icon = 'error')
         
 
-class Boutons(Frame) :
+class Boutons(tk.Frame) :
     def __init__(self, boss=None, master=None) :
-        Frame.__init__(self,boss)
+        tk.Frame.__init__(self,boss)
         self.boss = master
         self.nb_lignes = 10
         self.grid_columnconfigure(0, weight= 1, minsize= (1-self.boss.proportion_canvas_x)*self.boss.min_x)
@@ -1309,13 +1309,13 @@ class Boutons(Frame) :
         self.items = {}
         
         self.def_bouton('Affichage :\n'+self.boss.type_affichage, self.boss.change_type_affichage, 2,\
-                         nom_diminutif= 'change_affi')
+                        nom_diminutif= 'change_affi')
         self.def_bouton('Invoquer\nCromwell', self.boss.cromwell, 3, nom_diminutif= 'cromwell')
         self.def_bouton('Se couvrir', self.boss.abriter_al, 4)
         self.def_bouton('Transformation :\nChauve-souris', self.boss.chauve_souris_al, 5,\
-                         nom_diminutif= 'chauve_souris')
+                        nom_diminutif= 'chauve_souris')
         self.def_bouton('Aller dans\nle Cercueil', self.boss.aller_cercueil_al, 6,\
-                         nom_diminutif= 'aller_cercueil', visibilite="Caché")
+                        nom_diminutif= 'aller_cercueil', visibilite="Caché")
         self.def_bouton('Recommencer', self.boss.recommencer, 10)
 
         self.init_visible_debut ()
@@ -1329,7 +1329,7 @@ class Boutons(Frame) :
     def def_bouton (self, nom_affiche, effet, position, nom_diminutif=None, visibilite="Visible") :
         if nom_diminutif == None :
             nom_diminutif = nom_affiche
-        self.items[nom_diminutif] = [Button (self, text=nom_affiche, command=effet), position, visibilite]
+        self.items[nom_diminutif] = [tk.Button (self, text=nom_affiche, command=effet), position, visibilite]
         if visibilite == "Visible" :
             self.items[nom_diminutif][0].grid(row= self.items[nom_diminutif][1])
 
