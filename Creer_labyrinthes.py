@@ -18,23 +18,20 @@ class Entite_superieure_crea () :
     def __init__(self, parcoureur_labs=None) -> None:
         if parcoureur_labs is not None :
             self.Parcoureur_labs = parcoureur_labs
-        self.identite = "Labs builder"
         self.fenetre = Lab_fen_crea(self)
         self.grille = Lab_grille_crea(self, self.fenetre)
-        self.canvas = Lab_canvas_crea(self, self.fenetre, self.grille, 
-            x= self.fenetre.x * round(self.fenetre.nb_colones * self.fenetre.proportion_canvas_x)/self.fenetre.nb_colones,
-            y= self.fenetre.y * round(self.fenetre.nb_lignes * self.fenetre.proportion_canvas_y)/self.fenetre.nb_lignes,
-            param = [0, round(self.fenetre.nb_lignes * (1 - self.fenetre.proportion_canvas_y)), round(self.fenetre.nb_colones * self.fenetre.proportion_canvas_x), round(self.fenetre.nb_lignes * self.fenetre.proportion_canvas_y)])
+        self.canvas = Lab_canvas_crea(self, self.fenetre, self.grille)
         self.balle = Lab_balle_crea(self, self.fenetre, self.canvas, self.grille)
         self.fenetre.init_entitees(self.grille, self.canvas, self.balle)
         self.grille.init_entitees(self.canvas, self.balle)
         self.canvas.init_entitees(self.balle)
         self.init_variables_globales()
-        
+    
     def lancement (self) :
-        self.init_barres_boutons_et_text()
+        self.fenetre.init_barres_boutons_et_text()
         self.canvas.init_affichage_grille()
-        self.fenetre.after(100, self.fenetre.redimentionner)
+        for i in range (3) :
+            self.fenetre.after(100+(i*100), self.fenetre.redimentionner)
         self.fenetre.focus()
         for com in self.commentaires :
             self.fenetre.after(100, com.test)
@@ -52,64 +49,6 @@ class Entite_superieure_crea () :
         self.dep = "Casse"
         self.mode_actif = ""
         self.commentaires = []
-        
-    def init_barres_boutons_et_text (self) :
-        self.barre_laterale = tk.Frame(self.fenetre)
-        self.barre_laterale.grid(column=round(self.fenetre.nb_colones * self.fenetre.proportion_canvas_x), row=0,
-                                columnspan= round(self.fenetre.nb_colones * (1 - self.fenetre.proportion_canvas_x)), rowspan=self.fenetre.nb_lignes, sticky=tk.NSEW)
-        self.barre_laterale.grid_columnconfigure(0, weight= 1)
-        self.barre_laterale.grid_rowconfigure(0, weight= 1)
-        self.barre_laterale.grid_rowconfigure(1, weight= 4)
-        self.fenetre.init_logo()
-        self.boutons = Boutons(self.barre_laterale, self, self.fenetre, self.canvas, self.grille, self.balle)
-        self.init_configuration_barre_laterale_droite()
-        self.boutons.grid(column=0, row=1, sticky=tk.NSEW)
-        self.fenetre.init_barres_text()
-        self.fenetre.refresh_barre_de_texte()
-    
-    def init_configuration_barre_laterale_droite (self) :
-        """
-        Définition de la configuration des boutons de la barre latérale droite
-        """
-        self.boutons.init_grid(10)
-        
-        self.boutons.def_bouton('Couleurs', self.canvas.couleurs, 1, commentaire="Change la couleur du canvas\n(raccourci : 'ctrl' + 'c')")
-        self.fenetre.bind("<Control-KeyRelease-c>", self.canvas.couleurs)
-        
-        self.boutons.def_bouton('Aller à', self.aller_a_start, 4, commentaire="Permet de déplacer la balle facilement\n(raccourci : 'a')")
-        self.fenetre.bind("<KeyRelease-a>", self.aller_a_start)
-        
-        self.frame_dep = tk.Frame(self.boutons)
-        self.frame_dep.grid(row= 5)
-        self.boutons.def_bouton('Créer', self.Change_type_deplacement, 1, nom_diminutif= 'type deplacement', boss= self.frame_dep,\
-            commentaire="Permet de switcher entre deux modes de déplacement :\n\n- Mode Créer : casse les murs (raccourci : 'c')\n- Mode Déplacement : traverse les murs (raccourci : 'd')\n\nLe mode affiché sur le bouton est le mode actif.\n(raccouci pour switcher de mode : 'Espace')", commentaire_aligne="left")
-        self.fenetre.bind("<KeyRelease-space>", self.Change_type_deplacement)
-        self.fenetre.bind("<KeyRelease-d>", partial(self.def_type_deplacement, "Passe"))
-        self.fenetre.bind("<KeyRelease-c>", partial(self.def_type_deplacement, "Casse"))
-        
-        self.frame_entree = tk.Frame(self.boutons)
-        self.frame_entree.grid(row= 8)
-        self.boutons.def_bouton('Créer une entrée', self.entree, 1, boss= self.frame_entree, commentaire="Permet de définir la case d'entrée\npour le parcours du labyrinthe une fois terminé\n(raccourci : 'e')")
-        self.fenetre.bind("<KeyRelease-e>", self.entree)
-        
-        self.frame_sortie = tk.Frame(self.boutons)
-        self.frame_sortie.grid(row= 9)
-        self.boutons.def_bouton('Créer une sortie', self.sortie_start, 1, boss= self.frame_sortie, commentaire="Permet de définir la sortie en cassant un mur exterieur\npour le parcours du labyrinthe une fois terminé\n(raccourci : 's')")
-        self.fenetre.bind("<KeyRelease-s>", self.sortie_start)
-        
-        self.boutons.def_bouton('Nouveau Labyrinthe', self.new_lab, 3, commentaire="Ouvre un formulaire pour ouvrir un croquis\nou commencer un nouveau labyrinthe\n(raccourci : 'n')")
-        self.fenetre.bind("<KeyRelease-n>", self.new_lab)
-        
-        self.boutons.def_bouton('Sauvegarder', self.save, 2, commentaire="Permet de sauvegarder le labyrinthe en cours d'édition\nsoit sous forme de croquis, soit\nsous forme de labyrinthe terminé\n(raccourci : 'ctrl' + 's')")
-        self.fenetre.bind("<Control-s>", self.save)
-        
-        self.boutons.def_bouton('Modifier lab', self.Modification, 7, commentaire="Permet de reconstruire un mur détruit\n(raccourci : 'm')")
-        self.fenetre.bind("<KeyRelease-m>", self.Modification)
-        
-        self.boutons.def_bouton('Editer Zones', self.editer_aires, 6, type_combobox = ["Détruire (tout vide)", "Reconstruire (quadrillage)"], commentaire="Permet d'éditer de grandes zones du labyrinthe :\n\n- Le mode Détruire permet d'effacer la zone\n- Le mode Reconstruire permet de retracer\nle quadrillage dans la zone")
-    
-        self.boutons.def_bouton('Réglages', self.reglages, 0, commentaire="Accès au réglages\n(raccourci : 'r')")
-        self.fenetre.bind("<KeyRelease-r>", self.reglages)
     
     def aller_a_start (self, event=None) :
         if self.mode_actif :
@@ -124,13 +63,13 @@ class Entite_superieure_crea () :
             self.mode_actif = "Aller à"
             self.fenetre.barre_de_texte.set("Cliquez sur la case sur laquelle se rendre !")
             self.canvas.lancement_phase_1()
-        
+    
     def aller_a_end (self, x, y) :
         self.mode_actif = ""
         self.canvas.move(self.balle, (x-self.balle.x)*self.canvas.taille, (y-self.balle.y)*self.canvas.taille)
         self.balle.def_position(x,y)
         self.fenetre.refresh_barre_de_texte()
-        
+    
     def aller_a_coord (self, event=None) :
         """
         Permet d'aller directement au labirinthe de son choix
@@ -148,7 +87,7 @@ class Entite_superieure_crea () :
             else :
                 messagebox.showinfo ('Aller directement à',"Cette position n'existe pas ! (Syntaxe : 'position_x,position_y')\navec 0 <= position_x <= "+str(self.grille.x-1)+", et 0 <= position_y <= "+str(self.grille.y-1), icon = 'error')
         return
-
+    
     def save (self, event=None) :
         self.chose_save = Fen_chose_save(self.fenetre, self, self.grille)
         self.chose_save.mainloop()
@@ -243,10 +182,10 @@ class Entite_superieure_crea () :
     def def_type_deplacement (self, dep, event=None) :
         if dep == "Passe" :
             self.dep = "Passe"
-            self.boutons.renommer("type deplacement", "Déplacement")
+            self.fenetre.boutons.renommer("type deplacement", "Déplacement")
         elif dep == "Casse" :
             self.dep = "Casse"
-            self.boutons.renommer("type deplacement", "Créer")
+            self.fenetre.boutons.renommer("type deplacement", "Créer")
         else :
             print("ERREUR")
 
@@ -280,7 +219,7 @@ class Entite_superieure_crea () :
             else :
                 messagebox.showinfo ('Editer Zones : Détruire',"Impossible car le mode '"+self.mode_actif+"' est actif !",icon = 'error')
                 if self.mode_actif == "Restorer Aires" :
-                    self.boutons.renommer("Editer Zones", "Reconstruire")
+                    self.fenetre.boutons.renommer("Editer Zones", "Reconstruire")
         else :
             self.mode_actif = "Détruire Aires"
             self.fenetre.barre_de_texte.set("Vous pouver séléctionner la zone avec le curseur")
@@ -288,7 +227,7 @@ class Entite_superieure_crea () :
     
     def editer_aires_detruire_end (self, coord_1, coord_2) :
         self.mode_actif = ""
-        self.boutons.renommer("Editer Zones", "Editer Zones")
+        self.fenetre.boutons.renommer("Editer Zones", "Editer Zones")
         self.grille.detruire_aire(coord_1[0], coord_1[1], coord_2[0], coord_2[1])
     
     def editer_aires_restorer_start (self) :
@@ -300,7 +239,7 @@ class Entite_superieure_crea () :
             else :
                 messagebox.showinfo ('Editer Zones : Restorer',"Impossible car le mode '"+self.mode_actif+"' est actif !",icon = 'error')
                 if self.mode_actif == "Détruire Aires" :
-                    self.boutons.renommer("Editer Zones", "Détruire")
+                    self.fenetre.boutons.renommer("Editer Zones", "Détruire")
         else :
             self.mode_actif = "Restorer Aires"
             self.fenetre.barre_de_texte.set("Vous pouver séléctionner la zone avec le curseur")
@@ -308,7 +247,7 @@ class Entite_superieure_crea () :
     
     def editer_aires_restorer_end (self, coord_1, coord_2) :
         self.mode_actif = ""
-        self.boutons.renommer("Editer Zones", "Editer Zones")
+        self.fenetre.boutons.renommer("Editer Zones", "Editer Zones")
         self.grille.restorer_aire(coord_1[0], coord_1[1], coord_2[0], coord_2[1])
 
     def infos_generales (self) :
@@ -339,18 +278,78 @@ class Lab_fen_crea (tk.Tk) :
         self.balle = balle
     
     def init_config_grid (self) :
-        self.nb_lignes = 20
-        self.nb_colones = 10
-        self.proportion_canvas_x = 95/100
-        self.proportion_canvas_y = 90/100
-        for i in range (self.nb_colones) :
-            self.grid_columnconfigure(i, weight= 1, minsize= (1/self.nb_colones)*self.min_x)
-        for i in range (self.nb_lignes) :
-            self.grid_rowconfigure(i, weight= 1, minsize= (1/self.nb_lignes)*self.min_y)
+        self.poids_canvas_x = 9
+        self.poids_canvas_y = 9
+        self.poids_barre_laterale_droite_x = 1
+        self.poids_barre_principale_y = 1
+        self.poids_total_x = self.poids_canvas_x + self.poids_barre_laterale_droite_x
+        self.poids_total_y = self.poids_canvas_y + self.poids_barre_principale_y
+        
+        self.grid_columnconfigure(0, weight= self.poids_canvas_x)
+        self.grid_columnconfigure(1, weight= self.poids_barre_laterale_droite_x)
+        self.grid_rowconfigure(0, weight= self.poids_barre_principale_y)
+        self.grid_rowconfigure(1, weight= self.poids_canvas_y)
+    
+    def init_barres_boutons_et_text (self) :
+        self.barre_laterale_droite = tk.Frame(self)
+        self.barre_laterale_droite.grid(column=1, row=0, rowspan=2, sticky=tk.NSEW)
+        self.barre_laterale_droite.grid_columnconfigure(0, weight= 1)
+        self.barre_laterale_droite.grid_rowconfigure(0, weight= 1)
+        self.barre_laterale_droite.grid_rowconfigure(1, weight= 4)
+        self.init_logo()
+        self.boutons = Boutons(self.barre_laterale_droite, self.big_boss, self)
+        self.init_configuration_barre_laterale_droite()
+        self.boutons.grid(column=0, row=1, sticky=tk.NSEW)
+        self.init_barres_text()
+        self.refresh_barre_de_texte()
+    
+    def init_configuration_barre_laterale_droite (self) :
+        """
+        Définition de la configuration des boutons de la barre latérale droite
+        """
+        self.boutons.init_grid(nb_lignes=10)
+        
+        self.boutons.def_bouton('Couleurs', self.canvas.couleurs, 1, commentaire="Change la couleur du canvas\n(raccourci : 'ctrl' + 'c')")
+        self.bind("<Control-KeyRelease-c>", self.canvas.couleurs)
+        
+        self.boutons.def_bouton('Aller à', self.big_boss.aller_a_start, 4, commentaire="Permet de déplacer la balle facilement\n(raccourci : 'a')")
+        self.bind("<KeyRelease-a>", self.big_boss.aller_a_start)
+        
+        self.frame_dep = tk.Frame(self.boutons)
+        self.frame_dep.grid(row= 5)
+        self.boutons.def_bouton('Créer', self.big_boss.Change_type_deplacement, 1, nom_diminutif= 'type deplacement', boss= self.frame_dep,\
+            commentaire="Permet de switcher entre deux modes de déplacement :\n\n- Mode Créer : casse les murs (raccourci : 'c')\n- Mode Déplacement : traverse les murs (raccourci : 'd')\n\nLe mode affiché sur le bouton est le mode actif.\n(raccouci pour switcher de mode : 'Espace')", commentaire_aligne="left")
+        self.bind("<KeyRelease-space>", self.big_boss.Change_type_deplacement)
+        self.bind("<KeyRelease-d>", partial(self.big_boss.def_type_deplacement, "Passe"))
+        self.bind("<KeyRelease-c>", partial(self.big_boss.def_type_deplacement, "Casse"))
+        
+        self.frame_entree = tk.Frame(self.boutons)
+        self.frame_entree.grid(row= 8)
+        self.boutons.def_bouton('Créer une entrée', self.big_boss.entree, 1, boss= self.frame_entree, commentaire="Permet de définir la case d'entrée\npour le parcours du labyrinthe une fois terminé\n(raccourci : 'e')")
+        self.bind("<KeyRelease-e>", self.big_boss.entree)
+        
+        self.frame_sortie = tk.Frame(self.boutons)
+        self.frame_sortie.grid(row= 9)
+        self.boutons.def_bouton('Créer une sortie', self.big_boss.sortie_start, 1, boss= self.frame_sortie, commentaire="Permet de définir la sortie en cassant un mur exterieur\npour le parcours du labyrinthe une fois terminé\n(raccourci : 's')")
+        self.bind("<KeyRelease-s>", self.big_boss.sortie_start)
+        
+        self.boutons.def_bouton('Nouveau Labyrinthe', self.big_boss.new_lab, 3, commentaire="Ouvre un formulaire pour ouvrir un croquis\nou commencer un nouveau labyrinthe\n(raccourci : 'n')")
+        self.bind("<KeyRelease-n>", self.big_boss.new_lab)
+        
+        self.boutons.def_bouton('Sauvegarder', self.big_boss.save, 2, commentaire="Permet de sauvegarder le labyrinthe en cours d'édition\nsoit sous forme de croquis, soit\nsous forme de labyrinthe terminé\n(raccourci : 'ctrl' + 's')")
+        self.bind("<Control-s>", self.big_boss.save)
+        
+        self.boutons.def_bouton('Modifier lab', self.big_boss.Modification, 7, commentaire="Permet de reconstruire un mur détruit\n(raccourci : 'm')")
+        self.bind("<KeyRelease-m>", self.big_boss.Modification)
+        
+        self.boutons.def_bouton('Editer Zones', self.big_boss.editer_aires, 6, type_combobox = ["Détruire (tout vide)", "Reconstruire (quadrillage)"], commentaire="Permet d'éditer de grandes zones du labyrinthe :\n\n- Le mode Détruire permet d'effacer la zone\n- Le mode Reconstruire permet de retracer\nle quadrillage dans la zone", commentaire_aligne="left")
+    
+        self.boutons.def_bouton('Réglages', self.big_boss.reglages, 0, commentaire="Accès au réglages\n(raccourci : 'r')")
+        self.bind("<KeyRelease-r>", self.big_boss.reglages)
 
     def init_logo (self) :
-        #self.logo = tk.Label(self.big_boss.barre_laterale)
-        self.logo = tk.Button(self.big_boss.barre_laterale, command=self.big_boss.infos_generales)
+        #self.logo = tk.Label(self.big_boss.barre_laterale_droite)
+        self.logo = tk.Button(self.barre_laterale_droite, command=self.big_boss.infos_generales)
         self.logo.grid(column=0, row=0)
         self.open_image()
 
@@ -358,8 +357,8 @@ class Lab_fen_crea (tk.Tk) :
         self.image = Image.open("Idées LOGO/logo buitder 3.jpg")
         xx, yy = self.image.size
         ratio = xx / yy
-        x_max = self.x * round(self.nb_colones * (1 - self.proportion_canvas_x)) / self.nb_colones
-        x = round(160/100 * x_max)
+        x_max = self.barre_laterale_droite.winfo_width()
+        x = round(60/100 * x_max)
         y = round(x / ratio)
         self.image = self.image.resize((x,y))
         self.image_photo = ImageTk.PhotoImage(self.image)
@@ -369,21 +368,19 @@ class Lab_fen_crea (tk.Tk) :
         self.barre_de_texte = tk.StringVar()
         self.barre_de_texte.set("Début")
         self.barre_affichage_texte = tk.Label(self, textvariable= self.barre_de_texte)
-        self.barre_affichage_texte.grid(column= 0, row= 0,
-                                        columnspan= round(self.nb_colones * self.proportion_canvas_x),
-                                        rowspan= round(self.nb_lignes * (1 - self.proportion_canvas_y)))
+        self.barre_affichage_texte.grid(column= 0, row= 0, sticky=tk.NSEW)
 
         self.position_sortie = tk.StringVar()
         self.position_sortie.set("Sortie")
-        self.affichage_position_sortie = tk.Label(self.big_boss.frame_sortie, textvariable= self.position_sortie)
+        self.affichage_position_sortie = tk.Label(self.frame_sortie, textvariable= self.position_sortie)
         self.affichage_position_sortie.grid(column= 0, row= 0)
 
         self.position_entree = tk.StringVar()
         self.position_entree.set("Entrée")
-        self.affichage_position_entree = tk.Label(self.big_boss.frame_entree, textvariable= self.position_entree)
+        self.affichage_position_entree = tk.Label(self.frame_entree, textvariable= self.position_entree)
         self.affichage_position_entree.grid(column= 0, row= 0)
         
-        self.affichage_mode = tk.Label(self.big_boss.frame_dep, text= "Mode :")
+        self.affichage_mode = tk.Label(self.frame_dep, text= "Mode :")
         self.affichage_mode.grid(column= 0, row= 0)
         
     def refresh_barre_de_texte (self) :
@@ -398,12 +395,12 @@ class Lab_fen_crea (tk.Tk) :
         self.affichage_position_entree.config(font=("Verdana", text_size * 4))
         self.affichage_mode.config(font=("Verdana", text_size * 5))
         self.canvas.redimentionner()
-        self.big_boss.boutons.redimentionner(text_size = int(text_size * 5.5))
+        self.boutons.redimentionner(text_size = int(text_size * 5.5))
         self.open_image()
 
 
 class Lab_canvas_crea (tk.Canvas) :
-    def __init__ (self, big_boss, fenetre, grille, x=700, y=500, param=[0,1,10,7]) :
+    def __init__ (self, big_boss, fenetre, grille, param=[0,1]) :
         """
         Initialise le canvas de travail dans la fenêtre fen
         :param x: (int) la largueur du canvas à créer
@@ -414,10 +411,8 @@ class Lab_canvas_crea (tk.Canvas) :
         self.big_boss = big_boss
         self.fenetre = fenetre
         self.grille = grille
-        self.x = x 
-        self.y = y
         self.couleurs(change=False, initial_value="white")
-        self.grid(column= param[0], row= param[1], columnspan= param[2], rowspan= param[3], sticky=tk.NSEW)
+        self.grid(column= param[0], row= param[1], sticky=tk.NSEW)
         self.mode_phase = 0
         self.bind("<Motion>", self.mouv_enca_colo)
         self.bind("<Button-1>", self.clic)
@@ -427,15 +422,15 @@ class Lab_canvas_crea (tk.Canvas) :
 
     def taille_auto (self) :
         "Calcule la taille en pixel d'un coté des cases carré à partir de la hauteur h et le la longeur l de la grille de définition"
-        if self.y / (self.grille.y + 1) < self.x / (self.grille.x + 1) :
-            self.taille = self.y / (self.grille.y+2)
+        if self.winfo_height() / (self.grille.y + 1) < self.winfo_width() / (self.grille.x + 1) :
+            self.taille = self.winfo_height() / (self.grille.y+2)
         else :
-            self.taille = self.x / (self.grille.x+2)
+            self.taille = self.winfo_width() / (self.grille.x+2)
 
     def origines (self) :
         "Calcule et renvoi sous forme de tuple les origines en x et y (en haut à gauche du canvas)"
-        self.origine_x = (self.x - (self.taille * (self.grille.x))) / 2
-        self.origine_y = (self.y - (self.taille * (self.grille.y))) / 2
+        self.origine_x = (self.winfo_width() - (self.taille * (self.grille.x))) / 2
+        self.origine_y = (self.winfo_height() - (self.taille * (self.grille.y))) / 2
         assert self.origine_x > 0 and self.origine_y > 0
 
     def trace_grille (self) :
@@ -879,24 +874,23 @@ class Lab_balle_crea () :
 
 
 class Boutons (tk.Frame) :
-    def __init__(self, boss, big_boss, fenetre:tk.Tk, canvas:tk.Canvas, grille, balle, class_comentaire=None) :
+    def __init__(self, boss, big_boss, fenetre:tk.Tk, class_comentaire=None) :
         tk.Frame.__init__(self, boss)
         self.big_boss = big_boss
         self.fenetre = fenetre
-        self.canvas = canvas
-        self.grille = grille
-        self.balle = balle
         self.items = {}
         if class_comentaire is None :
             self.class_comentaire = Commentaire
         else :
             self.class_comentaire = class_comentaire
     
-    def init_grid (self, nb_lignes=10) :
+    def init_grid (self, nb_lignes=1, nb_colones=1) :
         self.nb_lignes = nb_lignes
-        self.grid_columnconfigure(0, weight= 1)
+        self.nb_colones = nb_colones
+        for i in range (self.nb_colones) :
+            self.grid_columnconfigure(0, weight= 1)
         for i in range (self.nb_lignes) :
-            self.grid_rowconfigure(i, weight= 1, minsize= 1/self.nb_lignes*self.fenetre.min_y)
+            self.grid_rowconfigure(i, weight= 1)
     
     def init_visible_debut (self) :
         self.is_visible_debut = []
@@ -904,7 +898,21 @@ class Boutons (tk.Frame) :
             if self.items[bout][2] == "Visible" :
                 self.is_visible_debut.append(bout)
 
-    def def_bouton (self, nom_affiche:str, effet, position:int, boss=None, nom_diminutif:str = "", visibilite:str = "Visible", commentaire:str = "", commentaire_aligne:str = "center", type_combobox:list = []) :
+    def def_bouton (self, nom_affiche:str, effet, position, boss=None, nom_diminutif:str = "", visibilite:str = "Visible", commentaire:str = "", commentaire_aligne:str = "center", type_combobox:list = [], sticky:str="") :
+        """Permet de définir un bouton
+
+        Args:
+            - nom_affiche (str): Nom visible sur le bouton
+            - effet (_fonction_): la fonction à appeler si le bouton est préssé.
+            - position (int or tuple of int): la position pour grid (column, row). Si le nombre de colones (ou de lignes) est de 1, seul le row est nesséssaire (et inversement pour colomn).
+            - boss (_type_, optional): entitée sur leaquelle est placé le bouton . Defaults to own class Boutons.
+            - nom_diminutif (str, optional): nom plus cours. Defaults to "".
+            - visibilite (str, optional): visible dès le début? (valeurs possibles : 'Visible' ou 'Caché'). Defaults to "Visible".
+            - commentaire (str, optional): ajoute un commentaire avec le bouton. Defaults to "".
+            - commentaire_aligne (str, optional): alignement à l'interieur du commentaire. Defaults to "center".
+            - type_combobox (list, optional): si le bouton est un ttk.Combobox remplire la list avec la liste des éléments à mettre dans le combobox. Defaults to [] (means off).
+            - sticky (str, optional) : Permet d'ajouter un sticky sur le positionement du bouton.
+        """
         if not(nom_diminutif) :
             nom_diminutif = nom_affiche
         if boss is None :
@@ -921,7 +929,19 @@ class Boutons (tk.Frame) :
             self.items[nom_diminutif].append(com)
             self.big_boss.commentaires.append(com)
         if visibilite == "Visible" :
-            self.items[nom_diminutif][0].grid(row= self.items[nom_diminutif][1])
+            if self.nb_colones == 1 :
+                ligne = self.items[nom_diminutif][1]
+                colone = 0
+            elif self.nb_lignes == 1 :
+                colone= self.items[nom_diminutif][1]
+                ligne = 0
+            else :
+                colone = self.items[nom_diminutif][1][0]
+                ligne = self.items[nom_diminutif][1][1]
+            if sticky :
+                self.items[nom_diminutif][0].grid(column= colone, row= ligne, sticky= sticky)
+            else :
+                self.items[nom_diminutif][0].grid(column= colone, row= ligne)
 
     def redimentionner (self, text_size = None) :
         if text_size is None :
@@ -929,7 +949,7 @@ class Boutons (tk.Frame) :
         for bout in self.items :
             self.items[bout][0].config(font=("Verdana", text_size))
             if type(self.items[bout][-1]) == Commentaire :
-                self.items[bout][-1].commentaire_label.config(font=("Verdana", text_size-2))
+                self.items[bout][-1].commentaire_label.config(font=("Verdana", text_size))
 
     def afficher (self, nom_bouton) :
         self.items[nom_bouton][0].grid(row= self.items[nom_bouton][1])
@@ -956,6 +976,10 @@ class Boutons (tk.Frame) :
 
     def is_visible (self, nom_bouton:str) :
         return self.items[nom_bouton][2] == "Visible"
+    
+    def supprimer (self, nom_bouton:str) :
+        self.cacher (nom_bouton)
+        self.items[nom_bouton].destroy()
 
 class Commentaire (tk.Toplevel) :
     def __init__(self, fenetre:Lab_fen_crea, bouton:tk.Button, texte, aligne="center") -> None :
@@ -985,11 +1009,14 @@ class Commentaire (tk.Toplevel) :
             ordre[0](x, y)
             self.verif_not_out_window()
             i = 1
-            while (self.pos_x < x < self.pos_x + self.winfo_width() or self.pos_x < x + self.bouton.winfo_width() < self.pos_x + self.winfo_width()) and\
-                    (self.pos_y < y < self.pos_y + self.winfo_height() or self.pos_y < y + self.bouton.winfo_height() < self.pos_y + self.winfo_height()) :
+            while ((self.pos_x < x < self.pos_x + self.winfo_width() or self.pos_x < x + self.bouton.winfo_width() < self.pos_x + self.winfo_width()) and\
+                    (self.pos_y < y < self.pos_y + self.winfo_height() or self.pos_y < y + self.bouton.winfo_height() < self.pos_y + self.winfo_height())) and\
+                    i < len(ordre) :
                 ordre[i](x, y)
                 self.verif_not_out_window()
                 i += 1
+            if i == len(ordre) :
+                self.def_pos_bottom(x, y)
             self.geometry(f"+{self.pos_x}+{self.pos_y}") 
             self.deiconify()  # Afficher le commentaire
     
@@ -1122,11 +1149,11 @@ class Fen_chose_new_lab (tk.Toplevel) :
             self.is_init_new_lab = True
     
     def init_new_lab (self) :
-        self.partie_init_new_lab = tk.Frame(self)
+        self.partie_init_new_lab = tk.Frame(self, border=10)
         text_init_new_lab = tk.Text(self.partie_init_new_lab, wrap= tk.WORD, width=25, height=3, padx=50, pady=20, font=("Helvetica", 15))
         text_init_new_lab.insert(0.1, "Entrez le nombre de colones et de lignes de votre nouveau labyrinthe :")
         text_init_new_lab['state'] = 'disabled'
-        text_init_new_lab.grid(column=0, row=0, columnspan=2)
+        text_init_new_lab.grid(column=0, row=0, columnspan=2, sticky=tk.NSEW)
         
         largeur = tk.Frame(self.partie_init_new_lab, pady=20)
         largeur.grid(column=0, row=1)

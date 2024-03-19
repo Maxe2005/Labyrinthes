@@ -1,0 +1,14 @@
+#Nom du parametre, valeur du parametre
+type deplacement initial,Sec
+lab alea x,40
+lab alea y,25
+lab alea entree x,0
+lab alea entree y,0
+lab alea alerte mauvaise entree,True
+nb colones min,3
+nb colones max,50
+nb lignes min,3
+nb lignes max,35
+initial color mode,black
+decoupe du deplacement,5
+vitesse deplacement,50

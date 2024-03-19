@@ -4,6 +4,7 @@
 
 import Creer_labyrinthes as Laby_builder
 import tkinter as tk
+from tkinter import ttk
 from tkinter import messagebox
 from tkinter.simpledialog import askinteger, askstring
 from math import log
@@ -16,219 +17,104 @@ from csv import writer
 
 class Entite_superieure () :
     def __init__(self, lab_builtder=None) -> None:
+        """Constructeur, initialise les instances"""
         if lab_builtder is not None :
             self.Lab_builtder = lab_builtder
-        self.identite = "Parcoureur de Labs"
-        self.fenetre = Laby_fen(self)
-        self.grille = Laby_grille(self, self.fenetre)
-        self.canvas = Laby_canvas(self, self.fenetre, self.grille, 
-            x= self.fenetre.x * round(self.fenetre.nb_colones * self.fenetre.proportion_canvas_x)/self.fenetre.nb_colones,
-            y= self.fenetre.y * round(self.fenetre.nb_lignes * self.fenetre.proportion_canvas_y)/self.fenetre.nb_lignes,
-            param = [0, round(self.fenetre.nb_lignes * (1 - self.fenetre.proportion_canvas_y)), round(self.fenetre.nb_colones * self.fenetre.proportion_canvas_x), round(self.fenetre.nb_lignes * self.fenetre.proportion_canvas_y)])
-        self.balle = Laby_balle(self, self.fenetre, self.grille, self.canvas)
-        self.fenetre.init_entitees(self.grille, self.canvas, self.balle)
-        self.grille.init_entitees(self.canvas, self.balle)
-        self.canvas.init_entitees(self.balle)
         self.init_variables_globales()
         
+        self.fenetre = Laby_fen()
+        self.grille = Laby_grille(self)
+        self.canvas = Laby_canvas(self)
+        self.balle = Laby_balle(self, self.fenetre)
+        self.niveau = Niveaux()
+        self.difficultee = Difficultee()
+        
+        self.fenetre.init_entitees(self, self.grille, self.canvas, self.balle)
+        self.grille.init_entitees(self.fenetre, self.canvas, self.balle)
+        self.canvas.init_entitees(self.fenetre, self.grille, self.balle)
+        self.balle.init_entitees(self.grille, self.canvas)
+        self.niveau.init_entitees(self, self.fenetre, self.grille, self.canvas, self.balle)
+        self.difficultee.init_entitees(self, self.fenetre, self.grille, self.canvas, self.balle, self.niveau)
+        
+        self.nombre_de_labs = len(self.grille.docu_lab) # Fin de init_variables_globales (le nombre de Labyrinthes "classiques" en tout)
+        
     def lancement (self) :
-        self.init_barres_boutons_et_text()
+        """Permet de lancer la fenêtre du jeu"""
+        self.fenetre.init_barres_boutons_et_text()
         self.canvas.nouvelle_partie ()
-        self.fenetre.after(100, self.fenetre.redimentionner)
+        for i in range (3) :
+            self.fenetre.after(500+(i*100), self.fenetre.redimentionner)
         self.fenetre.focus()
         for com in self.commentaires :
-            self.fenetre.after(100, com.test)
+            self.fenetre.after(500, com.test)
+        self.fenetre.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.fenetre.mainloop()
     
-    def lancement_parcoureur_labs (self) :
+    def lancement_builder_labs (self) :
         if __name__ == "__main__" :
             self.Lab_builtder = Laby_builder.Entite_superieure_crea(self)
-            self.Lab_builtder.fenetre.mainloop()
+            self.Lab_builtder.lancement()
         else :
             self.Lab_builtder.fenetre.lift()
             self.Lab_builtder.fenetre.focus()
     
     def init_variables_globales (self) :
+        """Permet de donner des valeurs arbitraires aux paramètres globaux (params par défaut)"""
+        self.ouvrir_param_defaut()
         self.nb_lab = 1 # le premier Labyrinthe à afficher
-        self.nombre_de_labs = len(self.grille.docu_lab) # le nombre de Labyrinthes "classiques" en tout
-        self.Niveau = 1
-        self.Difficultee = 1
-        self.Niveau_max = False
         self.type_lab = "classique"
         self.commentaires = []
-
-    def init_barres_boutons_et_text (self) :
-        self.barre_laterale_droite = tk.Frame(self.fenetre)
-        self.barre_laterale_droite.grid(column=round(self.fenetre.nb_colones * self.fenetre.proportion_canvas_x), row=0,
-                                columnspan= round(self.fenetre.nb_colones * (1 - self.fenetre.proportion_canvas_x)), rowspan=self.fenetre.nb_lignes, sticky=tk.NSEW)
-        self.barre_laterale_droite.grid_columnconfigure(0, weight= 1)
-        self.barre_laterale_droite.grid_rowconfigure(0, weight= 1)
-        self.barre_laterale_droite.grid_rowconfigure(1, weight= 4)
-        self.fenetre.init_logo()
-        self.boutons_lateraux_droits = Laby_builder.Boutons(self.barre_laterale_droite, self, self.fenetre, self.canvas, self.grille, self.balle, class_comentaire=Laby_builder.Commentaire)
-        self.init_configuration_barre_laterale_droite()
-        self.boutons_lateraux_droits.grid(column=0, row=1, sticky=tk.NSEW)
-        self.fenetre.init_barres_text()
-        self.fenetre.refresh_barre_principale()
-
-    def init_configuration_barre_laterale_droite (self) :
-        """
-        Définition de la configuration des boutons de la barre latérale droite
-        """
-        self.boutons_lateraux_droits.init_grid(10)
-        
-        self.boutons_lateraux_droits.def_bouton('Réglages', self.reglages, 0, commentaire="Accès au réglages\n(raccourci : 'r')")
-        self.fenetre.bind("<KeyRelease-r>", self.reglages)
-        
-        self.boutons_lateraux_droits.def_bouton('Couleurs', self.canvas.couleurs, 1, commentaire="Change la couleur du canvas\n(raccourci : 'ctrl' + 'c')")
-        self.fenetre.bind("<Control-KeyRelease-c>", self.canvas.couleurs)
-        
-        self.boutons_lateraux_droits.def_bouton('Aller à', self.fenetre.aller_a, 2, commentaire="Permet de se rendre rapidement\nsur le labyrinthe souhaité\n(raccourci : 'a')")
-        self.fenetre.bind("<KeyRelease-a>", self.fenetre.aller_a)
-
-    def niveau_plus (self) :
-        if self.Niveau_max == False :
-            if self.Niveau < 4 :
-                self.Niveau += 1
-            else :
-                self.Niveau = 1
-            if not(self.niveaux()) :
-                if self.Niveau == 1 :
-                    self.Niveau = 4
-                else :
-                    self.Niveau -= 1
-        else :
-            messagebox.showinfo ('Changer de Niveau','Le Niveau est déjà au max !',icon = 'error')
-
-    def niveau_moins (self) :
-        if self.Niveau_max == False  :
-            if self.Niveau == 1 :
-                self.Niveau = 4
-            else :
-                self.Niveau -= 1
-            if not(self.niveaux()) :
-                if self.Niveau < 4 :
-                    self.Niveau += 1
-                else :
-                    self.Niveau = 1
-        else :
-            messagebox.showinfo ('Changer de Niveau','Le Niveau est déjà au max !',icon = 'error')
-
-    def niveaux (self) :
-        if self.Niveau == 1 :
-            self.grille.init_Partitions_lab()
-        else :
-            if self.Niveau == 2 :
-                MsgBox = messagebox.askquestion ('Passer au Niveau 2','A partir du Niveau 2 le Labyrinthe se divise en plusieurs fragments. Dans le Niveau 2, à chaque fois que vous arriverez sur un nouveau fragment, il apparaitra et vous pourrez voir ainsi où vous allez. Mais attention !, si vous découvrez la moitié des partitions, toutes celles que vous avez découvert dissparaissent !'+" "*190+'Voulez-vous vraiment passer au Niveau 2 ?',icon = 'warning')
-                if MsgBox == 'yes':
-                    self.grille.init_taille_partition_par_difficultées ()
-                else :
-                    return False
-            elif self.Niveau == 3 :
-                MsgBox = messagebox.askquestion ('Passer au Niveau 3','Dans le Niveau 3 vous ne pouvez voir d´un fragment à la fois donc à chaque fois que vous arriverez sur un nouveau fragment, il apparaitra mais il sera le seul visible, tous les autres serons cachés.'+" "*180+'Voulez-vous vraiment passer au Niveau 3 ?',icon = 'warning')
-                if MsgBox == 'yes':
-                    self.grille.init_taille_partition_par_difficultées ()
-                else :
-                    return False
-            elif self.Niveau == 4 :
-                MsgBox = messagebox.askquestion ('Passer au Niveau 4','Dans le Niveau 4 les murs du Labyrinthe n´apparaissent que si vous les percutez ! Mais si vous en "découvez" plus de la moitié, tous ceux que vous aurez découverts disparaîtrons ! Alors attention et bon courage !'+" "*180+'Voulez-vous vraiment passer au Niveau 4 ?',icon = 'warning')
-                if MsgBox == 'yes':
-                    self.grille.Murs_lab = []
-                    self.grille.init_taille_partition_par_difficultées ()
-                    self.grille.decompte_nb_murs_dans_lab ()
-                else :
-                    return False
-        self.canvas.refresh_lab()
-        return True
+        self.type_deplacement = self.parametres["type deplacement initial"]
     
-    def niveau_max (self) :
-        if self.Niveau_max == False :
-            MsgBox = messagebox.askquestion ('Passer au Niveau max (impossible !!)','Dans le Niveau max tous les murs sont invisibles ! Alors bon courage !'+" "*180+'Voulez-vous vraiment passer au Niveau max ?',icon = 'warning')
-            if MsgBox == 'yes':
-                self.Niveau_max = True
-                self.grille.Murs_lab = []
-                self.canvas.balle.contours_visibles = False
-                self.canvas.refresh_lab()
-        else :
-            self.Niveau_max = False
-            if self.Niveau == 1 :
-                self.grille.init_Partitions_lab ()
-            else :
-                if self.Niveau == 2 or self.Niveau == 3 :
-                    self.grille.init_taille_partition_par_difficultées ()
-                elif self.Niveau == 4 :
-                    self.grille.Murs_lab = []
-                    self.grille.decompte_nb_murs_dans_lab ()
-            self.canvas.refresh_lab()
-        return
-
-    def difficulte_plus (self) :
-        if self.Niveau_max is False :
-            if self.Niveau > 1 :
-                if self.Difficultee < 3 :
-                    self.Difficultee += 1
-                else :
-                    self.Difficultee = 1
-                if not(self.difficultees ()) :
-                    if self.Difficultee == 1 :
-                        self.Difficultee = 3
-                    else :
-                        self.Difficultee -= 1
-            else :
-                messagebox.showinfo ('Changer de difficultée','Il n´y a qu´une seule difficultée pour le niveau 1 !',icon = 'error')
-        else :
-            messagebox.showinfo ('Changer de difficultée','La Difficultée est déjà au max !',icon = 'error')
-
-    def difficulte_moins (self) :
-        if self.Niveau_max is False :
-            if self.Niveau > 1 :
-                if self.Difficultee == 1 :
-                    self.Difficultee = 3
-                else :
-                    self.Difficultee -= 1
-                if not(self.difficultees ()) :
-                    if self.Difficultee < 3 :
-                        self.Difficultee += 1
-                    else :
-                        self.Difficultee = 1
-            else :
-                messagebox.showinfo ('Changer de difficultée','Il n´y a qu´une seule difficultée pour le niveau 1 !',icon = 'error')
-        else :
-            messagebox.showinfo ('Changer de difficultée','La Difficultée est déjà au max !',icon = 'error')
-
-    def difficultees (self) :
-        if self.Difficultee == 2 :
-            if self.Niveau == 2 or self.Niveau == 3 :
-                MsgBox = messagebox.askquestion ('Passer à la Difficultée 2','Les Difficultés du niveau '+str(self.Niveau)+' modifient la taille des fragment (de plus petits fragments impliquent plus de fragments, donc moins de visibilité et donc une Difficultée accrue !).'+" "*120+'Voulez-vous vraiment passer à la Difficultée 2 ?',icon = 'warning')
-            elif self.Niveau == 4 :
-                MsgBox = messagebox.askquestion ('Passer à la Difficultée 2','La Difficultée 2 du niveau 4 supprimera tous les murs "découverts" quand seulement 1/5 des murs serons découverts ! (Attention c´est très frustrant mais vous allez y arriver !)'+" "*100+'Voulez-vous vraiment passer à la Difficultée 2 ?',icon = 'warning')
-            if MsgBox != 'yes':
-                return False
-        elif self.Difficultee == 3 :
-            if self.Niveau == 2 or self.Niveau == 3 :
-                MsgBox = messagebox.askquestion ('Passer à la Difficultée 3','Les Difficultés du niveau '+str(self.Niveau)+' modifient la taille des fragment (de plus petits fragments impliquent plus de fragments, donc moins de visibilité et donc une Difficultée accrue !).'+" "*120+'Voulez-vous vraiment passer à la Difficultée 3 ?',icon = 'warning')
-            elif self.Niveau == 4 :
-                MsgBox = messagebox.askquestion ('Passer à la Difficultée 3','La Difficultée 3 du niveau 4 supprimera tous les murs "découverts" quand seulement 1/10 des murs serons découverts ! (Attention c´est très frustrant mais vous allez y arriver !)'+" "*100+'Voulez-vous vraiment passer à la Difficultée 3 ?',icon = 'warning')
-            if MsgBox != 'yes':
-                return False
-        self.grille.init_taille_partition_par_difficultées ()
-        self.canvas.refresh_lab()
-        return True
-
-    def deplacement (self) :
-        if self.canvas.balle.dep == 0 :
-            self.deplace.set("Déplacement\nLisse")
-            self.canvas.balle.dep = 1
-        else :
-            self.deplace.set("Déplacement\nSec")
-            self.canvas.balle.dep = 0
+    def ouvrir_param_defaut (self) :
+        """Télécharge les paramètres par défauts """
+        self.parametres = {}
+        with open("Parametres_defaut.csv") as f :
+            for ligne in f.readlines()[1:] :
+                l = ligne.split("\n")[0].split(",")
+                self.parametres[l[0]] = l[1]
     
-    def recomencer (self) :
+    def save_param_defaut (self) :
+        with open("Parametres_defaut.csv", "w") as f :
+            f.write("#Nom du parametre, valeur du parametre\n")
+            for param in self.parametres :
+                f.write(param+","+str(self.parametres[param])+"\n")
+    
+    def on_closing (self) :
+        self.save_param_defaut()
+        self.fenetre.destroy()
+    
+    def aller_a (self) :
+        "Permet d´aller directement au Labyrinthe de son choix"
+        n = askinteger("Aller directement", f"Numéro du Labyrinthe (max: {self.nombre_de_labs})", parent = self.fenetre, minvalue = 1, maxvalue = self.nombre_de_labs)
+        if n is not(None):
+            self.nb_lab = int(n)
+            self.canvas.nouvelle_partie()
+
+    def change_type_deplacement (self, event=None) :
+        """Permet de switcher entre les deux modes de déplacement de la balle : sec ou lisse"""
+        if self.type_deplacement == "Sec" :
+            self.def_type_deplacement("Lisse")
+        else :
+            self.def_type_deplacement("Sec")
+        
+    def def_type_deplacement (self, dep, event=None) :
+        """Défini le mode de déplacement de la balle (soit sec, soit lisse) et modifie l'écriture sur le bouton associé"""
+        if dep == "Sec" :
+            self.type_deplacement = "Sec"
+            self.fenetre.boutons_lateraux_droits.renommer("type deplacement", "Déplacement\nSec")
+        elif dep == "Lisse" :
+            self.type_deplacement = "Lisse"
+            self.fenetre.boutons_lateraux_droits.renommer("type deplacement", "Déplacement\nLisse")
+        else :
+            print("ERREUR")
+    
+    def recomencer_lab (self, event=None) :
         MsgBox = messagebox.askquestion ('Recommencer','Voulez-vous vraiment recommencer ce Labyrinthe depuis le début?',icon = 'warning')
         if MsgBox == 'yes':
             self.canvas.nouvelle_partie()
 
-    def suivant (self) :
+    def suivant_lab (self, event=None) :
         MsgBox = messagebox.askquestion ('Labyrinthe suivant','Voulez-vous vraiment lancer le Labyrinthe suivant (plus difficile)?')
         if MsgBox == 'yes':
             if self.nb_lab != self.nombre_de_labs :
@@ -237,7 +123,7 @@ class Entite_superieure () :
             else :
                 messagebox.showinfo ('Labyrinthe suivant','Vous êtes déjà sur le dernier Labyrinthe',icon = 'error')
 
-    def precedent (self) :
+    def precedent_lab (self, event=None) :
         MsgBox = messagebox.askquestion ('Labyrinthe précédent','Voulez-vous vraiment revenir au Labyrinthe précédent?')
         if MsgBox == 'yes':
             if self.nb_lab != 1 :
@@ -268,21 +154,20 @@ class Entite_superieure () :
             self.button_aller_a.grid(column= 52, row= 5, columnspan= 4)
         self.canvas.nouvelle_partie()
 
-    def difficultees_fen (self) :
-        return
-
     def infos_generales (self) :
         infos = Fen_infos_generales(self.fenetre, self)
         infos.mainloop()
-    
+
     def reglages (self) :
-        pass
+        reglages = Reglages(self.fenetre)
+        reglages.init_entitees (self, self.fenetre, self.grille, self.canvas, self.balle)
+        reglages.lancement()
+        reglages.mainloop()
 
 
 class Laby_fen (tk.Tk) :
-    def __init__(self, big_boss, x=1000 ,y=800):
+    def __init__(self, x=1000 ,y=800):
         tk.Tk.__init__(self)
-        self.big_boss = big_boss
         self.x = x # = self.winfo_screenwidth() -200
         self.y = y # = self.winfo_screenheight() -100
         self.title("The Labyrinthe")
@@ -294,108 +179,186 @@ class Laby_fen (tk.Tk) :
         self.bind("<Button-3>", self.redimentionner)
     
     def init_config_grid (self) :
-        self.nb_lignes = 20
-        self.nb_colones = 57
-        self.proportion_canvas_x = 95/100
-        self.proportion_canvas_y = 90/100
-        for i in range (self.nb_colones) :
-            self.grid_columnconfigure(i, weight= 1, minsize= (1/self.nb_colones)*self.min_x)
-        for i in range (self.nb_lignes) :
-            self.grid_rowconfigure(i, weight= 1, minsize= (1/self.nb_lignes)*self.min_y)
+        self.poids_canvas_x = 9
+        self.poids_canvas_y = 9
+        self.poids_barre_laterale_droite_x = 1
+        self.poids_barre_top_y = 1
+        self.poids_total_x = self.poids_canvas_x + self.poids_barre_laterale_droite_x
+        self.poids_total_y = self.poids_canvas_y + self.poids_barre_top_y
+        
+        self.grid_columnconfigure(0, weight= self.poids_canvas_x)
+        self.grid_columnconfigure(1, weight= self.poids_barre_laterale_droite_x)
+        self.grid_rowconfigure(0, weight= self.poids_barre_top_y)
+        self.grid_rowconfigure(1, weight= self.poids_canvas_y)
     
-    def init_entitees (self, grille, canvas, balle) :
+    def init_entitees (self, big_boss, grille, canvas, balle) :
+        self. big_boss = big_boss
         self. grille = grille
         self. canvas = canvas
         self. balle = balle
     
-    def init_logo (self) :
+    def init_barres_boutons_et_text (self) :
+        self.init_configuration_barre_laterale_droite()
+        self.init_configuration_barre_top()
+        self.refresh_barre_principale()
+
+    def init_configuration_barre_laterale_droite (self) :
+        self.barre_laterale_droite = tk.Frame(self)
+        self.barre_laterale_droite.grid(column=1, row=0, rowspan=2, sticky=tk.NSEW)
+        self.barre_laterale_droite.grid_columnconfigure(0, weight= 1)
+        self.barre_laterale_droite.grid_rowconfigure(0, weight= 1)
+        self.barre_laterale_droite.grid_rowconfigure(1, weight= 7)
+        self.init_logo(self.barre_laterale_droite)
+        self.boutons_lateraux_droits = Laby_builder.Boutons(self.barre_laterale_droite, self.big_boss, self, class_comentaire=Laby_builder.Commentaire)
+        self.init_boutons_barre_laterale_droite()
+        self.boutons_lateraux_droits.grid(column=0, row=1, sticky=tk.NSEW)
+    
+    def init_boutons_barre_laterale_droite (self) :
+        """
+        Définition de la configuration des boutons de la barre latérale droite
+        """
+        self.boutons_lateraux_droits.init_grid(nb_lignes=10)
+        
+        self.boutons_lateraux_droits.def_bouton('Réglages', self.big_boss.reglages, 0, commentaire="Accès au réglages\n(raccourci : 'r')")
+        self.bind("<KeyRelease-r>", self.big_boss.reglages)
+        
+        self.boutons_lateraux_droits.def_bouton('Couleurs', self.canvas.couleurs, 1, commentaire="Change la couleur du canvas\n(raccourci : 'ctrl' + 'c')")
+        self.bind("<Control-KeyRelease-c>", self.canvas.couleurs)
+        
+        self.boutons_lateraux_droits.def_bouton('Aller à', self.big_boss.aller_a, 2, commentaire="Permet de se rendre rapidement\nsur le labyrinthe souhaité\n(raccourci : 'a')")
+        self.bind("<KeyRelease-a>", self.big_boss.aller_a)
+        
+        self.boutons_lateraux_droits.def_bouton('Déplacement\nSec', self.big_boss.change_type_deplacement, 8, nom_diminutif= 'type deplacement', commentaire="Permet de switcher entre deux modes de déplacement :\n\n- Mode Lisse : permet de programmer à l'avance\n\tla prochaine direction (raccourci : 'l')\n- Mode Sec : déplacement case par case (raccourci : 's')\n\nLe mode affiché sur le bouton est le mode actif.", commentaire_aligne="left")
+        self.bind("<KeyRelease-s>", partial(self.big_boss.def_type_deplacement, "Sec"))
+        self.bind("<KeyRelease-l>", partial(self.big_boss.def_type_deplacement, "Lisse"))
+
+    def init_logo (self, boss, params=[0,0]) :
         #self.logo = tk.Label(self.big_boss.barre_laterale_droite)
-        self.logo = tk.Button(self.big_boss.barre_laterale_droite, command=self.big_boss.infos_generales)
-        self.logo.grid(column=0, row=0)
+        self.logo = tk.Button(boss, command=self.big_boss.infos_generales)
+        self.logo.grid(column=params[0], row=params[1])
         self.open_image()
 
     def open_image (self) :
-        self.image = Image.open("Idées LOGO/logo buitder 3.jpg")
+        self.image = Image.open("Idées LOGO/logo 2.jpg")
         xx, yy = self.image.size
         ratio = xx / yy
-        x_max = self.x * round(self.nb_colones * (1 - self.proportion_canvas_x)) / self.nb_colones
-        x = round(160/100 * x_max)
+        x_max = self.barre_laterale_droite.winfo_width()
+        x = round(70/100 * x_max)
         y = round(x / ratio)
         self.image = self.image.resize((x,y))
         self.image_photo = ImageTk.PhotoImage(self.image)
         self.logo["image"] = self.image_photo
 
-    def init_barres_text (self) :
+    def init_configuration_barre_top (self) :
+        self.barre_top = tk.Frame(self)
+        self.barre_top.grid(column=0, row=0, sticky=tk.NSEW)
+        self.barre_top.grid_rowconfigure(0, weight= 1)
+        self.barre_top.grid_columnconfigure(0, weight= 1)
+        self.barre_top.grid_columnconfigure(1, weight= 1)
+        self.barre_top.grid_columnconfigure(2, weight= 1)
+        self.boutons_top_left = Laby_builder.Boutons(self.barre_top, self.big_boss, self, class_comentaire=Laby_builder.Commentaire)
+        self.init_boutons_barre_top_left()
+        self.boutons_top_left.grid(column=0, row=0, sticky=tk.NSEW)
+        
         self.texte_barre_principale = tk.StringVar()
         self.texte_barre_principale.set("Début")
-        self.barre_principale = tk.Label(self, textvariable= self.texte_barre_principale)
-        self.barre_principale.grid(column= 14, row= 0, columnspan= 21)
+        self.barre_principale = tk.Label(self.barre_top, textvariable= self.texte_barre_principale)
+        self.barre_principale.grid(column= 1, row= 0, sticky=tk.NSEW)
+        
+        self.boutons_top_right = Laby_builder.Boutons(self.barre_top, self.big_boss, self, class_comentaire=Laby_builder.Commentaire)
+        self.init_boutons_barre_top_right()
+        self.boutons_top_right.grid(column=2, row=0)#, sticky=tk.NSEW)
         
         #self.chrono = Chrono(self)
         #self.chrono.grid(column= 51, row= 0, columnspan= 6, rowspan=2)
     
+    def init_boutons_barre_top_left (self) :
+        """
+        Définition de la configuration des boutons à gauche de la barre haute
+        """
+        #print("left :",self.boutons_top_left.winfo_width())
+        min_y = 0
+        self.boutons_top_left.init_grid(nb_colones=2)
+        
+        self.niveau_frame = tk.Frame(self.boutons_top_left)
+        self.niveau_frame.grid(column=0, row=0)
+        self.boutons_top_left.def_bouton('<-', self.big_boss.niveau.moins, 0, boss=self.niveau_frame, sticky="e", nom_diminutif= "niveau moins", commentaire="Passer au niveau inférieur")
+        self.boutons_top_left.def_bouton('Niveau', self.big_boss.niveau.fenetre_presentation, 1, boss=self.niveau_frame, sticky="ew", commentaire="Présetation des niveaux")
+        self.boutons_top_left.def_bouton('->', self.big_boss.niveau.plus, 2, boss=self.niveau_frame, sticky="w", nom_diminutif= "niveau plus", commentaire="Passer au niveau supérieur")
+        
+        self.difficultee_frame = tk.Frame(self.boutons_top_left)
+        if self.boutons_top_left.winfo_width() < min_y :
+            self.difficultee_frame.grid(column=0, row=1)
+        else :
+            self.difficultee_frame.grid(column=1, row=0)
+        self.boutons_top_left.def_bouton('<-', self.big_boss.difficultee.moins, 0, boss=self.difficultee_frame, sticky="e", nom_diminutif= "difficultée moins", commentaire="Passer à la difficultée inférieure")
+        self.boutons_top_left.def_bouton('Difficultée', self.big_boss.difficultee.fenetre_presentation, 1, boss=self.difficultee_frame, sticky="ew", commentaire="Présetation des difficultées")
+        self.boutons_top_left.def_bouton('->', self.big_boss.difficultee.plus, 2, boss=self.difficultee_frame, sticky="w", nom_diminutif= "difficultée plus", commentaire="Passer à la difficultée supérieure")
+    
+    def init_boutons_barre_top_right (self) :
+        """
+        Définition de la configuration des boutons à droite de la barre haute
+        """
+        #print("right :",self.boutons_top_right.winfo_width())
+        if False:#self.boutons_top_right.winfo_width() < 300 :
+            self.boutons_top_right.init_grid(nb_lignes=3)
+        else :
+            self.boutons_top_right.init_grid(nb_colones=3)
+        
+        self.boutons_top_right.def_bouton('<- Précédent', self.big_boss.precedent_lab, 0, sticky="e", commentaire="Accès au labyrinthe précédent\n(raccourci : 'p')")
+        self.bind("<KeyRelease-p>", self.big_boss.precedent_lab)
+        
+        self.boutons_top_right.def_bouton('Recomencer', self.big_boss.recomencer_lab, 1, sticky="ew", commentaire="Permet de recomencer le labyrinthe\nen retournant au début\n(raccourci : 'r')")
+        self.bind("<KeyRelease-r>", self.big_boss.recomencer_lab)
+        
+        self.boutons_top_right.def_bouton('Suivant ->', self.big_boss.suivant_lab, 2, sticky="w", commentaire="Accès au labyrinthe suivant")#\n(raccourci : 's')")
+        #self.bind("<KeyRelease-s>", self.big_boss.suivant_lab)
+    
     def redimentionner (self,event=None) :
         self.x = self.winfo_width()
         self.y = self.winfo_height()
+        self.canvas.redimentionner()
+        self.open_image()
         text_size = int(log(self.winfo_width()/100))
         self.barre_principale.config(font=("Verdana", text_size * 5))
         #self.chrono.label.config(font=("Arial", text_size/3))
-        self.canvas.redimentionner()
-        self.big_boss.boutons_lateraux_droits.redimentionner(text_size = int(text_size * 5.5))
-        self.open_image()
-    
-    def aller_a (self) :
-        "Permet d´aller directement au Labyrinthe de son choix"
-        n = askinteger("Aller directement", f"Numéro du Labyrinthe (max: {self.big_boss.nombre_de_labs})", parent = self, minvalue = 1, maxvalue = self.big_boss.nombre_de_labs)
-        if n is not(None):
-            self.big_boss.nb_lab = int(n)
-            self.canvas.nouvelle_partie()
-
+        self.boutons_lateraux_droits.redimentionner(text_size = int(text_size * 5.5))
+        self.boutons_top_right.redimentionner(text_size = int(text_size * 5))
+        self.boutons_top_left.redimentionner(text_size = int(text_size * 5))
+        #self.init_boutons_barre_top_right()
+        #self.init_boutons_barre_top_left ()
+        
     def refresh_barre_principale (self) :
+        """Affiche la barre principale avec les dernières informations à jour et sous le bon format"""
         if self.big_boss.type_lab == "classique" :
             lab = "n° "+str(self.big_boss.nb_lab)
         elif self.big_boss.type_lab == "aleatoire" :
             lab = "aléatoire"
-        if self.big_boss.Niveau_max :
+        if self.big_boss.niveau.Niveau_max :
             niveau = difficultee = "max"
         else :
-            niveau = self.big_boss.Niveau
-            if self.big_boss.Niveau == 1 :
-                difficultee = "0"
+            niveau = self.big_boss.niveau.numero
+            if self.big_boss.niveau.numero == 1 :
+                difficultee = "-"
             else :
-                difficultee = self.big_boss.Difficultee
-        espaces = round(self.x/self.nb_colones-14)
+                difficultee = self.big_boss.difficultee.numero
+        espaces = round(self.barre_principale.winfo_width()/30 - 10)
         self.texte_barre_principale.set(f"Labyrinthe {lab:<10}"+" "*espaces+f"Niveau : {niveau:<3}"+" "*espaces+f"Difficultée : {difficultee:<3}")
         #+" "*round(espaces/2)+str(self.canvas.balle.x)+" "+str(self.canvas.balle.y)
 
 
 class Laby_canvas (tk.Canvas) :
     "Canvas d´affichage du labyrinthe"
-    def __init__(self, big_boss, fenetre, grille, x=700, y=500, param=[0,1,10,7]) :
+    def __init__(self, big_boss, param=[0,1]) :
         tk.Canvas.__init__(self)
-        self.big_boss = big_boss
-        self.fenetre = fenetre
-        self.grille = grille
-        """
-        self.couleur_mode = "white"
-        self.color_canvas = "white"
-        self.color_grille = "black"
-        self.color_balle = "blue"
-        self.color_balle_out = "black"
-        """
-        self.couleur_mode = "black"
-        self.color_canvas = "black"
-        self.color_grille = "white"
-        self.color_balle = "red"
-        self.color_balle_out = "white"
-        #"""
-        self.configure(width=x, height=y, bg=self.color_canvas)
-        self.x = x 
-        self.y = y
-        self.grid(column= param[0], row= param[1], columnspan= param[2], rowspan= param[3], sticky=tk.NSEW)
+        self. big_boss = big_boss
+        self.couleurs(change=False, initial_value=self.big_boss.parametres["initial color mode"])
+        self.grid(column= param[0], row= param[1], sticky=tk.NSEW)
         
-    def init_entitees (self, balle) :
-        self.balle = balle
+    def init_entitees (self, fenetre, grille, balle) :
+        self. fenetre = fenetre
+        self. grille = grille
+        self. balle = balle
         
     def nouvelle_partie (self) :
         self.grille.init_lab()
@@ -409,26 +372,26 @@ class Laby_canvas (tk.Canvas) :
         
     def taille_auto (self) :
         "Calcule la taille en pixel d'un coté des cases carré à partir de la hauteur h et le la longeur l de la grille de définition"
-        if self.y / self.grille.y < self.x / self.grille.x :
-            self.taille = self.y / (self.grille.y+1)
+        if self.winfo_height() / self.grille.y < self.winfo_width() / self.grille.x :
+            self.taille = self.winfo_height() / (self.grille.y+1)
         else :
-            self.taille = self.x / (self.grille.x+1)
+            self.taille = self.winfo_width() / (self.grille.x+1)
 
     def origines (self) :
         "Calcule et renvoi sous forme de tuple les origines en x et y (en haut à gauche du canvas)"
-        self.origine_x = (self.x - (self.taille * (self.grille.x-1))) / 2
-        self.origine_y = (self.y - (self.taille * (self.grille.y-1))) / 2
+        self.origine_x = (self.winfo_width() - (self.taille * (self.grille.x-1))) / 2
+        self.origine_y = (self.winfo_height() - (self.taille * (self.grille.y-1))) / 2
         assert self.origine_x > 0 and self.origine_y > 0
 
     def trace_grille (self) :
         "Trace avec Tkinter un quadrillage de la grille g"
-        if self.big_boss.Niveau == 4 :
+        if self.big_boss.niveau.numero == 4 :
             for el in self.grille.Murs_lab :
                 if el[2] == "1" :
                     self.barre_horizontale (self.origine_x + el[0]*self.taille, self.origine_y + el[1]*self.taille, self.taille, self.color_grille)
                 if el[2] == "2" :
                     self.barre_verticale (self.origine_x + el[0]*self.taille, self.origine_y + el[1]*self.taille, self.taille, self.color_grille)
-        elif self.big_boss.Niveau_max == False :
+        elif self.big_boss.niveau.Niveau_max == False :
             for el in self.grille.Partitions_lab :
                 for y in range (el[0][1],el[1][1]) :
                     for x in range (el[0][0],el[1][0]) :
@@ -436,7 +399,7 @@ class Laby_canvas (tk.Canvas) :
                             self.barre_horizontale (self.origine_x + x*self.taille, self.origine_y + y*self.taille, self.taille, self.color_grille)
                         if self.grille.lab[y][x] == "2" or self.grille.lab[y][x] == "3" :
                             self.barre_verticale (self.origine_x + x*self.taille, self.origine_y + y*self.taille, self.taille, self.color_grille)
-        if self.big_boss.Niveau > 1 and self.big_boss.Niveau_max == False :
+        if self.big_boss.niveau.numero > 1 and self.big_boss.niveau.Niveau_max == False :
             self.trace_contours_lab ()
 
     def trace_contours_lab (self) :
@@ -464,24 +427,32 @@ class Laby_canvas (tk.Canvas) :
         self.trace_grille ()
         self.fenetre.refresh_barre_principale ()
     
-    def couleurs (self) :
-        if self.couleur_mode == "black" :
-            self["bg"] = "white"
+    def couleurs (self, change=True, initial_value=False, event=None) :
+        if change :
+            if self.couleur_mode == "white" :
+                self.couleur_mode = "black"
+            else :
+                self.couleur_mode = "white"
+        elif initial_value :
+            self.couleur_mode = initial_value
+        if self.couleur_mode == "white" :
+            self.color_canvas = "white"
+            self["bg"] = self.color_canvas
             self.color_grille = "black"
             self.color_balle = "blue"
+            self.oposit_color_balle = "red"
             self.color_balle_out = "black"
-            self.couleur_mode = "white"
-        elif self.couleur_mode == "white" :
-            self["bg"] = "black"
+        elif self.couleur_mode == "black" :
+            self.color_canvas = "black"
+            self["bg"] = self.color_canvas
             self.color_grille = "white"
             self.color_balle = "red"
+            self.oposit_color_balle = "blue"
             self.color_balle_out = "white"
-            self.couleur_mode = "black"
-        self.refresh_lab()
+        if change :
+            self.refresh_lab()
 
     def redimentionner (self) :
-        self.x = self.fenetre.x * (self.fenetre.nb_colones-6)/self.fenetre.nb_colones
-        self.y = self.fenetre.y * (self.fenetre.nb_lignes-1)/self.fenetre.nb_lignes
         self.taille_auto ()
         self.origines ()
         self.refresh_lab ()
@@ -489,14 +460,14 @@ class Laby_canvas (tk.Canvas) :
 
 class Laby_grille () :
     "Effectue diverses opérations sur la grille contenant le labyrinthe"
-    def __init__(self, big_boss, fenetre, lab=[[]]) :
-        self.fenetre = fenetre
-        self.big_boss = big_boss
+    def __init__(self, big_boss, lab=[[]]) :
+        self. big_boss = big_boss
         self.docu_lab = self.ouvrir_doc("Labyrinthes_classiques/#_Doc_index.csv")
         self.lab = lab
         self.x = len(lab[0])
         self.y = len(lab)
         self.Partitions_lab = []
+        self.init_variables()
     
     def ouvrir_doc (self, nom) :
         fichier = open (nom, "r")
@@ -509,27 +480,35 @@ class Laby_grille () :
         fichier.close()
         return table
 
-    def init_entitees (self, canvas, balle) :
-        self.canvas = canvas
-        self.balle = balle
+    def init_entitees (self, fenetre, canvas, balle) :
+        self. fenetre = fenetre
+        self. canvas = canvas
+        self. balle = balle
+    
+    def init_variables (self) :
+        self.lab_alea_x = int(self.big_boss.parametres["lab alea x"])
+        self.lab_alea_y = int(self.big_boss.parametres["lab alea y"])
+        self.lab_alea_entrée_lab = [int(self.big_boss.parametres["lab alea entree x"]), int(self.big_boss.parametres["lab alea entree y"])]
+        self.nb_colones_min = int(self.big_boss.parametres["nb colones min"])
+        self.nb_colones_max = int(self.big_boss.parametres["nb colones max"])
+        self.nb_lignes_min = int(self.big_boss.parametres["nb lignes min"])
+        self.nb_lignes_max = int(self.big_boss.parametres["nb lignes max"])
     
     def init_lab (self) :
         "Initialise le Labyrinthe à afficher"
         if self.big_boss.type_lab == "classique" :
             self.lab = self.ouvrir_lab (self.big_boss.nb_lab)
         elif self.big_boss.type_lab == "aleatoire" :
-            x = 40
-            y = 25
-            self.entrée_lab = [0,0]
-            self.lab = self.generateur_lab(x,y)
+            self.entrée_lab = self.lab_alea_entrée_lab
+            self.lab = self.generateur_lab(self.lab_alea_x, self.lab_alea_y)
         self.x = len(self.lab[0])
         self.y = len(self.lab)
         self.canvas.balle.def_position(self.entrée_lab[0],self.entrée_lab[1])
-        if self.big_boss.Niveau == 1 :
+        if self.big_boss.niveau.numero == 1 :
             self.init_Partitions_lab()
-        elif self.big_boss.Niveau == 2 or self.big_boss.Niveau == 3 :
+        elif self.big_boss.niveau.numero == 2 or self.big_boss.niveau.numero == 3 :
             self.init_taille_partition_par_difficultées ()
-        elif self.big_boss.Niveau == 4 :
+        elif self.big_boss.niveau.numero == 4 :
             self.Murs_lab = []
             self.decompte_nb_murs_dans_lab ()
     
@@ -679,11 +658,11 @@ class Laby_grille () :
             petit_cote = self.x
         taille_min = 2
         self.Partitions_lab = []
-        if self.big_boss.Difficultee == 1 :
+        if self.big_boss.difficultee.numero == 1 :
             taille_x = taille_y = petit_cote//2
-        elif self.big_boss.Difficultee == 2 :
+        elif self.big_boss.difficultee.numero == 2 :
             taille_x = taille_y = grand_cote//4
-        elif self.big_boss.Difficultee == 3 :
+        elif self.big_boss.difficultee.numero == 3 :
             taille_x = taille_y = grand_cote//8
         if taille_x <= taille_min :
             self.taille_partition_x = taille_min
@@ -703,7 +682,7 @@ class Laby_grille () :
         if self.y % self.taille_partition_y < self.taille_partition_y/2 and y >= self.y // self.taille_partition_y :
             y -= 1
         if x != self.position_joueur_back_lab_x or y != self.position_joueur_back_lab_y :
-            if self.big_boss.Niveau == 2 and self.back_lab_partition_grille_position_joueur[y][x] == False :
+            if self.big_boss.niveau.numero == 2 and self.back_lab_partition_grille_position_joueur[y][x] == False :
                 count = 1
                 for el in self.back_lab_partition_grille_position_joueur :
                     for i in el :
@@ -712,7 +691,7 @@ class Laby_grille () :
                 self.Partitions_lab = [self.back_lab_partition_grille[y][x]]
                 lab_xx = len(self.back_lab_partition_grille_position_joueur[0])
                 lab_yy = len(self.back_lab_partition_grille_position_joueur)
-                if count > round(lab_xx * lab_yy / (self.big_boss.Difficultee+1)) :
+                if count > round(lab_xx * lab_yy / (self.big_boss.difficultee.numero + 1)) :
                     self.back_lab_partition_grille_position_joueur = []
                     for i in range (lab_yy) :
                         a = []
@@ -722,7 +701,7 @@ class Laby_grille () :
                     self.canvas.refresh_lab ()
                 self.back_lab_partition_grille_position_joueur[y][x] = True
                 self.canvas.trace_grille()
-            elif self.big_boss.Niveau == 3 :
+            elif self.big_boss.niveau.numero == 3 :
                 self.back_lab_partition_grille_position_joueur[self.position_joueur_back_lab_y][self.position_joueur_back_lab_x] = False
                 self.back_lab_partition_grille_position_joueur[y][x] = True
                 self.Partitions_lab = [self.back_lab_partition_grille[y][x]]
@@ -889,13 +868,13 @@ class Laby_grille () :
                 messagebox.showinfo ('Labyrinthe aléatoire enregistré','Le Labyrinthe aléatoire actuel à bien été enregisté sous le nom : Labyrinthe '+nom+' !')
 
     def test_nb_murs_niv_4 (self) :
-        if self.big_boss.Difficultee == 1 :
+        if self.big_boss.difficultee.numero == 1 :
             limite = self.nb_murs_dans_lab / 2
             message = "la moitié"
-        elif self.big_boss.Difficultee == 2 :
+        elif self.big_boss.difficultee.numero == 2 :
             limite = self.nb_murs_dans_lab /5
             message = "1/5"
-        elif self.big_boss.Difficultee == 3 :
+        elif self.big_boss.difficultee.numero == 3 :
             limite = self.nb_murs_dans_lab /10
             message = "1/10"
         if len(self.Murs_lab) >= limite :
@@ -910,26 +889,32 @@ class Laby_grille () :
 
 class Laby_balle () :
     "La balle (le joueur) qui se déplace dans le labyrinthe"
-    def __init__(self, big_boss, fenetre, grille, canvas, x=0, y=0) :
-        self.big_boss = big_boss
+    def __init__(self,big_boss, fenetre, x=0, y=0) :
+        self. big_boss = big_boss
         self.fenetre = fenetre
-        self.grille = grille
-        self.canvas = canvas
         self.x = x
         self.y = y
-        self.decoupe_dep = 5
-        self.vitesse = 50
-        self.dep = 0
+        self.init_variables()
+        
         self.fenetre.bind("<Up>", self.haut)
         self.fenetre.bind("<Down>", self.bas)
         self.fenetre.bind("<Right>", self.droite)
         self.fenetre.bind("<Left>", self.gauche)
-        
+        """
         self.fenetre.bind("<o>", self.haut)
         self.fenetre.bind("<l>", self.bas)
         self.fenetre.bind("<m>", self.droite)
         self.fenetre.bind("<k>", self.gauche)
-        
+        """
+    
+    def init_entitees (self, grille, canvas) :
+        self. grille = grille
+        self. canvas = canvas
+    
+    def init_variables (self) :
+        self.decoupe_dep = int(self.big_boss.parametres["decoupe du deplacement"]) # Nombre de sous-déplacement pour rendre le déplacement fluide
+        self.vitesse = int(self.big_boss.parametres["vitesse deplacement"]) #temps d'attente (milisecondes) entre les différentes découpes du déplacement
+    
     def init (self) :
         bordure = 1/10 *self.canvas.taille
         o_x = round(self.canvas.origine_x + bordure)
@@ -957,12 +942,12 @@ class Laby_balle () :
             self.canvas.move(self.balle, x*self.canvas.taille, y*self.canvas.taille)
         self.y += y
         self.x += x
-        if self.big_boss.Niveau_max and self.contours_visibles :
+        if self.big_boss.niveau.Niveau_max and self.contours_visibles :
             self.canvas.refresh_lab ()
             self.contours_visibles = False
         #else :
             #self.fenetre.refresh_barre_principale ()
-        if self.big_boss.Niveau > 1 :
+        if self.big_boss.niveau.numero > 1 :
             self.grille.Position_joueur_sur_back_lab_partition ()
         self.big_boss.win()
         self.ou_aller()
@@ -986,18 +971,18 @@ class Laby_balle () :
                 if self.count_x % self.decoupe_dep == 0 and self.count_y % self.decoupe_dep == 0 :
                     self.mouve(x, y, deplacement_reel= False)
                     if (self.next_dir == (0,1) and self.aller_bas) or \
-                         (self.next_dir == (0,-1) and self.aller_haut) or \
-                         (self.next_dir == (1,0) and self.aller_droite) or \
-                         (self.next_dir == (-1,0) and self.aller_gauche) :
+                        (self.next_dir == (0,-1) and self.aller_haut) or \
+                        (self.next_dir == (1,0) and self.aller_droite) or \
+                        (self.next_dir == (-1,0) and self.aller_gauche) :
                         self.canvas.move(self.balle, self.next_dir[0]*self.canvas.taille/self.decoupe_dep, self.next_dir[1]*self.canvas.taille/self.decoupe_dep)
                         self.count_x += self.next_dir[0]
                         self.count_y += self.next_dir[1]
                         self.fenetre.after(self.vitesse, self.fonction_dep, self.next_dir[0], self.next_dir[1], True)
                         self.next_dir = None
                     elif ((x,y) == (0,1) and self.aller_bas) or \
-                         ((x,y) == (0,-1) and self.aller_haut) or \
-                         ((x,y) == (1,0) and self.aller_droite) or \
-                         ((x,y) == (-1,0) and self.aller_gauche) :
+                        ((x,y) == (0,-1) and self.aller_haut) or \
+                        ((x,y) == (1,0) and self.aller_droite) or \
+                        ((x,y) == (-1,0) and self.aller_gauche) :
                         self.canvas.move(self.balle, x*self.canvas.taille/self.decoupe_dep, y*self.canvas.taille/self.decoupe_dep)
                         self.count_x += x
                         self.count_y += y
@@ -1012,9 +997,9 @@ class Laby_balle () :
         elif self.en_deplacement :
                 self.next_dir = (x,y)
         elif ((x,y) == (0,1) and self.aller_bas) or \
-             ((x,y) == (0,-1) and self.aller_haut) or \
-             ((x,y) == (1,0) and self.aller_droite) or \
-             ((x,y) == (-1,0) and self.aller_gauche) :
+            ((x,y) == (0,-1) and self.aller_haut) or \
+            ((x,y) == (1,0) and self.aller_droite) or \
+            ((x,y) == (-1,0) and self.aller_gauche) :
                 self.en_deplacement = True
                 self.canvas.move(self.balle, x*self.canvas.taille/self.decoupe_dep, y*self.canvas.taille/self.decoupe_dep)
                 self.count_x += x
@@ -1023,68 +1008,68 @@ class Laby_balle () :
 
     def haut (self,event) :
         if self.x != self.grille.sortie_lab[0] or self.y != self.grille.sortie_lab[1] :
-            if self.dep == 1 :
+            if self.big_boss.type_deplacement == "Lisse" :
                 self.fonction_dep (y=-1)
             if self.aller_haut :
-                if self.dep == 0 :
+                if self.big_boss.type_deplacement == "Sec"  :
                     self.mouve(0,-1)
-            elif self.big_boss.Niveau_max and self.y == 0 :
+            elif self.big_boss.niveau.Niveau_max and self.y == 0 :
                 self.canvas.delete("all")
                 self.init()
                 self.canvas.trace_contours_lab ()
                 self.contours_visibles = True
-            elif self.big_boss.Niveau == 4 and not(self.big_boss.Niveau_max) and self.y > 0 and not((self.x,self.y,"1") in self.grille.Murs_lab) :
+            elif self.big_boss.niveau.numero == 4 and not(self.big_boss.niveau.Niveau_max) and self.y > 0 and not((self.x,self.y,"1") in self.grille.Murs_lab) :
                 self.grille.Murs_lab.append((self.x,self.y,"1"))
                 self.canvas.barre_horizontale (self.canvas.origine_x + self.x*self.canvas.taille, self.canvas.origine_y + self.y*self.canvas.taille, self.canvas.taille, self.canvas.color_grille)
                 self.grille.test_nb_murs_niv_4 ()
 
     def bas (self,event) :
         if self.x != self.grille.sortie_lab[0] or self.y != self.grille.sortie_lab[1] :
-            if self.dep == 1 :
+            if self.big_boss.type_deplacement == "Lisse" :
                 self.fonction_dep (y=1)
             if self.aller_bas :
-                if self.dep == 0 :
+                if self.big_boss.type_deplacement == "Sec" :
                     self.mouve(0,1)
-            elif self.big_boss.Niveau_max and self.y == self.grille.y-2 :
+            elif self.big_boss.niveau.Niveau_max and self.y == self.grille.y-2 :
                 self.canvas.delete("all")
                 self.init()
                 self.canvas.trace_contours_lab ()
                 self.contours_visibles = True
-            elif self.big_boss.Niveau == 4 and not(self.big_boss.Niveau_max) and self.y < self.grille.y-2 and not((self.x,self.y+1,"1") in self.grille.Murs_lab) :
+            elif self.big_boss.niveau.numero == 4 and not(self.big_boss.niveau.Niveau_max) and self.y < self.grille.y-2 and not((self.x,self.y+1,"1") in self.grille.Murs_lab) :
                 self.grille.Murs_lab.append((self.x,self.y+1,"1"))
                 self.canvas.barre_horizontale (self.canvas.origine_x + self.x*self.canvas.taille, self.canvas.origine_y + (self.y+1)*self.canvas.taille, self.canvas.taille, self.canvas.color_grille)
                 self.grille.test_nb_murs_niv_4 ()
-            
+
     def droite (self,event) :
         if self.x != self.grille.sortie_lab[0] or self.y != self.grille.sortie_lab[1] :
-            if self.dep == 1 :
+            if self.big_boss.type_deplacement == "Lisse" :
                 self.fonction_dep (x=1)
             if self.aller_droite :
-                if self.dep == 0 :
+                if self.big_boss.type_deplacement == "Sec" :
                     self.mouve(1,0)
-            elif self.big_boss.Niveau_max and self.x == self.grille.x-2 :
+            elif self.big_boss.niveau.Niveau_max and self.x == self.grille.x-2 :
                 self.canvas.delete("all")
                 self.init()
                 self.canvas.trace_contours_lab ()
                 self.contours_visibles = True
-            elif self.big_boss.Niveau == 4 and not(self.big_boss.Niveau_max) and self.x < self.grille.x-2 and not((self.x+1,self.y,"2") in self.grille.Murs_lab) :
+            elif self.big_boss.niveau.numero == 4 and not(self.big_boss.niveau.Niveau_max) and self.x < self.grille.x-2 and not((self.x+1,self.y,"2") in self.grille.Murs_lab) :
                 self.grille.Murs_lab.append((self.x+1,self.y,"2"))
                 self.canvas.barre_verticale (self.canvas.origine_x + (self.x+1)*self.canvas.taille, self.canvas.origine_y + self.y*self.canvas.taille, self.canvas.taille, self.canvas.color_grille)
                 self.grille.test_nb_murs_niv_4 ()
-            
+
     def gauche (self,event) :
         if self.x != self.grille.sortie_lab[0] or self.y != self.grille.sortie_lab[1] :
-            if self.dep == 1 :
+            if self.big_boss.type_deplacement == "Lisse" :
                 self.fonction_dep (x=-1)
             if self.aller_gauche :
-                if self.dep == 0 :
+                if self.big_boss.type_deplacement == "Sec" :
                     self.mouve(-1,0)
-            elif self.big_boss.Niveau_max and self.x == 0 :
+            elif self.big_boss.niveau.Niveau_max and self.x == 0 :
                 self.canvas.delete("all")
                 self.init()
                 self.canvas.trace_contours_lab ()
                 self.contours_visibles = True
-            elif self.big_boss.Niveau == 4 and not(self.big_boss.Niveau_max) and self.x > 0 and not((self.x,self.y,"2") in self.grille.Murs_lab):
+            elif self.big_boss.niveau.numero == 4 and not(self.big_boss.niveau.Niveau_max) and self.x > 0 and not((self.x,self.y,"2") in self.grille.Murs_lab):
                 self.grille.Murs_lab.append((self.x,self.y,"2"))
                 self.canvas.barre_verticale (self.canvas.origine_x + self.x*self.canvas.taille, self.canvas.origine_y + self.y*self.canvas.taille, self.canvas.taille, self.canvas.color_grille)
                 self.grille.test_nb_murs_niv_4 ()
@@ -1356,6 +1341,238 @@ class Chrono(tk.Frame):
             messagebox.showinfo ('Fin du temps impartis','Le temps accordé est dépassé !',icon = 'error')
 
 
+class Reglages (tk.Toplevel) :
+    def __init__ (self, boss) :
+        tk.Toplevel.__init__(self, boss)
+        self.x = 500
+        self.y = 500
+        self.title("Réglages")
+        self.geometry (str(self.x)+"x"+str(self.y))
+        self.grid_columnconfigure(0, weight= 1)
+        self.grid_columnconfigure(1, weight= 0)
+        self.grid_rowconfigure(0, weight= 0)
+        self.grid_rowconfigure(1, weight= 0)
+        self.grid_rowconfigure(2, weight= 1)
+        self.grid_rowconfigure(3, weight= 0)
+        
+    def lancement (self) :
+        self.init_header()
+        self.ajout_separation(boss=self, color="green")
+        
+        self.canvas = tk.Canvas(self)
+        self.content = tk.Frame(self.canvas)
+        self.content.bind("<Configure>", self.resize_frame)
+        self.canvas.grid(column=0, row=2)
+        
+        scrollbar_y=tk.Scrollbar(self, orient=tk.VERTICAL, command=self.canvas.yview)
+        scrollbar_y.grid(column=1, row=0, rowspan=3, sticky=tk.NS)
+        scrollbar_x=tk.Scrollbar(self, orient=tk.HORIZONTAL, command=self.canvas.xview)
+        scrollbar_x.grid(column=0, row=3, columnspan=2, sticky=tk.EW)
+        
+        self.canvas.create_window((0, 0), window=self.content)
+        self.canvas.configure(yscrollcommand=scrollbar_y.set, xscrollcommand=scrollbar_x.set)
+        
+        self.reglages_lab_alea = Reglages_lab_alea(self.content, self.big_boss)
+        self.reglages_lab_alea.init_entitees(self, self.grille)
+        self.reglages_lab_alea.lancement()
+        self.reglages_lab_alea.pack(side="top")
+        
+        self.after(100, self.resize_canvas)
+        #self.resizable(False, True)
+        self.focus_set()
+    
+    def resize_canvas(self) :
+        self.canvas.configure(width=self.content.winfo_width(),\
+            height=self.content.winfo_height())
+    
+    def init_entitees (self, big_boss, fenetre, grille, canvas, balle) :
+        self.big_boss = big_boss
+        self.fenetre = fenetre
+        self.grille = grille
+        self.canvas = canvas
+        self.balle = balle
+    
+    def resize_frame(self, e):
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))        
+    
+    def ajout_separation (self, boss=None, color="grey") :
+        if boss is None :
+            boss = self.content
+        separation = tk.Text(boss, bg=color, pady=5, height=1, font=("Helvetica", 1))
+        separation['state'] = 'disabled'
+        if color == "grey" :
+            separation.pack(side="top")
+        else :
+            separation.grid(column=0, row=1, sticky=tk.NSEW)
+    
+    def init_header (self) :
+        self.header = tk.Frame(self, border=10)
+        self.header.grid(column=0, row=0, sticky=tk.NSEW)
+        self.header.grid_columnconfigure(0, weight= 1)
+        
+        btn = tk.Button(self.header, text="Appliquer", command=self.appliquer_modifications, font=("Helvetica", 13), bg="blue", fg="white")
+        btn.grid(sticky=tk.E)
+    
+    def appliquer_modifications (self) :
+        pass
+    
+class Reglages_lab_alea (tk.Frame) :
+    def __init__ (self, boss, big_boss) :
+        tk.Frame.__init__(self, boss, border=10)
+        self.big_boss = big_boss
+        self.alerte_mauvaise_entree = bool(self.big_boss.parametres["lab alea alerte mauvaise entree"])
+    
+    def init_entitees (self, boss, grille) :
+        self.boss = boss
+        self.grille = grille
+        
+    def lancement (self) :
+        self.text = tk.Text(self, wrap= tk.WORD, width=32, height=1, padx=50, pady=30, font=("Helvetica", 15))
+        self.text.insert(0.1, "Réglages du générateur de labyrinthes")
+        self.text['state'] = 'disabled'
+        self.text.grid(column=0, row=0, sticky=tk.NSEW)
+        
+        self.init_taille_lab(1)
+        self.init_position_start(2)
+    
+    def init_taille_lab (self, position) :
+        taille_lab = tk.Frame(self, pady=20)
+        taille_lab.grid(column=0, row=position, sticky=tk.NSEW)
+        taille_lab.grid_columnconfigure(0, weight= 1)
+        taille_lab.grid_columnconfigure(1, weight= 1)
+        taille_lab.grid_columnconfigure(2, weight= 1)
+        text_taille_lab = tk.Label(taille_lab, text="Taille du Labyrinthe :", font=("Helvetica", 13))
+        text_taille_lab.grid(column=0, row=0)
+        
+        colones = tk.Frame(taille_lab)
+        colones.grid(column=1, row=0)
+        text_colone = tk.Label(colones, text="Colones :", font=("Helvetica", 13))
+        text_colone.grid(column=0, row=0)
+        self.valeur_colone = ttk.Spinbox(colones, from_= self.grille.nb_colones_min, to= self.grille.nb_colones_max, wrap=True, font=("Helvetica", 15), width=4, command=self.live_verif_nb_colone)
+        self.valeur_colone.set(self.grille.lab_alea_x)
+        self.nb_colones = self.grille.lab_alea_x
+        self.valeur_colone.grid(column=0, row=1)
+        self.valeur_colone.bind("<Return>", self.live_verif_nb_colone)
+        
+        lignes = tk.Frame(taille_lab)
+        lignes.grid(column=2, row=0)
+        text_ligne = tk.Label(lignes, text="Lignes :", font=("Helvetica", 13))
+        text_ligne.grid(column=0, row=0)
+        self.valeur_ligne = ttk.Spinbox(lignes, from_= self.grille.nb_lignes_min, to= self.grille.nb_lignes_max, wrap=True, font=("Helvetica", 15), width=4, command=self.live_verif_nb_ligne)
+        self.valeur_ligne.set(self.grille.lab_alea_y)
+        self.nb_lignes = self.grille.lab_alea_y
+        self.valeur_ligne.grid(column=0, row=1)
+        self.valeur_ligne.bind("<Return>", self.live_verif_nb_ligne)
+    
+    def live_verif_nb_colone (self, event=None) :
+        nb_colones = self.valeur_colone.get()
+        try :
+            nb_colones = int(nb_colones)
+        except :
+            if self.alerte_mauvaise_entree :
+                messagebox.showinfo ('Nombre de colones','L\'entrée "'+nb_colones+'" n\'est pas conforme pour un nombre de colones !',parent=self.boss ,icon = 'error')
+        else :
+            if nb_colones < self.grille.nb_colones_min :
+                nb_colones = self.grille.nb_colones_min
+                if self.alerte_mauvaise_entree :
+                    messagebox.showinfo ('Nombre de colones','Le nombre de colones minimum est de '+str(self.grille.nb_colones_min)+' !',parent=self.boss ,icon = 'error')
+            elif nb_colones > self.grille.nb_colones_max :
+                nb_colones = self.grille.nb_colones_max
+                if self.alerte_mauvaise_entree :
+                    messagebox.showinfo ('Nombre de colones','Le nombre de colones maximum est de '+str(self.grille.nb_colones_max)+' !',parent=self.boss ,icon = 'error')
+            self.nb_colones = nb_colones
+        self.valeur_colone.set(self.nb_colones)
+        self.valeur_x.configure(to=self.nb_colones)
+    
+    def live_verif_nb_ligne (self, event=None) :
+        nb_lignes = self.valeur_ligne.get()
+        try :
+            nb_lignes = int(nb_lignes)
+        except :
+            if self.alerte_mauvaise_entree :
+                messagebox.showinfo ('Nombre de lignes','L\'entrée "'+nb_lignes+'" n\'est pas conforme pour un nombre de lignes !',parent=self.boss ,icon = 'error')
+        else :
+            if nb_lignes < self.grille.nb_lignes_min :
+                nb_lignes = self.grille.nb_lignes_min
+                if self.alerte_mauvaise_entree :
+                    messagebox.showinfo ('Nombre de lignes','Le nombre de lignes minimum est de '+str(self.grille.nb_lignes_min)+' !',parent=self.boss ,icon = 'error')
+            elif nb_lignes > self.grille.nb_lignes_max :
+                nb_lignes = self.grille.nb_lignes_max
+                if self.alerte_mauvaise_entree :
+                    messagebox.showinfo ('Nombre de lignes','Le nombre de lignes maximum est de '+str(self.grille.nb_lignes_max)+' !',parent=self.boss ,icon = 'error')
+            self.nb_lignes = nb_lignes
+        self.valeur_ligne.set(self.nb_lignes)
+        self.valeur_y.configure(to=self.nb_lignes)
+    
+    def init_position_start (self, position) :
+        """Définie la position de départ de la balle sur le labyrinthe"""
+        position_start = tk.Frame(self, pady=20)
+        position_start.grid(column=0, row=position, sticky=tk.NSEW)
+        position_start.grid_columnconfigure(0, weight= 1)
+        position_start.grid_columnconfigure(1, weight= 1)
+        position_start.grid_columnconfigure(2, weight= 1)
+        text_taille_lab = tk.Label(position_start, text="Position de l'entrée\ndu Labyrinthe :", font=("Helvetica", 13))
+        text_taille_lab.grid(column=0, row=0)
+        
+        x = tk.Frame(position_start)
+        x.grid(column=1, row=0)
+        text_x = tk.Label(x, text="X :", font=("Helvetica", 13))
+        text_x.grid(column=0, row=0)
+        self.valeur_x = ttk.Spinbox(x, from_= 0, to= self.nb_colones, wrap=True, font=("Helvetica", 15), width=4)
+        self.valeur_x.set(0)
+        self.valeur_x.grid(column=1, row=0)
+        self.valeur_x.bind("<Return>", self.live_verif_depart_x)
+        
+        y = tk.Frame(position_start)
+        y.grid(column=2, row=0)
+        text_y = tk.Label(y, text="Y :", font=("Helvetica", 13))
+        text_y.grid(column=0, row=0)
+        self.valeur_y = ttk.Spinbox(y, from_= 0, to= self.nb_lignes, wrap=True, font=("Helvetica", 15), width=4)
+        self.valeur_y.set(0)
+        self.valeur_y.grid(column=1, row=0)
+        self.valeur_y.bind("<Return>", self.live_verif_depart_y)
+    
+    def live_verif_depart_x (self, event=None) :
+        x = self.valeur_x.get()
+        try :
+            x = int(x)
+        except :
+            if self.alerte_mauvaise_entree :
+                messagebox.showinfo ('Position x du départ','L\'entrée "'+x+'" n\'est pas conforme pour une position sur le labyrinthe !',parent=self.boss ,icon = 'error')
+            self.valeur_x.set(0)
+        else :
+            if x < 0 :
+                x = 0
+                if self.alerte_mauvaise_entree :
+                    messagebox.showinfo ('Position x du départ','La position minimum est de 0 !',parent=self.boss ,icon = 'error')
+            elif x > self.nb_colones :
+                x = self.nb_colones
+                if self.alerte_mauvaise_entree :
+                    messagebox.showinfo ('Position x du départ','La position maximum est de '+str(self.nb_colones)+' !',parent=self.boss ,icon = 'error')
+            self.valeur_x.set(x)
+    
+    def live_verif_depart_y (self, event=None) :
+        y = self.valeur_y.get()
+        try :
+            y = int(y)
+        except :
+            if self.alerte_mauvaise_entree :
+                messagebox.showinfo ('Position y du départ','L\'entrée "'+y+'" n\'est pas conforme pour une position sur le labyrinthe !',parent=self.boss ,icon = 'error')
+            self.valeur_y.set(0)
+        else :
+            if y < 0 :
+                y = 0
+                if self.alerte_mauvaise_entree :
+                    messagebox.showinfo ('Position y du départ','La position minimum est de 0 !',parent=self.boss ,icon = 'error')
+            elif y > self.nb_lignes :
+                y = self.nb_lignes
+                if self.alerte_mauvaise_entree :
+                    messagebox.showinfo ('Position y du départ','La position maximum est de '+str(self.nb_lignes)+' !',parent=self.boss ,icon = 'error')
+            self.valeur_y.set(y)
+
+    def appliquer_modifications (self, save=True) :
+        pass
+
 class Fen_infos_generales (tk.Toplevel) :
     def __init__ (self, boss, big_boss) :
         tk.Toplevel.__init__(self, boss)
@@ -1375,19 +1592,180 @@ class Fen_infos_generales (tk.Toplevel) :
     
     def init_contenu (self) :
         text = tk.Text(self, wrap= tk.WORD, width=55, height=8, padx=50, pady=30, font=("Helvetica", 15))
-        text.insert(0.1, "Bienvenu dans le Constructeur de Labyrinthes !\n\n\nC'est ici que vous pouvez créer vos propres labyrinthes puis les essayer dans le parcoureur de labyrinthes.")
+        text.insert(0.1, "Bienvenu dans le Parcoureur de Labyrinthes !\n\n\nC'est ici que vous pouvez jouer avec les labyrinthes dans différents modes.")
         text['state'] = 'disabled'
         text.grid(column=0, row=0, sticky=tk.NSEW)
         text.tag_add("titre", "1.0", "1.46")
         text.tag_config("titre", foreground="red", font=("Helvetica", 20), justify='center')
         
         
-        bouton_1 = tk.Button (self, text="Ouvrir le Parcoureur de Labyrinthes", padx=20, pady=10, font=("Helvetica", 13), bg="blue", fg= "white", \
-            command=self.big_boss.lancement_parcoureur_labs)
+        bouton_1 = tk.Button (self, text="Ouvrir le Builder de Labyrinthes", padx=20, pady=10, font=("Helvetica", 13), bg="blue", fg= "white", \
+            command=self.big_boss.lancement_builder_labs)
         bouton_1.grid(column=0, row=1)
 
 
+class Niveaux () :
+    def __init__(self) -> None:
+        self.Niveau_max = False
+        self.nombre_de_niveaux = 4
+        self.numero = 1
+    
+    def init_entitees (self, big_boss, fenetre, grille, canvas, balle) :
+        self. big_boss = big_boss
+        self. fenetre = fenetre
+        self. grille = grille
+        self. canvas = canvas
+        self. balle = balle
+    
+    def plus (self, event=None) :
+        if self.Niveau_max == False :
+            if self.numero < self.nombre_de_niveaux :
+                self.numero += 1
+            else :
+                self.numero = 1
+            if not(self.niveaux()) :
+                if self.numero == 1 :
+                    self.numero = self.nombre_de_niveaux
+                else :
+                    self.numero -= 1
+        else :
+            messagebox.showinfo ('Changer de Niveau','Le Niveau est déjà au max !',icon = 'error')
 
+    def moins (self, event=None) :
+        if self.Niveau_max == False  :
+            if self.numero == 1 :
+                self.numero = self.nombre_de_niveaux
+            else :
+                self.numero -= 1
+            if not(self.niveaux()) :
+                if self.numero < self.nombre_de_niveaux :
+                    self.numero += 1
+                else :
+                    self.numero = 1
+        else :
+            messagebox.showinfo ('Changer de Niveau','Le Niveau est déjà au max !',icon = 'error')
+
+    def niveaux (self) :
+        if self.numero == 1 :
+            self.grille.init_Partitions_lab()
+        else :
+            if self.numero == 2 :
+                MsgBox = messagebox.askquestion ('Passer au Niveau 2','A partir du Niveau 2 le Labyrinthe se divise en plusieurs fragments. Dans le Niveau 2, à chaque fois que vous arriverez sur un nouveau fragment, il apparaitra et vous pourrez voir ainsi où vous allez. Mais attention !, si vous découvrez la moitié des partitions, toutes celles que vous avez découvert dissparaissent !'+" "*190+'Voulez-vous vraiment passer au Niveau 2 ?',icon = 'warning')
+                if MsgBox == 'yes':
+                    self.grille.init_taille_partition_par_difficultées ()
+                else :
+                    return False
+            elif self.numero == 3 :
+                MsgBox = messagebox.askquestion ('Passer au Niveau 3','Dans le Niveau 3 vous ne pouvez voir d´un fragment à la fois donc à chaque fois que vous arriverez sur un nouveau fragment, il apparaitra mais il sera le seul visible, tous les autres serons cachés.'+" "*180+'Voulez-vous vraiment passer au Niveau 3 ?',icon = 'warning')
+                if MsgBox == 'yes':
+                    self.grille.init_taille_partition_par_difficultées ()
+                else :
+                    return False
+            elif self.numero == 4 :
+                MsgBox = messagebox.askquestion ('Passer au Niveau 4','Dans le Niveau 4 les murs du Labyrinthe n´apparaissent que si vous les percutez ! Mais si vous en "découvez" plus de la moitié, tous ceux que vous aurez découverts disparaîtrons ! Alors attention et bon courage !'+" "*180+'Voulez-vous vraiment passer au Niveau 4 ?',icon = 'warning')
+                if MsgBox == 'yes':
+                    self.grille.Murs_lab = []
+                    self.grille.init_taille_partition_par_difficultées ()
+                    self.grille.decompte_nb_murs_dans_lab ()
+                else :
+                    return False
+        self.canvas.refresh_lab()
+        return True
+    
+    def niveau_max (self, event=None) :
+        if self.Niveau_max == False :
+            MsgBox = messagebox.askquestion ('Passer au Niveau max (impossible !!)','Dans le Niveau max tous les murs sont invisibles ! Alors bon courage !'+" "*180+'Voulez-vous vraiment passer au Niveau max ?',icon = 'warning')
+            if MsgBox == 'yes':
+                self.Niveau_max = True
+                self.grille.Murs_lab = []
+                self.canvas.balle.contours_visibles = False
+                self.canvas.refresh_lab()
+        else :
+            self.Niveau_max = False
+            if self.numero == 1 :
+                self.grille.init_Partitions_lab ()
+            else :
+                if self.numero == 2 or self.numero == 3 :
+                    self.grille.init_taille_partition_par_difficultées ()
+                elif self.numero == 4 :
+                    self.grille.Murs_lab = []
+                    self.grille.decompte_nb_murs_dans_lab ()
+            self.canvas.refresh_lab()
+    
+    def fenetre_presentation (self) :
+        self.fenetre_presentation = Niveaux_fen(self.fenetre)
+
+class Difficultee () :
+    def __init__(self) -> None:
+        self.numero = 1
+    
+    def init_entitees (self, big_boss, fenetre, grille, canvas, balle, niveau) :
+        self. big_boss = big_boss
+        self. fenetre = fenetre
+        self. grille = grille
+        self. canvas = canvas
+        self. balle = balle
+        self.niveau = niveau
+    
+    def plus (self, event=None) :
+        if self.niveau.Niveau_max is False :
+            if self.niveau.numero > 1 :
+                if self.numero < 3 :
+                    self.numero += 1
+                else :
+                    self.numero = 1
+                if not(self.difficultees ()) :
+                    if self.numero == 1 :
+                        self.numero = 3
+                    else :
+                        self.numero -= 1
+            else :
+                messagebox.showinfo ('Changer de difficultée','Il n´y a qu´une seule difficultée pour le niveau 1 !',icon = 'error')
+        else :
+            messagebox.showinfo ('Changer de difficultée','La Difficultée est déjà au max !',icon = 'error')
+
+    def moins (self, event=None) :
+        if self.niveau.Niveau_max is False :
+            if self.niveau.numero > 1 :
+                if self.numero == 1 :
+                    self.numero = 3
+                else :
+                    self.numero -= 1
+                if not(self.difficultees ()) :
+                    if self.numero < 3 :
+                        self.numero += 1
+                    else :
+                        self.numero = 1
+            else :
+                messagebox.showinfo ('Changer de difficultée','Il n´y a qu´une seule difficultée pour le niveau 1 !',icon = 'error')
+        else :
+            messagebox.showinfo ('Changer de difficultée','La Difficultée est déjà au max !',icon = 'error')
+
+    def difficultees (self) :
+        if self.numero == 2 :
+            if self.niveau.numero == 2 or self.niveau.numero == 3 :
+                MsgBox = messagebox.askquestion ('Passer à la Difficultée 2','Les Difficultés du niveau '+str(self.niveau.numero)+' modifient la taille des fragment (de plus petits fragments impliquent plus de fragments, donc moins de visibilité et donc une Difficultée accrue !).'+" "*120+'Voulez-vous vraiment passer à la Difficultée 2 ?',icon = 'warning')
+            elif self.niveau.numero == 4 :
+                MsgBox = messagebox.askquestion ('Passer à la Difficultée 2','La Difficultée 2 du niveau 4 supprimera tous les murs "découverts" quand seulement 1/5 des murs serons découverts ! (Attention c´est très frustrant mais vous allez y arriver !)'+" "*100+'Voulez-vous vraiment passer à la Difficultée 2 ?',icon = 'warning')
+            if MsgBox != 'yes':
+                return False
+        elif self.numero == 3 :
+            if self.niveau.numero == 2 or self.niveau.numero == 3 :
+                MsgBox = messagebox.askquestion ('Passer à la Difficultée 3','Les Difficultés du niveau '+str(self.niveau.numero)+' modifient la taille des fragment (de plus petits fragments impliquent plus de fragments, donc moins de visibilité et donc une Difficultée accrue !).'+" "*120+'Voulez-vous vraiment passer à la Difficultée 3 ?',icon = 'warning')
+            elif self.niveau.numero == 4 :
+                MsgBox = messagebox.askquestion ('Passer à la Difficultée 3','La Difficultée 3 du niveau 4 supprimera tous les murs "découverts" quand seulement 1/10 des murs serons découverts ! (Attention c´est très frustrant mais vous allez y arriver !)'+" "*100+'Voulez-vous vraiment passer à la Difficultée 3 ?',icon = 'warning')
+            if MsgBox != 'yes':
+                return False
+        self.grille.init_taille_partition_par_difficultées ()
+        self.canvas.refresh_lab()
+        return True
+
+    def fenetre_presentation (self) :
+        self.fenetre_presentation = Niveaux_fen(self.fenetre)
+
+
+
+"""
 def init_boutons (self) :
     "Initalise et affiche tous les boutons de la fenêtre"
     self.boutons = [0]*17
@@ -1439,7 +1817,7 @@ def init_boutons (self) :
     self.boutons[15].grid(column= 2, row= 0, columnspan= 3, sticky=tk.EW)
     self.boutons[16] = tk.Button (self, text="<-", command=self.niveau_moins)
     self.boutons[16].grid(column= 1, row= 0, sticky=tk.E)
-
+"""
 
 
 
