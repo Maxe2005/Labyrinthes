@@ -37,7 +37,7 @@ class Entite_superieure () :
         self.difficultee.init_entitees(self, self.fenetre, self.grille, self.canvas, self.balle, self.niveau)
         
         self.nombre_de_labs = len(self.grille.docu_lab) # Fin de init_variables_globales (le nombre de Labyrinthes "classiques" en tout)
-        
+    
     def lancement (self) :
         """Permet de lancer la fenêtre du jeu"""
         self.fenetre.init_barres_boutons_et_text()
@@ -84,20 +84,20 @@ class Entite_superieure () :
         self.save_param_defaut()
         self.fenetre.destroy()
     
-    def aller_a (self) :
+    def aller_a (self, event=None) :
         "Permet d´aller directement au Labyrinthe de son choix"
         n = askinteger("Aller directement", f"Numéro du Labyrinthe (max: {self.nombre_de_labs})", parent = self.fenetre, minvalue = 1, maxvalue = self.nombre_de_labs)
         if n is not(None):
             self.nb_lab = int(n)
             self.canvas.nouvelle_partie()
-
+    
     def change_type_deplacement (self, event=None) :
         """Permet de switcher entre les deux modes de déplacement de la balle : sec ou lisse"""
         if self.type_deplacement == "Sec" :
             self.def_type_deplacement("Lisse")
         else :
             self.def_type_deplacement("Sec")
-        
+    
     def def_type_deplacement (self, dep, event=None) :
         """Défini le mode de déplacement de la balle (soit sec, soit lisse) et modifie l'écriture sur le bouton associé"""
         if dep == "Sec" :
@@ -113,7 +113,7 @@ class Entite_superieure () :
         MsgBox = messagebox.askquestion ('Recommencer','Voulez-vous vraiment recommencer ce Labyrinthe depuis le début?',icon = 'warning')
         if MsgBox == 'yes':
             self.canvas.nouvelle_partie()
-
+    
     def suivant_lab (self, event=None) :
         MsgBox = messagebox.askquestion ('Labyrinthe suivant','Voulez-vous vraiment lancer le Labyrinthe suivant (plus difficile)?')
         if MsgBox == 'yes':
@@ -122,7 +122,7 @@ class Entite_superieure () :
                 self.canvas.nouvelle_partie()
             else :
                 messagebox.showinfo ('Labyrinthe suivant','Vous êtes déjà sur le dernier Labyrinthe',icon = 'error')
-
+    
     def precedent_lab (self, event=None) :
         MsgBox = messagebox.askquestion ('Labyrinthe précédent','Voulez-vous vraiment revenir au Labyrinthe précédent?')
         if MsgBox == 'yes':
@@ -131,38 +131,35 @@ class Entite_superieure () :
                 self.canvas.nouvelle_partie()
             else :
                 messagebox.showinfo ('Labyrinthe précédent','Vous êtes déjà sur le 1er Labyrinthe',icon = 'error')
-
+    
     def win (self) :
         if self.canvas.balle.x == self.grille.sortie_lab[0] and self.canvas.balle.y == self.grille.sortie_lab[1] :
             messagebox.showinfo ("Félicitations !","Vous avez GAGNÉ !")
             Message_fin_lab (self)
-
-    def type_labyrinthe (self) :
+    
+    def type_labyrinthe (self, event=None) :
         if self.type_lab == "classique" :
             self.type_lab = "aleatoire"
-            self.texte_button_lab_alea.set("Labyrinthe\nClassique")
-            self.button_aller_a.grid_forget()
-            self.button_new_lab_alea.grid(column= 52, row= 5, columnspan= 4)
-            self.button_sauvegarder_lab_alea.grid(column= 51, row= 6, columnspan= 6)
-            self.button_reglages_lab_alea.grid(column= 51, row= 7, columnspan= 6)
+            self.fenetre.boutons_lateraux_droits.renommer("type lab", "Labyrinthe\nClassique")
+            self.fenetre.boutons_lateraux_droits.afficher("new lab alea")
         elif self.type_lab == "aleatoire" :
             self.type_lab = "classique"
-            self.texte_button_lab_alea.set("Labyrinthe\nAléatoire")
-            self.button_new_lab_alea.grid_forget()
-            self.button_sauvegarder_lab_alea.grid_forget()
-            self.button_reglages_lab_alea.grid_forget()
-            self.button_aller_a.grid(column= 52, row= 5, columnspan= 4)
+            self.fenetre.boutons_lateraux_droits.renommer("type lab", "Labyrinthe\nAléatoire")
+            self.fenetre.boutons_lateraux_droits.cacher("new lab alea")
         self.canvas.nouvelle_partie()
-
+    
     def infos_generales (self) :
         infos = Fen_infos_generales(self.fenetre, self)
         infos.mainloop()
-
+    
     def reglages (self) :
         reglages = Reglages(self.fenetre)
         reglages.init_entitees (self, self.fenetre, self.grille, self.canvas, self.balle)
         reglages.lancement()
         reglages.mainloop()
+    
+    def mode_HARD (self, event=None) :
+        pass
 
 
 class Laby_fen (tk.Tk) :
@@ -201,7 +198,7 @@ class Laby_fen (tk.Tk) :
         self.init_configuration_barre_laterale_droite()
         self.init_configuration_barre_top()
         self.refresh_barre_principale()
-
+    
     def init_configuration_barre_laterale_droite (self) :
         self.barre_laterale_droite = tk.Frame(self)
         self.barre_laterale_droite.grid(column=1, row=0, rowspan=2, sticky=tk.NSEW)
@@ -228,16 +225,27 @@ class Laby_fen (tk.Tk) :
         self.boutons_lateraux_droits.def_bouton('Aller à', self.big_boss.aller_a, 2, commentaire="Permet de se rendre rapidement\nsur le labyrinthe souhaité\n(raccourci : 'a')")
         self.bind("<KeyRelease-a>", self.big_boss.aller_a)
         
-        self.boutons_lateraux_droits.def_bouton('Déplacement\nSec', self.big_boss.change_type_deplacement, 8, nom_diminutif= 'type deplacement', commentaire="Permet de switcher entre deux modes de déplacement :\n\n- Mode Lisse : permet de programmer à l'avance\n\tla prochaine direction (raccourci : 'l')\n- Mode Sec : déplacement case par case (raccourci : 's')\n\nLe mode affiché sur le bouton est le mode actif.", commentaire_aligne="left")
+        self.boutons_lateraux_droits.def_bouton('Labyrinthe\nAléatoire', self.big_boss.type_labyrinthe, 3, nom_diminutif="type lab", commentaire="Permet de switcher entre les Labyrinthes\nClassiques et les Labyrinthes Aléatoires.\nLe type affiché est le type non-actif.\n(raccourci : 't')")
+        self.bind("<KeyRelease-t>", self.big_boss.type_labyrinthe)
+        
+        self.boutons_lateraux_droits.def_bouton('New Lab\nAléatoire', self.canvas.nouvelle_partie, 4,  nom_diminutif="new lab alea", visibilite="Cache", commentaire="Génère un nouveau Labyrinthe aléatoire")
+        
+        self.boutons_lateraux_droits.def_bouton('Déplacement\nSec', self.big_boss.change_type_deplacement, 6, nom_diminutif= 'type deplacement', commentaire="Permet de switcher entre deux modes de déplacement :\n\n- Mode Lisse : permet de programmer à l'avance\n\tla prochaine direction (raccourci : 'l')\n- Mode Sec : déplacement case par case (raccourci : 's')\n\nLe mode affiché sur le bouton est le mode actif.", commentaire_aligne="left")
         self.bind("<KeyRelease-s>", partial(self.big_boss.def_type_deplacement, "Sec"))
         self.bind("<KeyRelease-l>", partial(self.big_boss.def_type_deplacement, "Lisse"))
-
+        
+        self.boutons_lateraux_droits.def_bouton('Niveau Max', self.big_boss.niveau.niveau_max, 8, commentaire="Permet d'activer (et désactiver) le Niveau Maximum :\nDans ce niveau les murs sont invisibles\n(raccourci : 'm')")
+        self.bind("<KeyRelease-m>", self.big_boss.niveau.niveau_max)
+        
+        self.boutons_lateraux_droits.def_bouton('Mode HARD', self.big_boss.mode_HARD, 9, commentaire="Permet d'activer (et désactiver) le mode HARD :\nDans ce mode la balle est invisible\n(raccourci : 'h')")
+        self.bind("<KeyRelease-h>", self.big_boss.mode_HARD)
+    
     def init_logo (self, boss, params=[0,0]) :
         #self.logo = tk.Label(self.big_boss.barre_laterale_droite)
         self.logo = tk.Button(boss, command=self.big_boss.infos_generales)
         self.logo.grid(column=params[0], row=params[1])
         self.open_image()
-
+    
     def open_image (self) :
         self.image = Image.open("Idées LOGO/logo 2.jpg")
         xx, yy = self.image.size
@@ -248,7 +256,7 @@ class Laby_fen (tk.Tk) :
         self.image = self.image.resize((x,y))
         self.image_photo = ImageTk.PhotoImage(self.image)
         self.logo["image"] = self.image_photo
-
+    
     def init_configuration_barre_top (self) :
         self.barre_top = tk.Frame(self)
         self.barre_top.grid(column=0, row=0, sticky=tk.NSEW)
@@ -327,7 +335,7 @@ class Laby_fen (tk.Tk) :
         self.boutons_top_left.redimentionner(text_size = int(text_size * 5))
         #self.init_boutons_barre_top_right()
         #self.init_boutons_barre_top_left ()
-        
+    
     def refresh_barre_principale (self) :
         """Affiche la barre principale avec les dernières informations à jour et sous le bon format"""
         if self.big_boss.type_lab == "classique" :
@@ -354,12 +362,12 @@ class Laby_canvas (tk.Canvas) :
         self. big_boss = big_boss
         self.couleurs(change=False, initial_value=self.big_boss.parametres["initial color mode"])
         self.grid(column= param[0], row= param[1], sticky=tk.NSEW)
-        
+    
     def init_entitees (self, fenetre, grille, balle) :
         self. fenetre = fenetre
         self. grille = grille
         self. balle = balle
-        
+    
     def nouvelle_partie (self) :
         self.grille.init_lab()
         self.delete("all")
@@ -369,20 +377,20 @@ class Laby_canvas (tk.Canvas) :
         self.trace_grille ()
         self.fenetre.refresh_barre_principale ()
         self.balle.init_var ()
-        
+    
     def taille_auto (self) :
         "Calcule la taille en pixel d'un coté des cases carré à partir de la hauteur h et le la longeur l de la grille de définition"
         if self.winfo_height() / self.grille.y < self.winfo_width() / self.grille.x :
             self.taille = self.winfo_height() / (self.grille.y+1)
         else :
             self.taille = self.winfo_width() / (self.grille.x+1)
-
+    
     def origines (self) :
         "Calcule et renvoi sous forme de tuple les origines en x et y (en haut à gauche du canvas)"
         self.origine_x = (self.winfo_width() - (self.taille * (self.grille.x-1))) / 2
         self.origine_y = (self.winfo_height() - (self.taille * (self.grille.y-1))) / 2
         assert self.origine_x > 0 and self.origine_y > 0
-
+    
     def trace_grille (self) :
         "Trace avec Tkinter un quadrillage de la grille g"
         if self.big_boss.niveau.numero == 4 :
@@ -401,7 +409,7 @@ class Laby_canvas (tk.Canvas) :
                             self.barre_verticale (self.origine_x + x*self.taille, self.origine_y + y*self.taille, self.taille, self.color_grille)
         if self.big_boss.niveau.numero > 1 and self.big_boss.niveau.Niveau_max == False :
             self.trace_contours_lab ()
-
+    
     def trace_contours_lab (self) :
         self.create_rectangle (self.origine_x,self.origine_y,self.origine_x+self.taille*(self.grille.x-1),self.origine_y+self.taille*(self.grille.y-1), outline= self.color_grille)
         if self.grille.sortie_lab[0] == self.grille.x-1 :
@@ -412,11 +420,11 @@ class Laby_canvas (tk.Canvas) :
             self.barre_horizontale (self.origine_x+self.taille*self.grille.sortie_lab[0], self.origine_y+self.taille*self.grille.sortie_lab[1], self.taille, self.color_canvas)
         if self.grille.sortie_lab[1] == -1 :
             self.barre_horizontale (self.origine_x+self.taille*self.grille.sortie_lab[0], self.origine_y, self.taille, self.color_canvas)
-
+    
     def barre_verticale (self, ox, oy, t, color) :
         "Trace dans le canvas une ligne verticale"
         self.create_line (ox,oy,ox,oy+t, fill= color)
-
+    
     def barre_horizontale (self, ox, oy, t, color) :
         "Trace dans le canvas une ligne verticale"
         self.create_line (ox,oy,ox+t,oy, fill= color)
@@ -451,7 +459,7 @@ class Laby_canvas (tk.Canvas) :
             self.color_balle_out = "white"
         if change :
             self.refresh_lab()
-
+    
     def redimentionner (self) :
         self.taille_auto ()
         self.origines ()
@@ -479,7 +487,7 @@ class Laby_grille () :
             table.append(ligne)
         fichier.close()
         return table
-
+    
     def init_entitees (self, fenetre, canvas, balle) :
         self. fenetre = fenetre
         self. canvas = canvas
@@ -532,7 +540,7 @@ class Laby_grille () :
         a.append("0")
         g.append(a)
         return g
-
+    
     def inser_grille (self) :
         "Permet d´entrer une grille de labirinte (codé en 0,1,2,3) depuis la console"
         g = []
@@ -550,7 +558,7 @@ class Laby_grille () :
             else :
                 count = "fin"
         return g
-
+    
     def ouvrir_lab (self,numéro_du_lab) :
         nom = "Labyrinthes_classiques/"+self.docu_lab[numéro_du_lab-1]
         fichier = open (nom, "r")
@@ -571,7 +579,7 @@ class Laby_grille () :
                 table.append(tab)
         fichier.close()
         return table
-
+    
     def decompte_nb_murs_dans_lab (self) :
         self.nb_murs_dans_lab = 0
         for ligne in self.lab :
@@ -581,7 +589,7 @@ class Laby_grille () :
                 elif el == "3" :
                     self.nb_murs_dans_lab += 2
         self.nb_murs_dans_lab -= self.x*2 + (self.y-2)*2 + 1 # On ne compte pas les bordures car déjà dessinées
-
+    
     def decoupage_du_lab (self,x,y) :
         """
         :param x: (int) largeur en nombre de cases d´une partition du lab
@@ -622,7 +630,7 @@ class Laby_grille () :
                 ligne_lab_decoupe.append(b)
             lab_decoupe.append(ligne_lab_decoupe)
         return lab_decoupe
-
+    
     def creation_partitions_lab (self) :
         global position_joueur_back_lab_x, position_joueur_back_lab_y, back_lab_partition_grille, back_lab_partition_grille_position_joueur
         x = self.taille_partition_x
@@ -853,7 +861,7 @@ class Laby_grille () :
                     ecrire.writerow (sortie)
                 else :
                     ecrire.writerow (lab[i])
-
+    
     def sauvegarder_lab_alea (self) :
         MsgBox = messagebox.askquestion ('Enregistrer un labyrinthe généré aléatoirement','Voulez-vous vraiment enregistrer le labyrinthe actuel ?',icon = 'warning')
         if MsgBox == 'yes':
@@ -866,7 +874,7 @@ class Laby_grille () :
                 fichier_nom_labs_alea.write("Labyrinthe "+nom+"\n")
                 fichier_nom_labs_alea.close()
                 messagebox.showinfo ('Labyrinthe aléatoire enregistré','Le Labyrinthe aléatoire actuel à bien été enregisté sous le nom : Labyrinthe '+nom+' !')
-
+    
     def test_nb_murs_niv_4 (self) :
         if self.big_boss.difficultee.numero == 1 :
             limite = self.nb_murs_dans_lab / 2
@@ -935,7 +943,7 @@ class Laby_balle () :
         self.en_deplacement = False
         self.count_x = 0
         self.count_y = 0
-        
+    
     def mouve (self,x,y,deplacement_reel=True) :
         "Déplace la balle et toutes les autres choses à faire en même temps (pour ne pas avoir à les répéter dans haut, bas, gauche et droite)"
         if deplacement_reel :
@@ -951,7 +959,7 @@ class Laby_balle () :
             self.grille.Position_joueur_sur_back_lab_partition ()
         self.big_boss.win()
         self.ou_aller()
-
+    
     def ou_aller (self) :
         "Rentre dans les variables booleenes les possiblilités de mouvement de la balle"
         if self.y >= 0 :
@@ -963,7 +971,7 @@ class Laby_balle () :
         if self.x >= 0 :
             self.aller_gauche = self.grille.lab[self.y][self.x] != "2" and self.grille.lab[self.y][self.x] != "3"
         return
-
+    
     def fonction_dep (self,x=0,y=0,interne=False) :
         if interne :
             if self.en_deplacement :
@@ -1005,7 +1013,7 @@ class Laby_balle () :
                 self.count_x += x
                 self.count_y += y
                 self.fenetre.after(self.vitesse, self.fonction_dep, x, y, True)
-
+    
     def haut (self,event) :
         if self.x != self.grille.sortie_lab[0] or self.y != self.grille.sortie_lab[1] :
             if self.big_boss.type_deplacement == "Lisse" :
@@ -1022,7 +1030,7 @@ class Laby_balle () :
                 self.grille.Murs_lab.append((self.x,self.y,"1"))
                 self.canvas.barre_horizontale (self.canvas.origine_x + self.x*self.canvas.taille, self.canvas.origine_y + self.y*self.canvas.taille, self.canvas.taille, self.canvas.color_grille)
                 self.grille.test_nb_murs_niv_4 ()
-
+    
     def bas (self,event) :
         if self.x != self.grille.sortie_lab[0] or self.y != self.grille.sortie_lab[1] :
             if self.big_boss.type_deplacement == "Lisse" :
@@ -1039,7 +1047,7 @@ class Laby_balle () :
                 self.grille.Murs_lab.append((self.x,self.y+1,"1"))
                 self.canvas.barre_horizontale (self.canvas.origine_x + self.x*self.canvas.taille, self.canvas.origine_y + (self.y+1)*self.canvas.taille, self.canvas.taille, self.canvas.color_grille)
                 self.grille.test_nb_murs_niv_4 ()
-
+    
     def droite (self,event) :
         if self.x != self.grille.sortie_lab[0] or self.y != self.grille.sortie_lab[1] :
             if self.big_boss.type_deplacement == "Lisse" :
@@ -1056,7 +1064,7 @@ class Laby_balle () :
                 self.grille.Murs_lab.append((self.x+1,self.y,"2"))
                 self.canvas.barre_verticale (self.canvas.origine_x + (self.x+1)*self.canvas.taille, self.canvas.origine_y + self.y*self.canvas.taille, self.canvas.taille, self.canvas.color_grille)
                 self.grille.test_nb_murs_niv_4 ()
-
+    
     def gauche (self,event) :
         if self.x != self.grille.sortie_lab[0] or self.y != self.grille.sortie_lab[1] :
             if self.big_boss.type_deplacement == "Lisse" :
@@ -1207,6 +1215,36 @@ class Infos (tk.Toplevel) :
         self.canvas.create_text(self.canvas_x*pos_max[0], self.canvas_y*pos_max[1], text= "Max", font= police)
         self.mainloop()
 
+class Fen_infos_generales (tk.Toplevel) :
+    def __init__ (self, boss, big_boss) :
+        tk.Toplevel.__init__(self, boss)
+        self.big_boss = big_boss
+        self.title("Informations Générales")
+        self.nb_lignes = 2
+        self.nb_colones = 1
+        for i in range (self.nb_colones) :
+            self.grid_columnconfigure(i, weight= 1) 
+        for i in range (self.nb_lignes) :
+            self.grid_rowconfigure(i, weight= 1)
+        
+        self.init_contenu()
+        
+        self.resizable(False, False)
+        self.focus_set()
+    
+    def init_contenu (self) :
+        text = tk.Text(self, wrap= tk.WORD, width=55, height=8, padx=50, pady=30, font=("Helvetica", 15))
+        text.insert(0.1, "Bienvenu dans le Parcoureur de Labyrinthes !\n\n\nC'est ici que vous pouvez jouer avec les labyrinthes dans différents modes.")
+        text['state'] = 'disabled'
+        text.grid(column=0, row=0, sticky=tk.NSEW)
+        text.tag_add("titre", "1.0", "1.46")
+        text.tag_config("titre", foreground="red", font=("Helvetica", 20), justify='center')
+        
+        
+        bouton_1 = tk.Button (self, text="Ouvrir le Builder de Labyrinthes", padx=20, pady=10, font=("Helvetica", 13), bg="blue", fg= "white", \
+            command=self.big_boss.lancement_builder_labs)
+        bouton_1.grid(column=0, row=1)
+
 class Message_fin_lab (tk.Toplevel) :
 
     def __init__ (self, boss=None) :
@@ -1344,42 +1382,71 @@ class Chrono(tk.Frame):
 class Reglages (tk.Toplevel) :
     def __init__ (self, boss) :
         tk.Toplevel.__init__(self, boss)
-        self.x = 500
+        self.x = 550
         self.y = 500
         self.title("Réglages")
-        self.geometry (str(self.x)+"x"+str(self.y))
+        self.geometry(str(self.x)+"x"+str(self.y))
         self.grid_columnconfigure(0, weight= 1)
         self.grid_columnconfigure(1, weight= 0)
         self.grid_rowconfigure(0, weight= 0)
         self.grid_rowconfigure(1, weight= 0)
-        self.grid_rowconfigure(2, weight= 1)
-        self.grid_rowconfigure(3, weight= 0)
+        self.grid_rowconfigure(2, weight= 0)
+        self.grid_rowconfigure(3, weight= 1)
+        self.grid_rowconfigure(4, weight= 0)
         
+        self.width_titres = 35
+    
     def lancement (self) :
-        self.init_header()
-        self.ajout_separation(boss=self, color="green")
-        
         self.canvas = tk.Canvas(self)
         self.content = tk.Frame(self.canvas)
         self.content.bind("<Configure>", self.resize_frame)
-        self.canvas.grid(column=0, row=2)
+        #self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+        self.bind('<Enter>', self._bound_to_mousewheel)
+        self.bind('<Leave>', self._unbound_to_mousewheel)
         
         scrollbar_y=tk.Scrollbar(self, orient=tk.VERTICAL, command=self.canvas.yview)
-        scrollbar_y.grid(column=1, row=0, rowspan=3, sticky=tk.NS)
         scrollbar_x=tk.Scrollbar(self, orient=tk.HORIZONTAL, command=self.canvas.xview)
-        scrollbar_x.grid(column=0, row=3, columnspan=2, sticky=tk.EW)
         
         self.canvas.create_window((0, 0), window=self.content)
         self.canvas.configure(yscrollcommand=scrollbar_y.set, xscrollcommand=scrollbar_x.set)
         
-        self.reglages_lab_alea = Reglages_lab_alea(self.content, self.big_boss)
-        self.reglages_lab_alea.init_entitees(self, self.grille)
-        self.reglages_lab_alea.lancement()
-        self.reglages_lab_alea.pack(side="top")
+        self.lancement_tous_les_reglages()
         
+        self.init_header()
+        self.ajout_separation(position=2, boss=self, color="green", is_separation_principale=True)
+        self.canvas.grid(column=0, row=3)
+        scrollbar_x.grid(column=0, row=4, columnspan=2, sticky=tk.EW)
+        scrollbar_y.grid(column=1, row=0, rowspan=4, sticky=tk.NS)
+        
+        self.after(100, self.canvas.yview_moveto, '0')
         self.after(100, self.resize_canvas)
         #self.resizable(False, True)
         self.focus_set()
+    
+    def lancement_tous_les_reglages (self) :
+        reglages = [Reglages_lab_alea, Reglages_apparence, Reglages_balle]
+        self.tous_les_reglages = {}
+        self.separations = []
+        i = 0
+        for regl in reglages :
+            if i > 0 :
+                self.ajout_separation(position=i)
+                i += 1
+            reglage = regl(self.content, self.big_boss)
+            self.tous_les_reglages[reglage.name] = reglage
+            self.tous_les_reglages[reglage.name].init_entitees(self, self.grille, self.balle)
+            self.tous_les_reglages[reglage.name].lancement()
+            self.tous_les_reglages[reglage.name].grid(row=i)
+            i += 1
+    
+    def _on_mousewheel(self, event):
+        self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+    
+    def _bound_to_mousewheel(self, event):
+        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+    
+    def _unbound_to_mousewheel(self, event):
+        self.canvas.unbind_all("<MouseWheel>")
     
     def resize_canvas(self) :
         self.canvas.configure(width=self.content.winfo_width(),\
@@ -1395,42 +1462,102 @@ class Reglages (tk.Toplevel) :
     def resize_frame(self, e):
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))        
     
-    def ajout_separation (self, boss=None, color="grey") :
+    def ajout_separation (self, position, boss=None, color="grey", is_separation_principale=False) :
         if boss is None :
             boss = self.content
         separation = tk.Text(boss, bg=color, pady=5, height=1, font=("Helvetica", 1))
         separation['state'] = 'disabled'
-        if color == "grey" :
-            separation.pack(side="top")
+        if is_separation_principale :
+            separation.grid(column=0, row=position, sticky=tk.NSEW)
         else :
-            separation.grid(column=0, row=1, sticky=tk.NSEW)
+            self.separations.append(separation)
+            separation.grid(column=0, row=position, pady=30, sticky=tk.NSEW)
     
-    def init_header (self) :
+    def init_header (self) :        
         self.header = tk.Frame(self, border=10)
         self.header.grid(column=0, row=0, sticky=tk.NSEW)
         self.header.grid_columnconfigure(0, weight= 1)
+        self.header.grid_columnconfigure(1, weight= 1)
+        self.header.grid_columnconfigure(2, weight= 1)
         
-        btn = tk.Button(self.header, text="Appliquer", command=self.appliquer_modifications, font=("Helvetica", 13), bg="blue", fg="white")
-        btn.grid(sticky=tk.E)
+        btn = tk.Button(self.header, text="Tout", command=self.afficher_tous_params, font=("Helvetica", 14), bg="green", fg="white")
+        btn.grid(column=0, row=0, sticky=tk.W)
+        
+        noms_reglages = list(self.tous_les_reglages.keys())
+        self.combobox_header = ttk.Combobox(self.header, values=noms_reglages, state="readonly", justify="center", width=15, height=2, style="TCombobox", font=("Helvetica", 13))
+        self.combobox_header.set("Réglages")
+        self.combobox_header.bind("<<ComboboxSelected>>", self.affiche_type_reglage_particulier)
+        self.combobox_header.grid(column=1, row=0)
+        
+        btn = tk.Button(self.header, text="Appliquer", command=self.appliquer_modifications, font=("Helvetica", 14), bg="blue", fg="white")
+        btn.grid(column=2, row=0, sticky=tk.E)
+        
+        self.alerte_mauvaise_entree = bool(int(self.big_boss.parametres["lab alea alerte mauvaise entree"]))
+        self.var_alerte_mauvaise_entree = tk.IntVar()
+        self.var_alerte_mauvaise_entree.set(int(self.alerte_mauvaise_entree))
+        checkbtn_alerte_mauvaise_entree = tk.Checkbutton(self, variable= self.var_alerte_mauvaise_entree, command=self.change_alerte_mauvaise_entree ,compound=tk.LEFT, text="Alerte pour mauvaise entrée", border=10, font=("Helvetica", 13))
+        checkbtn_alerte_mauvaise_entree.grid(column=0, row=1, sticky=tk.W)
+    
+    def change_alerte_mauvaise_entree (self) :
+        self.alerte_mauvaise_entree = bool(self.var_alerte_mauvaise_entree.get())
+    
+    def effacer_tous_reglages (self) :
+        for nom_reg in self.tous_les_reglages :
+            self.tous_les_reglages[nom_reg].grid_forget()
+        for sep in self.separations :
+            sep.grid_forget()
+        self.separations = []
+    
+    def affiche_type_reglage_particulier (self, event=None) :
+        reglage = self.combobox_header.get()
+        self.combobox_header.set("Réglages")
+        self.effacer_tous_reglages()
+        self.tous_les_reglages[reglage].grid(row=0)
+        self.after(100, self.resize_canvas)
+        self.after(100, self.canvas.yview_moveto, '0')
+    
+    def afficher_tous_params (self) :
+        self.effacer_tous_reglages()
+        i = 0
+        for name_reg in self.tous_les_reglages :
+            if i > 0 :
+                self.ajout_separation(position=i)
+                i += 1
+            self.tous_les_reglages[name_reg].grid(row=i)
+            i += 1
+        self.after(100, self.resize_canvas)
+        self.after(100, self.canvas.yview_moveto, '0')
     
     def appliquer_modifications (self) :
-        pass
-    
-class Reglages_lab_alea (tk.Frame) :
-    def __init__ (self, boss, big_boss) :
+        for reg_name in self.tous_les_reglages :
+            self.tous_les_reglages[reg_name].appliquer_modifications()
+        self.big_boss.parametres["lab alea alerte mauvaise entree"] = int(self.alerte_mauvaise_entree)
+
+class Base_Reglages (tk.Frame) :
+    def __init__ (self, boss, big_boss, name) :
         tk.Frame.__init__(self, boss, border=10)
         self.big_boss = big_boss
-        self.alerte_mauvaise_entree = bool(self.big_boss.parametres["lab alea alerte mauvaise entree"])
+        self.name = name
     
-    def init_entitees (self, boss, grille) :
+    def init_entitees (self, boss, grille, balle) :
         self.boss = boss
         self.grille = grille
-        
-    def lancement (self) :
-        self.text = tk.Text(self, wrap= tk.WORD, width=32, height=1, padx=50, pady=30, font=("Helvetica", 15))
-        self.text.insert(0.1, "Réglages du générateur de labyrinthes")
+        self.balle = balle
+    
+    def lancement (self, titre) :
+        self.text = tk.Text(self, wrap= tk.WORD, width=self.boss.width_titres, height=1, padx=50, pady=30, font=("Helvetica", 15))
+        self.text.insert(0.1, titre)
         self.text['state'] = 'disabled'
+        self.text.tag_add('entier','1.0',tk.END)
+        self.text.tag_config('entier', justify=tk.CENTER)
         self.text.grid(column=0, row=0, sticky=tk.NSEW)
+
+class Reglages_lab_alea (Base_Reglages) :
+    def __init__ (self, boss, big_boss) :
+        Base_Reglages.__init__(self, boss, big_boss, "Générateur de labyrinthes")
+    
+    def lancement (self) :
+        Base_Reglages.lancement(self, "Réglages du générateur de labyrinthes")
         
         self.init_taille_lab(1)
         self.init_position_start(2)
@@ -1448,61 +1575,69 @@ class Reglages_lab_alea (tk.Frame) :
         colones.grid(column=1, row=0)
         text_colone = tk.Label(colones, text="Colones :", font=("Helvetica", 13))
         text_colone.grid(column=0, row=0)
-        self.valeur_colone = ttk.Spinbox(colones, from_= self.grille.nb_colones_min, to= self.grille.nb_colones_max, wrap=True, font=("Helvetica", 15), width=4, command=self.live_verif_nb_colone)
+        self.valeur_colone = ttk.Spinbox(colones, from_= self.grille.nb_colones_min, to= self.grille.nb_colones_max, wrap=True, font=("Helvetica", 15), width=4, command=self.verif_nb_colone)
         self.valeur_colone.set(self.grille.lab_alea_x)
         self.nb_colones = self.grille.lab_alea_x
         self.valeur_colone.grid(column=0, row=1)
-        self.valeur_colone.bind("<Return>", self.live_verif_nb_colone)
+        self.valeur_colone.bind("<Return>", self.verif_nb_colone)
         
         lignes = tk.Frame(taille_lab)
         lignes.grid(column=2, row=0)
         text_ligne = tk.Label(lignes, text="Lignes :", font=("Helvetica", 13))
         text_ligne.grid(column=0, row=0)
-        self.valeur_ligne = ttk.Spinbox(lignes, from_= self.grille.nb_lignes_min, to= self.grille.nb_lignes_max, wrap=True, font=("Helvetica", 15), width=4, command=self.live_verif_nb_ligne)
+        self.valeur_ligne = ttk.Spinbox(lignes, from_= self.grille.nb_lignes_min, to= self.grille.nb_lignes_max, wrap=True, font=("Helvetica", 15), width=4, command=self.verif_nb_ligne)
         self.valeur_ligne.set(self.grille.lab_alea_y)
         self.nb_lignes = self.grille.lab_alea_y
         self.valeur_ligne.grid(column=0, row=1)
-        self.valeur_ligne.bind("<Return>", self.live_verif_nb_ligne)
+        self.valeur_ligne.bind("<Return>", self.verif_nb_ligne)
     
-    def live_verif_nb_colone (self, event=None) :
+    def verif_nb_colone (self, event=None) :
+        valable = False
         nb_colones = self.valeur_colone.get()
         try :
             nb_colones = int(nb_colones)
         except :
-            if self.alerte_mauvaise_entree :
+            if self.boss.alerte_mauvaise_entree :
                 messagebox.showinfo ('Nombre de colones','L\'entrée "'+nb_colones+'" n\'est pas conforme pour un nombre de colones !',parent=self.boss ,icon = 'error')
         else :
             if nb_colones < self.grille.nb_colones_min :
                 nb_colones = self.grille.nb_colones_min
-                if self.alerte_mauvaise_entree :
+                if self.boss.alerte_mauvaise_entree :
                     messagebox.showinfo ('Nombre de colones','Le nombre de colones minimum est de '+str(self.grille.nb_colones_min)+' !',parent=self.boss ,icon = 'error')
             elif nb_colones > self.grille.nb_colones_max :
                 nb_colones = self.grille.nb_colones_max
-                if self.alerte_mauvaise_entree :
+                if self.boss.alerte_mauvaise_entree :
                     messagebox.showinfo ('Nombre de colones','Le nombre de colones maximum est de '+str(self.grille.nb_colones_max)+' !',parent=self.boss ,icon = 'error')
+            else :
+                valable = True
             self.nb_colones = nb_colones
         self.valeur_colone.set(self.nb_colones)
         self.valeur_x.configure(to=self.nb_colones)
+        return valable
     
-    def live_verif_nb_ligne (self, event=None) :
+    def verif_nb_ligne (self, event=None) :
+        valable = False
         nb_lignes = self.valeur_ligne.get()
         try :
             nb_lignes = int(nb_lignes)
         except :
-            if self.alerte_mauvaise_entree :
+            if self.boss.alerte_mauvaise_entree :
                 messagebox.showinfo ('Nombre de lignes','L\'entrée "'+nb_lignes+'" n\'est pas conforme pour un nombre de lignes !',parent=self.boss ,icon = 'error')
         else :
             if nb_lignes < self.grille.nb_lignes_min :
                 nb_lignes = self.grille.nb_lignes_min
-                if self.alerte_mauvaise_entree :
+                if self.boss.alerte_mauvaise_entree :
                     messagebox.showinfo ('Nombre de lignes','Le nombre de lignes minimum est de '+str(self.grille.nb_lignes_min)+' !',parent=self.boss ,icon = 'error')
             elif nb_lignes > self.grille.nb_lignes_max :
                 nb_lignes = self.grille.nb_lignes_max
-                if self.alerte_mauvaise_entree :
+                if self.boss.alerte_mauvaise_entree :
                     messagebox.showinfo ('Nombre de lignes','Le nombre de lignes maximum est de '+str(self.grille.nb_lignes_max)+' !',parent=self.boss ,icon = 'error')
+            else :
+                valable = True
             self.nb_lignes = nb_lignes
         self.valeur_ligne.set(self.nb_lignes)
         self.valeur_y.configure(to=self.nb_lignes)
+        return valable
     
     def init_position_start (self, position) :
         """Définie la position de départ de la balle sur le labyrinthe"""
@@ -1511,7 +1646,7 @@ class Reglages_lab_alea (tk.Frame) :
         position_start.grid_columnconfigure(0, weight= 1)
         position_start.grid_columnconfigure(1, weight= 1)
         position_start.grid_columnconfigure(2, weight= 1)
-        text_taille_lab = tk.Label(position_start, text="Position de l'entrée\ndu Labyrinthe :", font=("Helvetica", 13))
+        text_taille_lab = tk.Label(position_start, text="Position du départ\ndu Labyrinthe :", font=("Helvetica", 13))
         text_taille_lab.grid(column=0, row=0)
         
         x = tk.Frame(position_start)
@@ -1519,89 +1654,183 @@ class Reglages_lab_alea (tk.Frame) :
         text_x = tk.Label(x, text="X :", font=("Helvetica", 13))
         text_x.grid(column=0, row=0)
         self.valeur_x = ttk.Spinbox(x, from_= 0, to= self.nb_colones, wrap=True, font=("Helvetica", 15), width=4)
-        self.valeur_x.set(0)
+        self.valeur_x.set(self.grille.lab_alea_entrée_lab[0])
         self.valeur_x.grid(column=1, row=0)
-        self.valeur_x.bind("<Return>", self.live_verif_depart_x)
+        self.valeur_x.bind("<Return>", self.verif_depart_x)
         
         y = tk.Frame(position_start)
         y.grid(column=2, row=0)
         text_y = tk.Label(y, text="Y :", font=("Helvetica", 13))
         text_y.grid(column=0, row=0)
         self.valeur_y = ttk.Spinbox(y, from_= 0, to= self.nb_lignes, wrap=True, font=("Helvetica", 15), width=4)
-        self.valeur_y.set(0)
+        self.valeur_y.set(self.grille.lab_alea_entrée_lab[1])
         self.valeur_y.grid(column=1, row=0)
-        self.valeur_y.bind("<Return>", self.live_verif_depart_y)
+        self.valeur_y.bind("<Return>", self.verif_depart_y)
     
-    def live_verif_depart_x (self, event=None) :
+    def verif_depart_x (self, event=None) :
+        valable = False
         x = self.valeur_x.get()
         try :
             x = int(x)
         except :
-            if self.alerte_mauvaise_entree :
+            if self.boss.alerte_mauvaise_entree :
                 messagebox.showinfo ('Position x du départ','L\'entrée "'+x+'" n\'est pas conforme pour une position sur le labyrinthe !',parent=self.boss ,icon = 'error')
             self.valeur_x.set(0)
         else :
             if x < 0 :
                 x = 0
-                if self.alerte_mauvaise_entree :
+                if self.boss.alerte_mauvaise_entree :
                     messagebox.showinfo ('Position x du départ','La position minimum est de 0 !',parent=self.boss ,icon = 'error')
             elif x > self.nb_colones :
                 x = self.nb_colones
-                if self.alerte_mauvaise_entree :
+                if self.boss.alerte_mauvaise_entree :
                     messagebox.showinfo ('Position x du départ','La position maximum est de '+str(self.nb_colones)+' !',parent=self.boss ,icon = 'error')
+            else :
+                valable = True
             self.valeur_x.set(x)
+        return valable
     
-    def live_verif_depart_y (self, event=None) :
+    def verif_depart_y (self, event=None) :
+        valable = False
         y = self.valeur_y.get()
         try :
             y = int(y)
         except :
-            if self.alerte_mauvaise_entree :
+            if self.boss.alerte_mauvaise_entree :
                 messagebox.showinfo ('Position y du départ','L\'entrée "'+y+'" n\'est pas conforme pour une position sur le labyrinthe !',parent=self.boss ,icon = 'error')
             self.valeur_y.set(0)
         else :
             if y < 0 :
                 y = 0
-                if self.alerte_mauvaise_entree :
+                if self.boss.alerte_mauvaise_entree :
                     messagebox.showinfo ('Position y du départ','La position minimum est de 0 !',parent=self.boss ,icon = 'error')
             elif y > self.nb_lignes :
                 y = self.nb_lignes
-                if self.alerte_mauvaise_entree :
+                if self.boss.alerte_mauvaise_entree :
                     messagebox.showinfo ('Position y du départ','La position maximum est de '+str(self.nb_lignes)+' !',parent=self.boss ,icon = 'error')
+            else :
+                valable = True
             self.valeur_y.set(y)
-
-    def appliquer_modifications (self, save=True) :
-        pass
-
-class Fen_infos_generales (tk.Toplevel) :
-    def __init__ (self, boss, big_boss) :
-        tk.Toplevel.__init__(self, boss)
-        self.big_boss = big_boss
-        self.title("Informations Générales")
-        self.nb_lignes = 2
-        self.nb_colones = 1
-        for i in range (self.nb_colones) :
-            self.grid_columnconfigure(i, weight= 1) 
-        for i in range (self.nb_lignes) :
-            self.grid_rowconfigure(i, weight= 1)
-        
-        self.init_contenu()
-        
-        self.resizable(False, False)
-        self.focus_set()
+        return valable
     
-    def init_contenu (self) :
-        text = tk.Text(self, wrap= tk.WORD, width=55, height=8, padx=50, pady=30, font=("Helvetica", 15))
-        text.insert(0.1, "Bienvenu dans le Parcoureur de Labyrinthes !\n\n\nC'est ici que vous pouvez jouer avec les labyrinthes dans différents modes.")
-        text['state'] = 'disabled'
-        text.grid(column=0, row=0, sticky=tk.NSEW)
-        text.tag_add("titre", "1.0", "1.46")
-        text.tag_config("titre", foreground="red", font=("Helvetica", 20), justify='center')
+    def appliquer_modifications (self, save=True) :
+        if self.verif_nb_colone() and self.verif_nb_ligne() and self.verif_depart_x() and self.verif_depart_y() :
+            self.big_boss.parametres["lab alea x"] = self.valeur_colone.get()
+            self.big_boss.parametres["lab alea y"] = self.valeur_ligne.get()
+            self.big_boss.parametres["lab alea entree x"] = self.valeur_x.get()
+            self.big_boss.parametres["lab alea entree y"] = self.valeur_y.get()
+            self.grille.init_variables()
+
+class Reglages_apparence (Base_Reglages) :
+    def __init__ (self, boss, big_boss) :
+        tk.Frame.__init__(self, boss, border=10)
+        self.big_boss = big_boss
+        self.name = "Apparence Générale"
+    
+    def lancement (self) :
+        Base_Reglages.lancement(self, "Réglages apparence générale")
         
+        self.initial_couleur_mode(1)
+    
+    def initial_couleur_mode (self, position) :
+        couleur_mode = tk.Frame(self, pady=20)
+        couleur_mode.grid(column=0, row=position, sticky=tk.NSEW)
+        couleur_mode.grid_columnconfigure(0, weight= 1)
+        couleur_mode.grid_columnconfigure(1, weight= 1)
         
-        bouton_1 = tk.Button (self, text="Ouvrir le Builder de Labyrinthes", padx=20, pady=10, font=("Helvetica", 13), bg="blue", fg= "white", \
-            command=self.big_boss.lancement_builder_labs)
-        bouton_1.grid(column=0, row=1)
+        text_taille_lab = tk.Label(couleur_mode, text="Couleur glabale initiale:", font=("Helvetica", 13))
+        text_taille_lab.grid(column=0, row=0)
+        
+        color_modes = ["black", "white"]
+        self.combobox_initial_couleur_mode = ttk.Combobox(couleur_mode, values=color_modes, state="readonly", justify="center", width=12, height=2, takefocus=False, style="TCombobox", font=("Helvetica", 15))
+        self.combobox_initial_couleur_mode.set(self.big_boss.parametres["initial color mode"])
+        self.combobox_initial_couleur_mode.grid(column=1, row=0)
+    
+    def appliquer_modifications (self, save=True) :
+        self.big_boss.parametres["initial color mode"] = self.combobox_initial_couleur_mode.get()
+
+class Reglages_balle (Base_Reglages) :
+    def __init__ (self, boss, big_boss) :
+        tk.Frame.__init__(self, boss, border=10)
+        self.big_boss = big_boss
+        self.name = "Balle (joueur)"
+    
+    def lancement (self) :
+        Base_Reglages.lancement(self, "Réglages de la Balle")
+        
+        self.deplacement(1)
+    
+    def deplacement (self, position) :
+        deplacement_balle = tk.Frame(self, pady=20)
+        deplacement_balle.grid(column=0, row=position, sticky=tk.NSEW)
+        deplacement_balle.grid_columnconfigure(0, weight= 1)
+        deplacement_balle.grid_columnconfigure(1, weight= 1)
+        deplacement_balle.grid_columnconfigure(2, weight= 1)
+        text_taille_lab = tk.Label(deplacement_balle, text="Déplacement\nde la Balle :", font=("Helvetica", 13))
+        text_taille_lab.grid(column=0, row=0)
+        
+        decoupe = tk.Frame(deplacement_balle)
+        decoupe.grid(column=1, row=0)
+        text_decoupe = tk.Label(decoupe, text="Découpe\ndu mouvement :", font=("Helvetica", 13))
+        text_decoupe.grid(column=0, row=0)
+        self.decoupe_min = 2
+        self.valeur_decoupe = ttk.Spinbox(decoupe, from_= self.decoupe_min, to=50, wrap=True, font=("Helvetica", 15), width=4, command=self.verif_decoupe)
+        self.valeur_decoupe.set(self.balle.decoupe_dep)
+        self.valeur_decoupe.grid(column=0, row=1)
+        self.valeur_decoupe.bind("<Return>", self.verif_decoupe)
+        
+        vitesse = tk.Frame(deplacement_balle)
+        vitesse.grid(column=2, row=0)
+        text_vitesse = tk.Label(vitesse, text="Vitesse :", font=("Helvetica", 13))
+        text_vitesse.grid(column=0, row=0)
+        Laby_builder.Commentaire(self.boss, text_vitesse, "Temps d'attente (en milisecondes)\nentre deux partitions du mouvement\nde la balle entre deux cases")
+        self.valeur_vitesse = ttk.Spinbox(vitesse, from_=10, to=1000, wrap=True, font=("Helvetica", 15), width=5, command=self.verif_vitesse)
+        self.valeur_vitesse.set(self.balle.vitesse)
+        self.valeur_vitesse.grid(column=0, row=1)
+        self.valeur_vitesse.bind("<Return>", self.verif_vitesse)
+    
+    def verif_decoupe (self, event=None) :
+        valable = False
+        decoupe = self.valeur_decoupe.get()
+        try :
+            decoupe = int(decoupe)
+        except :
+            if self.boss.alerte_mauvaise_entree :
+                messagebox.showinfo ('Valeur de découpe','La valeur "'+decoupe+'" n\'est pas conforme pour un nombre découpe du mouvement !',parent=self.boss ,icon = 'error')
+        else :
+            if decoupe < self.decoupe_min :
+                decoupe = self.decoupe_min
+                if self.boss.alerte_mauvaise_entree :
+                    messagebox.showinfo ('Valeur de découpe','Le valeur de découpe minimum est de '+str(self.decoupe_min)+' !\nCar sinon, 0 c\'est de la téléportation et 1 c\'est déjà le déplacement Sec',parent=self.boss ,icon = 'error')
+            else :
+                valable = True
+            self.valeur_decoupe.set(decoupe)
+        return valable
+    
+    def verif_vitesse (self, event=None) :
+        valable = False
+        vitesse = self.valeur_vitesse.get()
+        try :
+            vitesse = int(vitesse)
+        except :
+            if self.boss.alerte_mauvaise_entree :
+                messagebox.showinfo ('Vitesse','La vitesse "'+vitesse+'" n\'est pas conforme !',parent=self.boss ,icon = 'error')
+        else :
+            if vitesse < 1 :
+                vitesse = 1
+                if self.boss.alerte_mauvaise_entree :
+                    messagebox.showinfo ('Vitesse','La vitesse minimum est de 1 mais il est recomendé de prendre au moins 10 car il est ici question de temps en miliseconde entre chaque partition de mouvement !',parent=self.boss ,icon = 'error')
+            else :
+                valable = True
+            self.valeur_vitesse.set(vitesse)
+        return valable
+    
+    def appliquer_modifications (self, save=True) :
+        if self.verif_decoupe() and self.verif_vitesse() :
+            self.big_boss.parametres["decoupe du deplacement"] = self.valeur_decoupe.get()
+            self.big_boss.parametres["vitesse deplacement"] = self.valeur_vitesse.get()
+            self.balle.init_variables()
+
 
 
 class Niveaux () :
@@ -1630,7 +1859,7 @@ class Niveaux () :
                     self.numero -= 1
         else :
             messagebox.showinfo ('Changer de Niveau','Le Niveau est déjà au max !',icon = 'error')
-
+    
     def moins (self, event=None) :
         if self.Niveau_max == False  :
             if self.numero == 1 :
@@ -1644,7 +1873,7 @@ class Niveaux () :
                     self.numero = 1
         else :
             messagebox.showinfo ('Changer de Niveau','Le Niveau est déjà au max !',icon = 'error')
-
+    
     def niveaux (self) :
         if self.numero == 1 :
             self.grille.init_Partitions_lab()
@@ -1723,7 +1952,7 @@ class Difficultee () :
                 messagebox.showinfo ('Changer de difficultée','Il n´y a qu´une seule difficultée pour le niveau 1 !',icon = 'error')
         else :
             messagebox.showinfo ('Changer de difficultée','La Difficultée est déjà au max !',icon = 'error')
-
+    
     def moins (self, event=None) :
         if self.niveau.Niveau_max is False :
             if self.niveau.numero > 1 :
@@ -1740,7 +1969,7 @@ class Difficultee () :
                 messagebox.showinfo ('Changer de difficultée','Il n´y a qu´une seule difficultée pour le niveau 1 !',icon = 'error')
         else :
             messagebox.showinfo ('Changer de difficultée','La Difficultée est déjà au max !',icon = 'error')
-
+    
     def difficultees (self) :
         if self.numero == 2 :
             if self.niveau.numero == 2 or self.niveau.numero == 3 :
@@ -1759,64 +1988,18 @@ class Difficultee () :
         self.grille.init_taille_partition_par_difficultées ()
         self.canvas.refresh_lab()
         return True
-
+    
     def fenetre_presentation (self) :
         self.fenetre_presentation = Niveaux_fen(self.fenetre)
 
 
 
 """
-def init_boutons (self) :
-    "Initalise et affiche tous les boutons de la fenêtre"
-    self.boutons = [0]*17
-    
-    self.deplace = tk.StringVar()
-    self.deplace.set("Déplacement\nSec")
-    self.dep = 0
-    self.boutons[0] = tk.Button (self, textvariable= self.deplace, command=self.deplacement)
-    self.boutons[0].grid(column= 51, row= 16, columnspan= 6)
 
-    self.boutons[1] = tk.Button (self, text='Couleurs', command=self.canvas.couleurs)
-    self.boutons[1].grid(column= 52, row= 2, columnspan= 4, sticky=tk.EW)
-
-    self.boutons[2] = self.button_aller_a = tk.Button (self, text='Aller à', command=self.aller_a)
-    self.button_aller_a.grid(column= 52, row= 5, columnspan= 4)
-    
-    self.texte_button_lab_alea = tk.StringVar()
-    self.texte_button_lab_alea.set("Labyrinthe\nAléatoire")
-    self.boutons[3] = tk.Button (self, textvariable= self.texte_button_lab_alea, command=self.type_labyrinthe)
-    self.boutons[3].grid(column= 51, row= 4, columnspan= 6)
-    self.boutons[4] = self.button_new_lab_alea = tk.Button (self, text='New Lab Aléa', command=self.canvas.nouvelle_partie)
-    self.button_new_lab_alea.grid_forget()
     self.boutons[5] = self.button_sauvegarder_lab_alea = tk.Button (self, text='Sauvegarder Lab', command=self.grille.sauvegarder_lab_alea)
     self.button_sauvegarder_lab_alea.grid_forget()
     self.boutons[6] = self.button_reglages_lab_alea = tk.Button (self, text='Réglages\nLab Aléa', command=self.grille.reglages_lab_alea)
     self.button_reglages_lab_alea.grid_forget()
-    
-
-    self.boutons[7] = tk.Button (self, text='Suivant ->', command=self.suivant)
-    self.boutons[7].grid(column= 46, row= 0, columnspan= 5,sticky=tk.EW)
-    self.boutons[8] = tk.Button (self, text='Recommencer', command=self.recomencer)
-    self.boutons[8].grid(column= 41, row= 0, columnspan= 5, sticky=tk.EW)
-    self.boutons[9] = tk.Button (self, text='<- Précédent', command=self.precedent)
-    self.boutons[9].grid(column= 36, row= 0, columnspan= 5, sticky=tk.EW)
-
-    self.boutons[10] = tk.Button (self, text='Niveau Max', command=self.niveau_max)
-    self.boutons[10].grid(column= 52, row= 18, columnspan= 4)
-    
-    self.boutons[11] = tk.Button (self, text="->", command=self.difficulte_plus)
-    self.boutons[11].grid(column= 12, row= 0, sticky=tk.W)
-    self.boutons[12] = tk.Button (self, text="Difficultée", command=self.difficultees_fen)
-    self.boutons[12].grid(column= 8, row= 0, columnspan= 4, sticky=tk.EW)
-    self.boutons[13] = tk.Button (self, text="<-", command=self.difficulte_moins)
-    self.boutons[13].grid(column= 7, row= 0, sticky=tk.E)
-    
-    self.boutons[14] = tk.Button (self, text="->", command=self.niveau_plus)
-    self.boutons[14].grid(column= 5, row= 0, sticky=tk.W)
-    self.boutons[15] = tk.Button (self, text="Niveau", command=partial(Niveaux_fen,self))
-    self.boutons[15].grid(column= 2, row= 0, columnspan= 3, sticky=tk.EW)
-    self.boutons[16] = tk.Button (self, text="<-", command=self.niveau_moins)
-    self.boutons[16].grid(column= 1, row= 0, sticky=tk.E)
 """
 
 

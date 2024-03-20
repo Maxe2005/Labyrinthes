@@ -31,10 +31,10 @@ class Entite_superieure_crea () :
         self.fenetre.init_barres_boutons_et_text()
         self.canvas.init_affichage_grille()
         for i in range (3) :
-            self.fenetre.after(100+(i*100), self.fenetre.redimentionner)
+            self.fenetre.after(500+(i*100), self.fenetre.redimentionner)
         self.fenetre.focus()
         for com in self.commentaires :
-            self.fenetre.after(100, com.test)
+            self.fenetre.after(500, com.test)
         self.fenetre.mainloop()
     
     def lancement_parcoureur_labs (self) :
@@ -921,7 +921,7 @@ class Boutons (tk.Frame) :
             combobox = ttk.Combobox(boss, values=type_combobox, state="readonly", justify="center", width=12, height=2, takefocus=False, style="TCombobox")
             self.items[nom_diminutif] = [combobox, position, visibilite, nom_affiche]
             self.items[nom_diminutif][0].set(nom_affiche)
-            self.fenetre.bind("<<ComboboxSelected>>", lambda event:effet(combobox, event))
+            combobox.bind("<<ComboboxSelected>>", lambda event:effet(combobox, event))
         else :
             self.items[nom_diminutif] = [tk.Button (boss, text=nom_affiche, command=effet), position, visibilite]
         if commentaire :
