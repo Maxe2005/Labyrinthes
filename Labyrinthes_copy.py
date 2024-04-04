@@ -1386,7 +1386,7 @@ class Fen_infos_generales (tk.Toplevel) :
         
         bouton_1 = tk.Button (self, text="Ouvrir le Builder de Labyrinthes", padx=20, pady=10, font=("Helvetica", 13), bg="blue", fg= "white", \
             command=self.big_boss.lancement_builder_labs)
-        #bouton_1.configure(state = 'disabled', bg="grey")
+        bouton_1.configure(state = 'disabled', bg="grey")
         bouton_1.grid(column=0, row=1)
 
 class Message_fin_lab (tk.Toplevel) :

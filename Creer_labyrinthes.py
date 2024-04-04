@@ -38,6 +38,7 @@ class Entite_superieure_crea () :
         self.fenetre.focus()
         for com in self.commentaires :
             self.fenetre.after(500, com.test)
+        self.fenetre.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.fenetre.mainloop()
     
     def lancement_parcoureur_labs (self) :
@@ -210,17 +211,17 @@ class Entite_superieure_crea () :
         return
 
     def Change_type_deplacement (self, event=None) :
-        if self.dep == "Casse" :
+        if self.type_deplacement == "Casse" :
             self.def_type_deplacement("Passe")
         else :
             self.def_type_deplacement("Casse")
 
     def def_type_deplacement (self, dep, event=None) :
         if dep == "Passe" :
-            self.dep = "Passe"
+            self.type_deplacement = "Passe"
             self.fenetre.boutons.renommer("type deplacement", "Déplacement")
         elif dep == "Casse" :
-            self.dep = "Casse"
+            self.type_deplacement = "Casse"
             self.fenetre.boutons.renommer("type deplacement", "Créer")
         else :
             print("ERREUR")
@@ -365,11 +366,12 @@ class Lab_fen_crea (tk.Tk) :
         
         self.frame_dep = tk.Frame(self.boutons)
         self.frame_dep.grid(row= 5)
-        self.boutons.def_bouton('Créer', self.big_boss.Change_type_deplacement, 1, nom_diminutif= 'type deplacement', boss= self.frame_dep,\
+        self.boutons.def_bouton("", self.big_boss.Change_type_deplacement, 1, nom_diminutif= 'type deplacement', boss= self.frame_dep,\
             commentaire="Permet de switcher entre deux modes de déplacement :\n\n- Mode Créer : casse les murs (raccourci : 'c')\n- Mode Déplacement : traverse les murs (raccourci : 'd')\n\nLe mode affiché sur le bouton est le mode actif.\n(raccouci pour switcher de mode : 'Espace')", commentaire_aligne_in="left")
         self.bind("<KeyRelease-space>", self.big_boss.Change_type_deplacement)
         self.bind("<KeyRelease-d>", partial(self.big_boss.def_type_deplacement, "Passe"))
         self.bind("<KeyRelease-c>", partial(self.big_boss.def_type_deplacement, "Casse"))
+        self.big_boss.def_type_deplacement(self.big_boss.parametres["dep initial"])
         
         self.frame_entree = tk.Frame(self.boutons)
         self.frame_entree.grid(row= 8)
@@ -885,7 +887,7 @@ class Lab_balle_crea () :
                 self.fenetre.refresh_barre_de_texte()
                 self.canvas.refresh_lab ()
             else :
-                if self.big_boss.dep == "Casse" :
+                if self.big_boss.type_deplacement == "Casse" :
                     if self.grille.lab[self.y + y_ciblage][self.x + x_ciblage] == conbinaisons[1] :
                         self.grille.lab[self.y + y_ciblage][self.x + x_ciblage] = conbinaisons[0]
                     elif self.grille.lab[self.y + y_ciblage][self.x + x_ciblage] == conbinaisons[3] :
@@ -1145,7 +1147,7 @@ class Fen_infos_generales (tk.Toplevel) :
         
         bouton_1 = tk.Button (self, text="Ouvrir le Parcoureur de Labyrinthes", padx=20, pady=10, font=("Helvetica", 13), bg="blue", fg= "white", \
             command=self.big_boss.lancement_parcoureur_labs)
-        #bouton_1.configure(state = 'disabled', bg="grey")
+        bouton_1.configure(state = 'disabled', bg="grey")
         bouton_1.grid(column=0, row=1)
 
 
