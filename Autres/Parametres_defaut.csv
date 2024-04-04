@@ -1,0 +1,29 @@
+# Entitee du parametre, Nom du parametre, valeur du parametre
+parcoureur,type deplacement initial,Lisse
+parcoureur,lab alea x,10
+parcoureur,lab alea y,5
+parcoureur,lab alea entree x,0
+parcoureur,lab alea entree y,0
+parcoureur,lab alea alerte mauvaise entree,1
+parcoureur,nb colones min,3
+parcoureur,nb colones max,50
+parcoureur,nb lignes min,3
+parcoureur,nb lignes max,35
+parcoureur,initial color mode,black
+parcoureur,decoupe du deplacement,5
+parcoureur,vitesse deplacement,45
+parcoureur,question confirmation lab suivant,0
+parcoureur,question confirmation lab precedent,0
+parcoureur,question confirmation recomencer lab,1
+parcoureur,question confirmation passage niveau 2,0
+parcoureur,question confirmation passage niveau 3,0
+parcoureur,question confirmation passage niveau 4,0
+parcoureur,question confirmation passage niveau max,1
+parcoureur,color mode hard ready,green
+parcoureur,colors mode hard moving,blue,purple,grey
+parcoureur,color mode hard impossible,red
+parcoureur,logo parcoureur,logo 2.jpg
+builder,dep initial,Casse
+builder,initial color mode,black
+builder,logo builder,logo builder 3.jpg
+builder,lab alea alerte mauvaise entree,1

@@ -2,7 +2,9 @@
 # Last modified on 11/03/24
 # Author : Maxence CHOISEL
 
-import Labyrinthes_copy as Laby_parcoureur
+import Autres.Outils as Outils
+if __name__ == "__main__" :
+    import Labyrinthes_copy as Laby_parcoureur
 import tkinter as tk
 from tkinter import messagebox
 from tkinter import ttk
@@ -11,13 +13,15 @@ from PIL import Image,ImageTk
 from math import log
 from os import path
 from csv import writer
-from typing import Literal
 
 
 class Entite_superieure_crea () :
     def __init__(self, parcoureur_labs=None) -> None:
         if parcoureur_labs is not None :
             self.Parcoureur_labs = parcoureur_labs
+            
+        self.init_variables_globales()
+        
         self.fenetre = Lab_fen_crea(self)
         self.grille = Lab_grille_crea(self, self.fenetre)
         self.canvas = Lab_canvas_crea(self, self.fenetre, self.grille)
@@ -25,7 +29,6 @@ class Entite_superieure_crea () :
         self.fenetre.init_entitees(self.grille, self.canvas, self.balle)
         self.grille.init_entitees(self.canvas, self.balle)
         self.canvas.init_entitees(self.balle)
-        self.init_variables_globales()
     
     def lancement (self) :
         self.fenetre.init_barres_boutons_et_text()
@@ -38,17 +41,50 @@ class Entite_superieure_crea () :
         self.fenetre.mainloop()
     
     def lancement_parcoureur_labs (self) :
+        global Parcoureur_labs
         if __name__ == "__main__" :
-            self.Parcoureur_labs = Laby_parcoureur.Entite_superieure(self)
-            self.Parcoureur_labs.fenetre.mainloop()
+            Parcoureur_labs = Laby_parcoureur.Entite_superieure(self)
+            Parcoureur_labs.lancement()
         else :
-            self.Parcoureur_labs.lift()
-            self.Parcoureur_labs.focus()
+            Parcoureur_labs.fenetre.lift()
+            Parcoureur_labs.fenetre.focus()
     
     def init_variables_globales (self) :
-        self.dep = "Casse"
+        self.ouvrir_param_defaut()
+        self.type_deplacement = self.parametres["dep initial"]
         self.mode_actif = ""
         self.commentaires = []
+        self.reglages_fen = False
+    
+    def ouvrir_param_defaut (self) :
+        """Télécharge les paramètres par défauts """
+        self.parametres = {}
+        self.parametres_parcoureur = []
+        with open("Autres/Parametres_defaut.csv") as f :
+            for ligne in f.readlines()[1:] :
+                l = ligne.split("\n")[0].split(",")
+                if l[0] == "builder" :
+                    if len(l[2:]) == 1 :
+                        self.parametres[l[1]] = l[2]
+                    else :
+                        self.parametres[l[1]] = l[2:]
+                else :
+                    self.parametres_parcoureur.append(ligne)
+    
+    def save_param_defaut (self) :
+        with open("Autres/Parametres_defaut.csv", "w") as f :
+            f.write("# Entitee du parametre, Nom du parametre, valeur du parametre\n")
+            for param in self.parametres_parcoureur :
+                f.write(param)
+            for param in self.parametres :
+                if type(self.parametres[param]) == list :
+                    f.write("builder,"+param+","+",".join(self.parametres[param])+"\n")
+                else :
+                    f.write("builder,"+param+","+str(self.parametres[param])+"\n")
+    
+    def on_closing (self) :
+        self.save_param_defaut()
+        self.fenetre.destroy()
     
     def aller_a_start (self, event=None) :
         if self.mode_actif :
@@ -103,8 +139,8 @@ class Entite_superieure_crea () :
         self.grille.x = len(self.grille.lab[0]) - 1
         self.grille.y = len(self.grille.lab) - 1
         self.balle.def_position(self.grille.Entree[0], self.grille.Entree[1])
-        self.boutons.renommer("type deplacement", "Déplacement")
-        self.dep = "Passe"
+        self.fenetre.boutons.renommer("type deplacement", "Déplacement")
+        self.def_type_deplacement("Passe")
         self.fenetre.redimentionner()
 
     def init_new_lab (self, nb_colones, nb_lignes, nb_colones_min:int, nb_colones_max:int, nb_lignes_min:int, nb_lignes_max:int, nom_lab:tk.Entry) :
@@ -255,7 +291,19 @@ class Entite_superieure_crea () :
         infos.mainloop()
 
     def reglages (self) :
-        pass
+        if self.reglages_fen :
+            self.reglages_fen.lift()
+            self.reglages_fen.focus()
+        else :
+            self.reglages_fen = Outils.Reglages(self.fenetre)
+            self.reglages_fen.init_entitees (self, self.fenetre, self.grille, self.canvas, self.balle)
+            self.reglages_fen.lancement([Reglages_generaux_crea])
+            self.reglages_fen.protocol("WM_DELETE_WINDOW", self.reglages_fen_on_closing)
+            self.reglages_fen.mainloop()
+    
+    def reglages_fen_on_closing (self) :
+        self.reglages_fen.destroy()
+        self.reglages_fen = False
 
 
 class Lab_fen_crea (tk.Tk) :
@@ -297,7 +345,7 @@ class Lab_fen_crea (tk.Tk) :
         self.barre_laterale_droite.grid_rowconfigure(0, weight= 1)
         self.barre_laterale_droite.grid_rowconfigure(1, weight= 4)
         self.init_logo()
-        self.boutons = Boutons(self.barre_laterale_droite, self.big_boss, self)
+        self.boutons = Outils.Boutons(self.barre_laterale_droite, self.big_boss, self)
         self.init_configuration_barre_laterale_droite()
         self.boutons.grid(column=0, row=1, sticky=tk.NSEW)
         self.init_barres_text()
@@ -354,7 +402,7 @@ class Lab_fen_crea (tk.Tk) :
         self.open_image()
 
     def open_image (self) :
-        self.image = Image.open("Idées LOGO/logo buitder 3.jpg")
+        self.image = Image.open("Idées LOGO/"+self.big_boss.parametres["logo builder"])
         xx, yy = self.image.size
         ratio = xx / yy
         x_max = self.barre_laterale_droite.winfo_width()
@@ -411,7 +459,7 @@ class Lab_canvas_crea (tk.Canvas) :
         self.big_boss = big_boss
         self.fenetre = fenetre
         self.grille = grille
-        self.couleurs(change=False, initial_value="white")
+        self.couleurs(change=False, initial_value=self.big_boss.parametres["initial color mode"])
         self.grid(column= param[0], row= param[1], sticky=tk.NSEW)
         self.mode_phase = 0
         self.bind("<Motion>", self.mouv_enca_colo)
@@ -873,232 +921,6 @@ class Lab_balle_crea () :
 
 
 
-class Boutons (tk.Frame) :
-    def __init__(self, boss, big_boss, fenetre:tk.Tk, class_comentaire=None) :
-        tk.Frame.__init__(self, boss)
-        self.big_boss = big_boss
-        self.fenetre = fenetre
-        self.items = {}
-        if class_comentaire is None :
-            self.class_comentaire = Commentaire
-        else :
-            self.class_comentaire = class_comentaire
-    
-    def init_grid (self, nb_lignes=1, nb_colones=1) :
-        self.nb_lignes = nb_lignes
-        self.nb_colones = nb_colones
-        for i in range (self.nb_colones) :
-            self.grid_columnconfigure(i, weight= 1)
-        for i in range (self.nb_lignes) :
-            self.grid_rowconfigure(i, weight= 1)
-    
-    def init_visible_debut (self) :
-        self.is_visible_debut = []
-        for bout in self.items :
-            if self.items[bout][2] == "Visible" :
-                self.is_visible_debut.append(bout)
-
-    def def_bouton (self, nom_affiche:str, effet, position, boss=None, nom_diminutif:str = "", visibilite:str = "Visible", commentaire:str = "", commentaire_aligne_in:str = "center", commentaire_position_out:list = ["L","B","R","T"], type_combobox:list = [], sticky:str="") :
-        """Permet de définir un bouton
-
-        Args:
-            - nom_affiche (str): Nom visible sur le bouton
-            - effet (_fonction_): la fonction à appeler si le bouton est préssé.
-            - position (int or tuple of int): la position pour grid (column, row). Si le nombre de colones (ou de lignes) est de 1, seul le row est nesséssaire (et inversement pour colomn).
-            - boss (_type_, optional): entitée sur leaquelle est placé le bouton . Defaults to own class Boutons.
-            - nom_diminutif (str, optional): nom plus cours. Defaults to "".
-            - visibilite (str, optional): visible dès le début? (valeurs possibles : 'Visible' ou 'Caché'). Defaults to "Visible".
-            - commentaire (str, optional): ajoute un commentaire avec le bouton. Defaults to "".
-            - aligne_in (str, optional): Alignement du texte à l'interieur du commentaire. Defaults to "center".
-            - position_out (list, optional): L'ordre d'essai de positionnement autour du widget ('L' pour left, 'R' pour right, 'T' pour top et 'B' pour bottom). Defaults to ["L","B","R","T"].
-            - type_combobox (list, optional): si le bouton est un ttk.Combobox remplire la list avec la liste des éléments à mettre dans le combobox. Defaults to [] (means off).
-            - sticky (str, optional) : Permet d'ajouter un sticky sur le positionement du bouton.
-        """
-        if not(nom_diminutif) :
-            nom_diminutif = nom_affiche
-        if boss is None :
-            boss = self
-        if type_combobox :
-            combobox = ttk.Combobox(boss, values=type_combobox, state="readonly", justify="center", width=12, height=2, takefocus=False, style="TCombobox")
-            self.items[nom_diminutif] = [combobox, position, visibilite, nom_affiche]
-            self.items[nom_diminutif][0].set(nom_affiche)
-            combobox.bind("<<ComboboxSelected>>", lambda event:effet(combobox, event))
-        else :
-            self.items[nom_diminutif] = [tk.Button (boss, text=nom_affiche, command=effet), position, visibilite]
-        if commentaire :
-            com = self.class_comentaire(self.fenetre, self.items[nom_diminutif][0], commentaire, commentaire_aligne_in, commentaire_position_out)
-            self.items[nom_diminutif].append(com)
-            self.big_boss.commentaires.append(com)
-        if visibilite == "Visible" :
-            if self.nb_colones == 1 :
-                ligne = self.items[nom_diminutif][1]
-                colone = 0
-            elif self.nb_lignes == 1 :
-                colone= self.items[nom_diminutif][1]
-                ligne = 0
-            else :
-                colone = self.items[nom_diminutif][1][0]
-                ligne = self.items[nom_diminutif][1][1]
-            if sticky :
-                self.items[nom_diminutif][0].grid(column= colone, row= ligne, sticky= sticky)
-            else :
-                self.items[nom_diminutif][0].grid(column= colone, row= ligne)
-
-    def redimentionner (self, text_size = None) :
-        if text_size is None :
-            text_size = int(5*log(self.fenetre.winfo_width()/100))
-        for bout in self.items :
-            self.items[bout][0].config(font=("Verdana", text_size))
-            if type(self.items[bout][-1]) == Commentaire :
-                self.items[bout][-1].commentaire_label.config(font=("Verdana", text_size))
-
-    def afficher (self, nom_bouton) :
-        self.items[nom_bouton][0].grid(row= self.items[nom_bouton][1])
-        self.items[nom_bouton][2] = "Visible"
-
-    def cacher (self, nom_bouton) :
-        self.items[nom_bouton][0].grid_forget()
-        self.items[nom_bouton][2] = "Caché"
-
-    def affiche_boutons_debut (self) :
-        for bout in self.is_visible_debut :
-            self.afficher(bout)
-    
-    def cache_tout_sauf (self, ele=[]) :
-        for bout in self.items :
-            if bout not in ele :
-                self.cacher(bout)
-    
-    def renommer (self, nom_bouton:str, new_nom_bouton:str) :
-        if type(self.items[nom_bouton][0]) == tk.Button :
-            self.items[nom_bouton][0]["text"] = new_nom_bouton
-        elif type(self.items[nom_bouton][0]) == ttk.Combobox :
-            self.items[nom_bouton][0].set(new_nom_bouton)
-
-    def is_visible (self, nom_bouton:str) :
-        return self.items[nom_bouton][2] == "Visible"
-    
-    def supprimer (self, nom_bouton:str) :
-        self.cacher (nom_bouton)
-        self.items[nom_bouton].destroy()
-
-class Commentaire (tk.Toplevel) :
-    def __init__(self, fenetre, widget, texte:str, aligne_in:str = "center" | Literal["center", "left", "right","top", "bottom"] , position_out:list = ["L","B","R","T"]) -> None :
-        """Permet d'affecter un commentaire à un widget
-
-        Args:
-            - fenetre (tk.Tk or tk.Toplevel): la fenêtre parente du commentaire
-            - widget (_widget tkiner_): le widget auquel est attaché et destiné le commentaire
-            - texte (str): le contenu du commentaire
-            - aligne_in (str, optional): Alignement du texte à l'interieur du commentaire. Defaults to "center".
-            - position_out (list, optional): L'ordre d'essai de positionnement autour du widget ('L' pour left, 'R' pour right, 'T' pour top et 'B' pour bottom). Defaults to ["L","B","R","T"].
-        """
-        tk.Toplevel.__init__(self, master=fenetre)
-        self.fenetre = fenetre
-        self.widget = widget
-        self.position_out = position_out
-        self.init_position_out_posibles()
-        self.withdraw()  # Masquer initialement le commentaire
-        self.overrideredirect(True)  # Supprimer la bordure de la fenêtre
-        #if aligne_in == "center" :
-        just = tk.CENTER
-        if aligne_in == "left" :
-            just = tk.LEFT
-        elif aligne_in == "right" :
-            just = tk.RIGHT
-        elif aligne_in == "top" :
-            just = tk.TOP
-        elif aligne_in == "bottom" :
-            just = tk.BOTTOM
-        self.commentaire_label = tk.Label(self, text=texte, justify=just, bg="grey", fg="white")
-        self.commentaire_label.grid()
-        self.marge_bouton = 10  # En pixels
-        self.widget.bind("<Enter>", self.attendre_avant_afficher)
-        self.widget.bind("<Leave>", self.effacer_commentaire)
-
-    def init_position_out_posibles (self) :
-        self.position_out_posibles = {}
-        self.position_out_posibles["L"] = self.def_pos_left
-        self.position_out_posibles["B"] = self.def_pos_bottom
-        self.position_out_posibles["R"] = self.def_pos_right
-        self.position_out_posibles["T"] = self.def_pos_top
-    
-    def attendre_avant_afficher (self, event=None) :
-        self.affichage_possible = True
-        self.after(1000, self.afficher_commentaire)
-    
-    def afficher_commentaire(self) :
-        if self.affichage_possible :
-            x, y = self.widget.winfo_rootx(), self.widget.winfo_rooty()
-            self.position_out_posibles[self.position_out[0]](x, y)
-            self.verif_not_out_window()
-            i = 1
-            self.conditions(x,y)
-            while (self.at_least_one_corner_in or self.passing_in_front) and i < len(self.position_out) :
-                self.position_out_posibles[self.position_out[i]](x, y)
-                self.verif_not_out_window()
-                i += 1
-                self.conditions(x,y)
-            if i == len(self.position_out) :
-                self.def_pos_bottom(x, y)
-            self.geometry(f"+{self.pos_x}+{self.pos_y}") 
-            self.deiconify()  # Afficher le commentaire
-    
-    def conditions (self, x, y) :
-        x1_in = self.pos_x < x < self.pos_x + self.winfo_width()
-        x2_in = self.pos_x < x + self.widget.winfo_width() < self.pos_x + self.winfo_width()
-        y1_in = self.pos_y < y < self.pos_y + self.winfo_height()
-        y2_in = self.pos_y < y + self.widget.winfo_height() < self.pos_y + self.winfo_height()
-        self.at_least_one_corner_in = (x1_in or x2_in) and (y1_in or y2_in)
-        x1_avant = self.pos_x > x
-        x2_apres = x + self.widget.winfo_height() > self.pos_x + self.winfo_height()
-        y1_avant = self.pos_y > y
-        y2_apres = y + self.widget.winfo_height() > self.pos_y + self.winfo_height()
-        passing_in_front_x = x1_avant and x2_apres and (y1_in or y2_in)
-        passing_in_front_y = y1_avant and y2_apres and (x1_in or x2_in)
-        hide_completely = x1_avant and x2_apres and y1_avant and y2_apres
-        self.passing_in_front = passing_in_front_x or passing_in_front_y or hide_completely
-    
-    def def_pos_left (self, x, y) :
-        self.pos_x = x - self.winfo_width() - self.marge_bouton
-        self.pos_y = round(y + (self.widget.winfo_height()/2) - self.winfo_height()/2)
-    
-    def def_pos_right (self, x, y) :
-        self.pos_x = x + self.widget.winfo_width() + self.marge_bouton
-        self.pos_y = round(y + (self.widget.winfo_height()/2) - self.winfo_height()/2)
-    
-    def def_pos_bottom (self, x, y) :
-        self.pos_x = round(x + (self.widget.winfo_width() / 2) - (self.winfo_width() / 2))
-        self.pos_y = y + self.widget.winfo_height() + self.marge_bouton
-    
-    def def_pos_top (self, x, y) :
-        self.pos_x = round(x + (self.widget.winfo_width() / 2) - (self.winfo_width() / 2))
-        self.pos_y = y - self.winfo_height() - self.marge_bouton
-    
-    def verif_not_out_window(self) :
-        marge = 10  # En pixels
-        if self.pos_x - marge < self.fenetre.winfo_rootx() :
-            self.pos_x = self.fenetre.winfo_rootx() + marge
-        elif self.pos_x + self.winfo_width() + marge > self.fenetre.winfo_rootx() + self.fenetre.winfo_width() :
-            self.pos_x = self.fenetre.winfo_rootx() + self.fenetre.winfo_width() - self.winfo_width() - marge
-        if self.pos_y < self.fenetre.winfo_rooty() - marge :
-            self.pos_y = self.fenetre.winfo_rooty() + marge
-        elif self.pos_y + self.winfo_height() + marge > self.fenetre.winfo_rooty() + self.fenetre.winfo_height() :
-            self.pos_y = self.fenetre.winfo_rooty() + self.fenetre.winfo_height() - self.winfo_height() - marge
-    
-    def effacer_commentaire(self, event):
-        self.affichage_possible = False
-        self.withdraw()  # Masquer le commentaire lorsque le curseur quitte le bouton
-
-    def test (self) :
-        """
-        Permet d'afficher brièvement le commentaire pour que la fenêtre puisse correctement définir ses dimentions
-        """
-        self.deiconify()
-        self.after(200, self.withdraw)
-
-
-
 class Fen_chose_new_lab (tk.Toplevel) :
     def __init__ (self, boss, big_boss) :
         tk.Toplevel.__init__(self, boss)
@@ -1323,7 +1145,130 @@ class Fen_infos_generales (tk.Toplevel) :
         
         bouton_1 = tk.Button (self, text="Ouvrir le Parcoureur de Labyrinthes", padx=20, pady=10, font=("Helvetica", 13), bg="blue", fg= "white", \
             command=self.big_boss.lancement_parcoureur_labs)
+        #bouton_1.configure(state = 'disabled', bg="grey")
         bouton_1.grid(column=0, row=1)
+
+
+class Reglages_generaux_crea (Outils.Base_Reglages) :
+    def __init__ (self, boss, big_boss) :
+        Outils.Base_Reglages.__init__(self, boss, big_boss, "Généraux")
+    
+    def lancement (self) :
+        Outils.Base_Reglages.lancement(self, "Réglages Généraux")
+        
+        self.initial_type_deplacement(1)
+        self.initial_couleur_mode(2)
+        self.logo(3)
+    
+    def initial_type_deplacement (self, position) :
+        type_dep = tk.Frame(self, pady=20)
+        type_dep.grid(column=0, row=position, sticky=tk.NSEW)
+        type_dep.grid_columnconfigure(0, weight= 1)
+        type_dep.grid_columnconfigure(1, weight= 1)
+        
+        text = tk.Label(type_dep, text="Type de déplacement initial :", font=("Helvetica", 13))
+        text.grid(column=0, row=0)
+        
+        self.type_dep = {"Casser murs (Créer)":"Casse", "Déplacement":"Passe"}
+        type_dep_reverse = {}
+        for el in self.type_dep :
+            type_dep_reverse[self.type_dep[el]] = el
+        nom_types_dep = list(self.type_dep.keys())
+        self.combobox_type_dep = ttk.Combobox(type_dep, values=nom_types_dep, state="readonly", justify="center", width=20, height=2, takefocus=False, style="TCombobox", font=("Helvetica", 12))
+        self.combobox_type_dep.set(type_dep_reverse[self.big_boss.parametres["dep initial"]])
+        self.combobox_type_dep.grid(column=1, row=0)
+    
+    def initial_couleur_mode (self, position) :
+        couleur_mode = tk.Frame(self, pady=20)
+        couleur_mode.grid(column=0, row=position, sticky=tk.NSEW)
+        couleur_mode.grid_columnconfigure(0, weight= 1)
+        couleur_mode.grid_columnconfigure(1, weight= 1)
+        
+        text_taille_lab = tk.Label(couleur_mode, text="Couleur glabale initiale:", font=("Helvetica", 13))
+        text_taille_lab.grid(column=0, row=0)
+        
+        color_modes = ["black", "white"]
+        self.combobox_initial_couleur_mode = ttk.Combobox(couleur_mode, values=color_modes, state="readonly", justify="center", width=12, height=2, takefocus=False, style="TCombobox", font=("Helvetica", 15))
+        self.combobox_initial_couleur_mode.set(self.big_boss.parametres["initial color mode"])
+        self.combobox_initial_couleur_mode.grid(column=1, row=0)
+    
+    def logo (self, position) :
+        logo = tk.Frame(self, border=10)
+        logo.grid(column=0, row=position, sticky=tk.NSEW)
+        logo.grid_columnconfigure(0, weight= 1)
+        logo.grid_columnconfigure(1, weight= 1)
+        logo.grid_rowconfigure(0, weight= 1)
+        logo.grid_rowconfigure(1, weight= 1)
+        
+        self.ouvrir_nom_logos()
+        self.label_image = tk.Label(logo, font=("Helvetica", 14))
+        self.label_image.grid(column=1, row=0, rowspan=2)
+        self.open_image(self.big_boss.parametres["logo builder"])
+        
+        choix_logo_et_titre = tk.Label(logo)
+        choix_logo_et_titre.grid(column=0, row=0)
+        text_taille_lab = tk.Label(choix_logo_et_titre, text="Logo :", font=("Helvetica", 14))
+        text_taille_lab.grid(column=0, row=0)
+        
+        choix_logo = tk.Frame(choix_logo_et_titre, border=10)
+        choix_logo.grid(column=0, row=1)
+        self.liste_nom_logos = list(self.nom_logos.keys())
+        self.combobox_nom_logo = ttk.Combobox(choix_logo, values=self.liste_nom_logos, state="readonly", justify="center", width=15, height=10, takefocus=False, style="TCombobox", font=("Helvetica", 13))
+        self.combobox_nom_logo.set(self.nom_logos_reverse[self.big_boss.parametres["logo builder"]])
+        self.combobox_nom_logo.bind("<<ComboboxSelected>>", self.change_visuel_logo)
+        self.combobox_nom_logo.grid(column=1, row=0)
+        bouton_moins = tk.Button(choix_logo, text="<-", command=self.logo_moins)
+        bouton_moins.grid(column=0, row=0)
+        bouton_plus = tk.Button(choix_logo, text="->", command=self.logo_plus)
+        bouton_plus.grid(column=3, row=0)
+    
+    def change_visuel_logo (self, event=None, nom_logo=None) :
+        if nom_logo is None :
+            nom_logo = self.combobox_nom_logo.get()
+        self.open_image(self.nom_logos[nom_logo])
+        self.combobox_nom_logo.set(nom_logo)
+    
+    def logo_moins (self) :
+        index = self.liste_nom_logos.index(self.combobox_nom_logo.get())
+        self.change_visuel_logo(nom_logo=self.liste_nom_logos[(index-1) % len(self.liste_nom_logos)])
+    
+    def logo_plus (self) :
+        index = self.liste_nom_logos.index(self.combobox_nom_logo.get())
+        self.change_visuel_logo(nom_logo=self.liste_nom_logos[(index+1) % len(self.liste_nom_logos)])
+    
+    def ouvrir_nom_logos (self) :
+        """Télécharge les nom des logos possibles"""
+        self.nom_logos = {}
+        self.nom_logos_reverse = {}
+        with open("Idées LOGO/#Index_logos_builder.csv") as f :
+            for ligne in f.readlines()[1:] :
+                l = ligne.split("\n")[0].split(",")
+                if len(l) == 1 :
+                    self.nom_logos[l[0]] = l[0]
+                    self.nom_logos_reverse[l[0]] = l[0]
+                elif len(l) == 2 :
+                    self.nom_logos[l[1]] = l[0]
+                    self.nom_logos_reverse[l[0]] = l[1]
+                else :
+                    print("Erreur fichier 'Index_logos_builder'")
+    
+    def open_image (self, nom) :
+        self.image = Image.open("Idées LOGO/"+nom)
+        xx, yy = self.image.size
+        ratio = xx / yy
+        x_max = 200
+        x = round(70/100 * x_max)
+        y = round(x / ratio)
+        self.image = self.image.resize((x,y))
+        self.image_photo = ImageTk.PhotoImage(self.image)
+        self.label_image["image"] = self.image_photo
+    
+    def appliquer_modifications (self) :
+        self.big_boss.parametres["dep initial"] = self.type_dep[self.combobox_type_dep.get()]
+        self.big_boss.parametres["initial color mode"] = self.combobox_initial_couleur_mode.get()
+        self.big_boss.parametres["logo builder"] = self.nom_logos[self.combobox_nom_logo.get()]
+        self.big_boss.fenetre.open_image()
+
 
 
 if __name__ == "__main__" :
