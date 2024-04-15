@@ -1,8 +1,7 @@
 # Created on 10/02/23
-# Last modified on 30/03/24
 # Author : Maxence CHOISEL
 
-import Autres.Outils as Outils
+import Autres.Outils_Tkinter.Outils as Outils
 if __name__ == "__main__" :
     import Creer_labyrinthes as Laby_builder
 from typing import Literal
@@ -208,12 +207,13 @@ class Entite_superieure () :
             self.reglages_fen.focus()
         else :
             self.reglages_fen = Outils.Reglages(self.fenetre)
-            self.reglages_fen.init_entitees (self, self.fenetre, self.grille, self.canvas, self.balle)
+            self.reglages_fen.init_entitees (self, self.fenetre)
             self.reglages_fen.lancement([Reglages_generaux,\
                                         Reglages_lab_alea,\
                                         Reglages_apparence,\
                                         Reglages_balle,\
-                                        Reglages_question_confirmation])
+                                        Reglages_question_confirmation],\
+                                        grille=self.grille, canvas=self.canvas, balle=self.balle)
             self.reglages_fen.protocol("WM_DELETE_WINDOW", self.reglages_fen_on_closing)
             self.reglages_fen.mainloop()
     
@@ -311,28 +311,44 @@ class Laby_fen (tk.Tk) :
         """
         self.boutons_lateraux_droits.init_grid(nb_lignes=10)
         
-        self.boutons_lateraux_droits.def_bouton('Réglages', self.big_boss.reglages, 0, commentaire="Accès au réglages\n(raccourci : 'r')")
+        btn = self.boutons_lateraux_droits.def_bouton('Réglages', self.big_boss.reglages, 0)
+        com = btn.add_commentaire(self, "Accès au réglages\n(raccourci : 'r')")
+        self.big_boss.commentaires.append(com)
         self.bind("<KeyRelease-r>", self.big_boss.reglages)
         
-        self.boutons_lateraux_droits.def_bouton('Couleurs', self.canvas.couleurs, 1, commentaire="Change la couleur du canvas\n(raccourci : 'ctrl' + 'c')")
+        btn = self.boutons_lateraux_droits.def_bouton('Couleurs', self.canvas.couleurs, 1)
+        com = btn.add_commentaire(self, "Change la couleur du canvas\n(raccourci : 'ctrl' + 'c')")
+        self.big_boss.commentaires.append(com)
         self.bind("<Control-KeyRelease-c>", self.canvas.couleurs)
         
-        self.boutons_lateraux_droits.def_bouton('Aller à', self.big_boss.aller_a, 2, commentaire="Permet de se rendre rapidement\nsur le labyrinthe souhaité\n(raccourci : 'a')")
+        btn = self.boutons_lateraux_droits.def_bouton('Aller à', self.big_boss.aller_a, 2)
+        com = btn.add_commentaire(self, "Permet de se rendre rapidement\nsur le labyrinthe souhaité\n(raccourci : 'a')")
+        self.big_boss.commentaires.append(com)
         self.bind("<KeyRelease-a>", self.big_boss.aller_a)
         
-        self.boutons_lateraux_droits.def_bouton('Labyrinthe\nAléatoire', self.big_boss.type_labyrinthe, 3, nom_diminutif="type lab", commentaire="Permet de switcher entre les Labyrinthes\nClassiques et les Labyrinthes Aléatoires.\nLe type affiché est le type non-actif.\n(raccourci : 't')")
+        btn = self.boutons_lateraux_droits.def_bouton('Labyrinthe\nAléatoire', self.big_boss.type_labyrinthe, 3, nom_diminutif="type lab")
+        com = btn.add_commentaire(self, "Permet de switcher entre les Labyrinthes\nClassiques et les Labyrinthes Aléatoires.\nLe type affiché est le type non-actif.\n(raccourci : 't')")
+        self.big_boss.commentaires.append(com)
         self.bind("<KeyRelease-t>", self.big_boss.type_labyrinthe)
         
-        self.boutons_lateraux_droits.def_bouton('New Lab\nAléatoire', self.big_boss.new_lab_alea, 4,  nom_diminutif="new lab alea", visibilite="Cache", commentaire="Génère un nouveau Labyrinthe aléatoire")
+        btn = self.boutons_lateraux_droits.def_bouton('New Lab\nAléatoire', self.big_boss.new_lab_alea, 4,  nom_diminutif="new lab alea", visibilite="Cache")
+        com = btn.add_commentaire(self, "Génère un nouveau Labyrinthe aléatoire")
+        self.big_boss.commentaires.append(com)
         
-        self.boutons_lateraux_droits.def_bouton('Déplacement\n'+self.big_boss.type_deplacement, self.big_boss.change_type_deplacement, 6, nom_diminutif= 'type deplacement', commentaire="Permet de switcher entre deux modes de déplacement :\n\n- Mode Lisse : permet de programmer à l'avance\n\tla prochaine direction (raccourci : 'l')\n- Mode Sec : déplacement case par case (raccourci : 's')\n\nLe mode affiché sur le bouton est le mode actif.", commentaire_aligne_in="left")
+        btn = self.boutons_lateraux_droits.def_bouton('Déplacement\n'+self.big_boss.type_deplacement, self.big_boss.change_type_deplacement, 6, nom_diminutif= 'type deplacement')
+        com = btn.add_commentaire(self, "Permet de switcher entre deux modes de déplacement :\n\n- Mode Lisse : permet de programmer à l'avance\n\tla prochaine direction (raccourci : 'l')\n- Mode Sec : déplacement case par case (raccourci : 's')\n\nLe mode affiché sur le bouton est le mode actif.", aligne_in="left")
+        self.big_boss.commentaires.append(com)
         self.bind("<KeyRelease-s>", partial(self.big_boss.def_type_deplacement, "Sec"))
         self.bind("<KeyRelease-l>", partial(self.big_boss.def_type_deplacement, "Lisse"))
         
-        self.boutons_lateraux_droits.def_bouton('Niveau Max', self.big_boss.niveau.niveau_max, 8, commentaire="Permet d'activer (et désactiver) le Niveau Maximum :\nDans ce niveau les murs sont invisibles\n(raccourci : 'm')")
+        btn = self.boutons_lateraux_droits.def_bouton('Niveau Max', self.big_boss.niveau.niveau_max, 8)
+        com = btn.add_commentaire(self, "Permet d'activer (et désactiver) le Niveau Maximum :\nDans ce niveau les murs sont invisibles\n(raccourci : 'm')")
+        self.big_boss.commentaires.append(com)
         self.bind("<KeyRelease-m>", self.big_boss.niveau.niveau_max)
         
-        self.boutons_lateraux_droits.def_bouton('Mode HARD', self.big_boss.mode_HARD, 9, commentaire="Permet d'activer (et désactiver) le mode HARD :\nDans ce mode la balle est invisible\n(raccourci : 'h')")
+        btn = self.boutons_lateraux_droits.def_bouton('Mode HARD', self.big_boss.mode_HARD, 9)
+        com = btn.add_commentaire(self, "Permet d'activer (et désactiver) le mode HARD :\nDans ce mode la balle est invisible\n(raccourci : 'h')")
+        self.big_boss.commentaires.append(com)
         self.bind("<KeyRelease-h>", self.big_boss.mode_HARD)
     
     def init_logo (self, boss, params=[0,0]) :
@@ -383,18 +399,34 @@ class Laby_fen (tk.Tk) :
         
         self.niveau_frame = tk.Frame(self.boutons_top_left)
         self.niveau_frame.grid(column=0, row=0)
-        self.boutons_top_left.def_bouton('<-', self.big_boss.niveau.moins, 0, boss=self.niveau_frame, sticky="e", nom_diminutif= "niveau moins", commentaire="Passer au niveau inférieur", commentaire_position_out=["B","L","R","T"])
-        self.boutons_top_left.def_bouton('Niveau', self.big_boss.niveau.fenetre_presentation, 1, boss=self.niveau_frame, sticky="ew", commentaire="Présetation des niveaux", commentaire_position_out=["B","L","R","T"])
-        self.boutons_top_left.def_bouton('->', self.big_boss.niveau.plus, 2, boss=self.niveau_frame, sticky="w", nom_diminutif= "niveau plus", commentaire="Passer au niveau supérieur", commentaire_position_out=["B","L","R","T"])
+        btn = self.boutons_top_left.def_bouton('<-', self.big_boss.niveau.moins, 0, boss=self.niveau_frame, sticky="e", nom_diminutif= "niveau moins")
+        com = btn.add_commentaire(self, "Passer au niveau inférieur", position_out=["B","L","R","T"])
+        self.big_boss.commentaires.append(com)
+        
+        btn = self.boutons_top_left.def_bouton('Niveau', self.big_boss.niveau.fenetre_presentation, 1, boss=self.niveau_frame, sticky="ew")
+        com = btn.add_commentaire(self, "Présetation des niveaux", position_out=["B","L","R","T"])
+        self.big_boss.commentaires.append(com)
+        
+        btn = self.boutons_top_left.def_bouton('->', self.big_boss.niveau.plus, 2, boss=self.niveau_frame, sticky="w", nom_diminutif= "niveau plus")
+        com = btn.add_commentaire(self, "Passer au niveau supérieur", position_out=["B","L","R","T"])
+        self.big_boss.commentaires.append(com)
         
         self.difficultee_frame = tk.Frame(self.boutons_top_left)
         if self.boutons_top_left.winfo_width() < min_y :
             self.difficultee_frame.grid(column=0, row=1)
         else :
             self.difficultee_frame.grid(column=1, row=0)
-        self.boutons_top_left.def_bouton('<-', self.big_boss.difficultee.moins, 0, boss=self.difficultee_frame, sticky="e", nom_diminutif= "difficultée moins", commentaire="Passer à la difficultée inférieure", commentaire_position_out=["B","L","R","T"])
-        self.boutons_top_left.def_bouton('Difficultée', self.big_boss.difficultee.fenetre_presentation, 1, boss=self.difficultee_frame, sticky="ew", commentaire="Présetation des difficultées", commentaire_position_out=["B","L","R","T"])
-        self.boutons_top_left.def_bouton('->', self.big_boss.difficultee.plus, 2, boss=self.difficultee_frame, sticky="w", nom_diminutif= "difficultée plus", commentaire="Passer à la difficultée supérieure", commentaire_position_out=["B","L","R","T"])
+        btn = self.boutons_top_left.def_bouton('<-', self.big_boss.difficultee.moins, 0, boss=self.difficultee_frame, sticky="e", nom_diminutif= "difficultée moins")
+        com = btn.add_commentaire(self, "Passer à la difficultée inférieure", position_out=["B","L","R","T"])
+        self.big_boss.commentaires.append(com)
+        
+        btn = self.boutons_top_left.def_bouton('Difficultée', self.big_boss.difficultee.fenetre_presentation, 1, boss=self.difficultee_frame, sticky="ew")
+        com = btn.add_commentaire(self, "Présetation des difficultées", position_out=["B","L","R","T"])
+        self.big_boss.commentaires.append(com)
+        
+        btn = self.boutons_top_left.def_bouton('->', self.big_boss.difficultee.plus, 2, boss=self.difficultee_frame, sticky="w", nom_diminutif= "difficultée plus")
+        com = btn.add_commentaire(self, "Passer à la difficultée supérieure", position_out=["B","L","R","T"])
+        self.big_boss.commentaires.append(com)
     
     def init_boutons_barre_top_right (self) :
         """
@@ -406,13 +438,16 @@ class Laby_fen (tk.Tk) :
         else :
             self.boutons_top_right.init_grid(nb_colones=3)
         
-        self.boutons_top_right.def_bouton('<- Précédent', self.big_boss.precedent_lab, 0, sticky="e", commentaire="Accès au labyrinthe précédent\n(raccourci : 'p')", commentaire_position_out=["B","L","R","T"])
+        btn = self.boutons_top_right.def_bouton('<- Précédent', self.big_boss.precedent_lab, 0, sticky="e")
+        btn.add_commentaire(self, "Accès au labyrinthe précédent\n(raccourci : 'p')", position_out=["B","L","R","T"])
         self.bind("<KeyRelease-p>", self.big_boss.precedent_lab)
         
-        self.boutons_top_right.def_bouton('Recomencer', self.big_boss.recomencer_lab, 1, sticky="ew", commentaire="Permet de recomencer le labyrinthe\nen retournant au début\n(raccourci : 'r')", commentaire_position_out=["B","L","R","T"])
+        btn = self.boutons_top_right.def_bouton('Recomencer', self.big_boss.recomencer_lab, 1, sticky="ew")
+        btn.add_commentaire(self, "Permet de recomencer le labyrinthe\nen retournant au début\n(raccourci : 'r')", position_out=["B","L","R","T"])
         self.bind("<KeyRelease-r>", self.big_boss.recomencer_lab)
         
-        self.boutons_top_right.def_bouton('Suivant ->', self.big_boss.suivant_lab, 2, sticky="w", commentaire="Accès au labyrinthe suivant", commentaire_position_out=["B","L","R","T"])#\n(raccourci : 's')")
+        btn = self.boutons_top_right.def_bouton('Suivant ->', self.big_boss.suivant_lab, 2, sticky="w")
+        btn.add_commentaire(self, "Accès au labyrinthe suivant", position_out=["B","L","R","T"])#\n(raccourci : 's')")
         #self.bind("<KeyRelease-s>", self.big_boss.suivant_lab)
     
     def redimentionner (self,event=None) :
@@ -1298,7 +1333,7 @@ class Niveaux_fen (tk.Toplevel) :
         texte = """Le Niveau 1 permet de parcourir les labyrinthes 'normalement'
 c'est à dire sans aucune gène particulière.
 \nLe Niveau 1 ne contient pas de Difficultées"""
-        Infos(self, titre, texte)
+        Outils.Infos(self, titre, texte)
     
     def info_niv2 (self) :
         titre = "Informations Niveau 2"
@@ -1311,7 +1346,7 @@ Dans ce niveau, plus on augmente la Difficultée, plus les labyrinthes sont
 divisés/découpés en plus de morceaux (et donc les morceaux sont plus petits).
 A la Difficultée 1(respectivement 2 et 3), les morceaux découverts disparaissent
 quand la moitiée (respectivement 1/4 et 1/8) des morceaux ont été découverts."""
-        Infos(self, titre, texte, pourcentage_largeur=85)
+        Outils.Infos(self, titre, texte, pourcentage_largeur=85)
     
     def info_niv3 (self) :
         titre = "Informations Niveau 3"
@@ -1323,7 +1358,7 @@ morceau, seul le morceau que vous parcourez est visible.
 Dans ce niveau, plus on augmente la Difficultée,
 plus les labyrinthes sont divisés/découpés en plus de
 morceaux (et donc les morceaux sont plus petits)"""
-        Infos(self, titre, texte, pourcentage_largeur=85)
+        Outils.Infos(self, titre, texte, pourcentage_largeur=85)
     
     def info_niv4 (self) :
         titre = "Informations Niveau 4"
@@ -1335,54 +1370,18 @@ découvrez plus de la moitié des murs, ils re-disparaissent !
 Dans ce niveau, plus on augmente la Difficultée, plus les murs disparaissent tôt :
 à la Difficultée 1(respectivement 2 et 3), les murs découverts disparaissent
 quand la moitiée (respectivement 1/4 et 1/8) des murs ont été découverts."""
-        Infos(self, titre, texte, pourcentage_largeur=80)
+        Outils.Infos(self, titre, texte, pourcentage_largeur=80)
 
-class Infos (tk.Toplevel) :
-    def __init__(self, boss, titre:str = "test", texte:str = "test", pourcentage_largeur:int = 90, police:str = "arial", taille_police:int = 15, color:int = "white") :
-        tk.Toplevel.__init__(self,boss)
-        self.boss = boss
-        self.title(titre)
-        taille_ligne_max = 0
-        for ligne in texte.split("\n") :
-            if len(ligne) > taille_ligne_max :
-                taille_ligne_max = len(ligne)
-        self.text = tk.Text(self, wrap= tk.WORD, width=int((pourcentage_largeur/100)*taille_ligne_max), height=texte.count("\n")+6, padx=30, pady=30, font=(police, taille_police), bg=color)
-        self.text.insert(1.0, titre+"\n\n", ("titre"))
-        self.text.insert("end", texte, ("content"))
-        self.text.insert('end', '\n\nMax :)'+" "*10, ("footer")) 
-        self.text.tag_config('titre', font=police+" "+str(taille_police+2), justify=tk.CENTER)
-        self.text.tag_config('content', justify=tk.CENTER)
-        self.text.tag_config('footer', justify=tk.RIGHT)
-        self.text['state'] = 'disabled'
-        self.text.pack()
-        self.resizable(False, False)
-        self.mainloop()
 
-class Fen_infos_generales (tk.Toplevel) :
+class Fen_infos_generales (Outils.Infos_generales) :
     def __init__ (self, boss, big_boss) :
-        tk.Toplevel.__init__(self, boss)
+        Outils.Infos_generales.__init__(self, boss)
         self.big_boss = big_boss
-        self.title("Informations Générales")
-        self.nb_lignes = 2
-        self.nb_colones = 1
-        for i in range (self.nb_colones) :
-            self.grid_columnconfigure(i, weight= 1) 
-        for i in range (self.nb_lignes) :
-            self.grid_rowconfigure(i, weight= 1)
-        
         self.init_contenu()
-        
-        self.resizable(False, False)
-        self.focus_set()
     
     def init_contenu (self) :
-        text = tk.Text(self, wrap= tk.WORD, width=55, height=8, padx=50, pady=30, font=("Helvetica", 15))
-        text.insert(0.1, "Bienvenu dans le Parcoureur de Labyrinthes !\n\n\nC'est ici que vous pouvez jouer avec les labyrinthes dans différents modes.")
-        text['state'] = 'disabled'
-        text.grid(column=0, row=0, sticky=tk.NSEW)
-        text.tag_add("titre", "1.0", "1.46")
-        text.tag_config("titre", foreground="red", font=("Helvetica", 20), justify='center')
-        
+        self.init_titre_et_texte("Bienvenu dans le Parcoureur de Labyrinthes !",\
+            "C'est ici que vous pouvez jouer avec les labyrinthes dans différents modes.")
         
         bouton_1 = tk.Button (self, text="Ouvrir le Builder de Labyrinthes", padx=20, pady=10, font=("Helvetica", 13), bg="blue", fg= "white", \
             command=self.big_boss.lancement_builder_labs)
@@ -1525,8 +1524,13 @@ class Chrono(tk.Frame):
 
 
 class Reglages_lab_alea (Outils.Base_Reglages) :
-    def __init__ (self, boss, big_boss) :
-        Outils.Base_Reglages.__init__(self, boss, big_boss, "Générateur de labyrinthes")
+    def __init__ (self, boss) :
+        Outils.Base_Reglages.__init__(self, boss, "Générateur de labyrinthes")
+    
+    def init_entitees (self, grille, canvas, balle) :
+        self.grille = grille
+        self.canvas = canvas
+        self.balle = balle
     
     def lancement (self) :
         Outils.Base_Reglages.lancement(self, "Réglages du Générateur de Labyrinthes")
@@ -1694,8 +1698,13 @@ class Reglages_lab_alea (Outils.Base_Reglages) :
             self.grille.init_variables()
 
 class Reglages_apparence (Outils.Base_Reglages) :
-    def __init__ (self, boss, big_boss) :
-        Outils.Base_Reglages.__init__(self, boss, big_boss, "Apparence Générale")
+    def __init__ (self, boss) :
+        Outils.Base_Reglages.__init__(self, boss, "Apparence Générale")
+    
+    def init_entitees (self, grille, canvas, balle) :
+        self.grille = grille
+        self.canvas = canvas
+        self.balle = balle
     
     def lancement (self) :
         Outils.Base_Reglages.lancement(self, "Réglages apparence générale")
@@ -1794,8 +1803,13 @@ class Reglages_apparence (Outils.Base_Reglages) :
         self.big_boss.fenetre.open_image()
 
 class Reglages_balle (Outils.Base_Reglages) :
-    def __init__ (self, boss, big_boss) :
-        Outils.Base_Reglages.__init__(self, boss, big_boss, "Balle (joueur)")
+    def __init__ (self, boss) :
+        Outils.Base_Reglages.__init__(self, boss, "Balle (joueur)")
+    
+    def init_entitees (self, grille, canvas, balle) :
+        self.grille = grille
+        self.canvas = canvas
+        self.balle = balle
     
     def lancement (self) :
         Outils.Base_Reglages.lancement(self, "Réglages de la Balle")
@@ -1874,8 +1888,13 @@ class Reglages_balle (Outils.Base_Reglages) :
             self.balle.init_variables()
 
 class Reglages_question_confirmation (Outils.Base_Reglages) :
-    def __init__ (self, boss, big_boss) :
-        Outils.Base_Reglages.__init__(self, boss, big_boss, "Alertes de confirmation")
+    def __init__ (self, boss) :
+        Outils.Base_Reglages.__init__(self, boss, "Alertes de confirmation")
+    
+    def init_entitees (self, grille, canvas, balle) :
+        self.grille = grille
+        self.canvas = canvas
+        self.balle = balle
     
     def lancement (self) :
         Outils.Base_Reglages.lancement(self, "Réglages des Alertes de Confirmation")
@@ -1940,8 +1959,13 @@ class Reglages_question_confirmation (Outils.Base_Reglages) :
         self.big_boss.parametres["question confirmation passage niveau max"] = self.var_confirmation_niveau_max.get()
 
 class Reglages_generaux (Outils.Base_Reglages) :
-    def __init__ (self, boss, big_boss) :
-        Outils.Base_Reglages.__init__(self, boss, big_boss, "Généraux")
+    def __init__ (self, boss) :
+        Outils.Base_Reglages.__init__(self, boss, "Généraux")
+    
+    def init_entitees (self, grille, canvas, balle) :
+        self.grille = grille
+        self.canvas = canvas
+        self.balle = balle
     
     def lancement (self) :
         Outils.Base_Reglages.lancement(self, "Réglages Généraux")
