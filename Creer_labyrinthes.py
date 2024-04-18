@@ -296,8 +296,8 @@ class Entite_superieure_crea () :
             self.reglages_fen.focus()
         else :
             self.reglages_fen = Outils.Reglages(self.fenetre)
-            self.reglages_fen.init_entitees (self, self.fenetre, self.grille, self.canvas, self.balle)
-            self.reglages_fen.lancement([Reglages_generaux_crea])
+            self.reglages_fen.init_entitees (self, self.fenetre)
+            self.reglages_fen.lancement([Reglages_generaux_crea], grille=self.grille, canvas=self.canvas, balle=self.balle)
             self.reglages_fen.protocol("WM_DELETE_WINDOW", self.reglages_fen_on_closing)
             self.reglages_fen.mainloop()
     
@@ -357,16 +357,21 @@ class Lab_fen_crea (tk.Tk) :
         """
         self.boutons.init_grid(nb_lignes=10)
         
-        self.boutons.def_bouton('Couleurs', self.canvas.couleurs, 1, commentaire="Change la couleur du canvas\n(raccourci : 'ctrl' + 'c')")
+        btn = self.boutons.def_bouton('Couleurs', self.canvas.couleurs, 1)
+        com = btn.add_commentaire(self, "Change la couleur du canvas\n(raccourci : 'ctrl' + 'c')")
+        self.big_boss.commentaires.append(com)
         self.bind("<Control-KeyRelease-c>", self.canvas.couleurs)
         
-        self.boutons.def_bouton('Aller à', self.big_boss.aller_a_start, 4, commentaire="Permet de déplacer la balle facilement\n(raccourci : 'a')")
+        btn = self.boutons.def_bouton('Aller à', self.big_boss.aller_a_start, 4)
+        com = btn.add_commentaire(self, "Permet de déplacer la balle facilement\n(raccourci : 'a')")
+        self.big_boss.commentaires.append(com)
         self.bind("<KeyRelease-a>", self.big_boss.aller_a_start)
         
         self.frame_dep = tk.Frame(self.boutons)
         self.frame_dep.grid(row= 5)
-        self.boutons.def_bouton("", self.big_boss.Change_type_deplacement, 1, nom_diminutif= 'type deplacement', boss= self.frame_dep,\
-            commentaire="Permet de switcher entre deux modes de déplacement :\n\n- Mode Créer : casse les murs (raccourci : 'c')\n- Mode Déplacement : traverse les murs (raccourci : 'd')\n\nLe mode affiché sur le bouton est le mode actif.\n(raccouci pour switcher de mode : 'Espace')", commentaire_aligne_in="left")
+        btn = self.boutons.def_bouton("", self.big_boss.Change_type_deplacement, 1, nom_diminutif= 'type deplacement', boss= self.frame_dep)
+        com = btn.add_commentaire(self, "Permet de switcher entre deux modes de déplacement :\n\n- Mode Créer : casse les murs (raccourci : 'c')\n- Mode Déplacement : traverse les murs (raccourci : 'd')\n\nLe mode affiché sur le bouton est le mode actif.\n(raccouci pour switcher de mode : <Espace>)", aligne_in="left")
+        self.big_boss.commentaires.append(com)
         self.bind("<KeyRelease-space>", self.big_boss.Change_type_deplacement)
         self.bind("<KeyRelease-d>", partial(self.big_boss.def_type_deplacement, "Passe"))
         self.bind("<KeyRelease-c>", partial(self.big_boss.def_type_deplacement, "Casse"))
@@ -374,26 +379,40 @@ class Lab_fen_crea (tk.Tk) :
         
         self.frame_entree = tk.Frame(self.boutons)
         self.frame_entree.grid(row= 8)
-        self.boutons.def_bouton('Créer une entrée', self.big_boss.entree, 1, boss= self.frame_entree, commentaire="Permet de définir la case d'entrée\npour le parcours du labyrinthe une fois terminé\n(raccourci : 'e')")
+        btn = self.boutons.def_bouton('Créer une entrée', self.big_boss.entree, 1, boss= self.frame_entree)
+        com = btn.add_commentaire(self, "Permet de définir la case d'entrée\npour le parcours du labyrinthe une fois terminé\n(raccourci : 'e')")
+        self.big_boss.commentaires.append(com)
         self.bind("<KeyRelease-e>", self.big_boss.entree)
         
         self.frame_sortie = tk.Frame(self.boutons)
         self.frame_sortie.grid(row= 9)
-        self.boutons.def_bouton('Créer une sortie', self.big_boss.sortie_start, 1, boss= self.frame_sortie, commentaire="Permet de définir la sortie en cassant un mur exterieur\npour le parcours du labyrinthe une fois terminé\n(raccourci : 's')")
+        btn = self.boutons.def_bouton('Créer une sortie', self.big_boss.sortie_start, 1, boss= self.frame_sortie)
+        com = btn.add_commentaire(self, "Permet de définir la sortie en cassant un mur exterieur\npour le parcours du labyrinthe une fois terminé\n(raccourci : 's')")
+        self.big_boss.commentaires.append(com)
         self.bind("<KeyRelease-s>", self.big_boss.sortie_start)
         
-        self.boutons.def_bouton('Nouveau Labyrinthe', self.big_boss.new_lab, 3, commentaire="Ouvre un formulaire pour ouvrir un croquis\nou commencer un nouveau labyrinthe\n(raccourci : 'n')")
+        btn = self.boutons.def_bouton('Nouveau Labyrinthe', self.big_boss.new_lab, 3)
+        com = btn.add_commentaire(self, "Ouvre un formulaire pour ouvrir un croquis\nou commencer un nouveau labyrinthe\n(raccourci : 'n')")
+        self.big_boss.commentaires.append(com)
         self.bind("<KeyRelease-n>", self.big_boss.new_lab)
         
-        self.boutons.def_bouton('Sauvegarder', self.big_boss.save, 2, commentaire="Permet de sauvegarder le labyrinthe en cours d'édition\nsoit sous forme de croquis, soit\nsous forme de labyrinthe terminé\n(raccourci : 'ctrl' + 's')")
+        btn = self.boutons.def_bouton('Sauvegarder', self.big_boss.save, 2)
+        com = btn.add_commentaire(self, "Permet de sauvegarder le labyrinthe en cours d'édition\nsoit sous forme de croquis, soit\nsous forme de labyrinthe terminé\n(raccourci : 'ctrl' + 's')")
+        self.big_boss.commentaires.append(com)
         self.bind("<Control-s>", self.big_boss.save)
         
-        self.boutons.def_bouton('Modifier lab', self.big_boss.Modification, 7, commentaire="Permet de reconstruire un mur détruit\n(raccourci : 'm')")
+        btn = self.boutons.def_bouton('Modifier lab', self.big_boss.Modification, 7)
+        com = btn.add_commentaire(self, "Permet de reconstruire un mur détruit\n(raccourci : 'm')")
+        self.big_boss.commentaires.append(com)
         self.bind("<KeyRelease-m>", self.big_boss.Modification)
         
-        self.boutons.def_bouton('Editer Zones', self.big_boss.editer_aires, 6, type_combobox = ["Détruire (tout vide)", "Reconstruire (quadrillage)"], commentaire="Permet d'éditer de grandes zones du labyrinthe :\n\n- Le mode Détruire permet d'effacer la zone\n- Le mode Reconstruire permet de retracer\nle quadrillage dans la zone", commentaire_aligne_in="left")
+        btn = self.boutons.def_bouton('Editer Zones', self.big_boss.editer_aires, 6, type_combobox = ["Détruire (tout vide)", "Reconstruire (quadrillage)"])
+        self.big_boss.commentaires.append(com)
+        com = btn.add_commentaire(self, "Permet d'éditer de grandes zones du labyrinthe :\n\n- Le mode Détruire permet d'effacer la zone\n- Le mode Reconstruire permet de retracer\nle quadrillage dans la zone", aligne_in="left")
     
-        self.boutons.def_bouton('Réglages', self.big_boss.reglages, 0, commentaire="Accès au réglages\n(raccourci : 'r')")
+        btn = self.boutons.def_bouton('Réglages', self.big_boss.reglages, 0)
+        com = btn.add_commentaire(self, "Accès au réglages\n(raccourci : 'r')")
+        self.big_boss.commentaires.append(com)
         self.bind("<KeyRelease-r>", self.big_boss.reglages)
 
     def init_logo (self) :
@@ -1151,8 +1170,13 @@ class Fen_infos_generales (tk.Toplevel) :
 
 
 class Reglages_generaux_crea (Outils.Base_Reglages) :
-    def __init__ (self, boss, big_boss) :
-        Outils.Base_Reglages.__init__(self, boss, big_boss, "Généraux")
+    def __init__ (self, boss) :
+        Outils.Base_Reglages.__init__(self, boss, "Généraux")
+    
+    def init_entitees (self, grille, canvas, balle) :
+        self.grille = grille
+        self.canvas = canvas
+        self.balle = balle
     
     def lancement (self) :
         Outils.Base_Reglages.lancement(self, "Réglages Généraux")

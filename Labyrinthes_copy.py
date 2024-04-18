@@ -439,15 +439,18 @@ class Laby_fen (tk.Tk) :
             self.boutons_top_right.init_grid(nb_colones=3)
         
         btn = self.boutons_top_right.def_bouton('<- Précédent', self.big_boss.precedent_lab, 0, sticky="e")
-        btn.add_commentaire(self, "Accès au labyrinthe précédent\n(raccourci : 'p')", position_out=["B","L","R","T"])
+        com = btn.add_commentaire(self, "Accès au labyrinthe précédent\n(raccourci : 'p')", position_out=["B","L","R","T"])
+        self.big_boss.commentaires.append(com)
         self.bind("<KeyRelease-p>", self.big_boss.precedent_lab)
         
         btn = self.boutons_top_right.def_bouton('Recomencer', self.big_boss.recomencer_lab, 1, sticky="ew")
-        btn.add_commentaire(self, "Permet de recomencer le labyrinthe\nen retournant au début\n(raccourci : 'r')", position_out=["B","L","R","T"])
+        com = btn.add_commentaire(self, "Permet de recomencer le labyrinthe\nen retournant au début\n(raccourci : 'r')", position_out=["B","L","R","T"])
+        self.big_boss.commentaires.append(com)
         self.bind("<KeyRelease-r>", self.big_boss.recomencer_lab)
         
         btn = self.boutons_top_right.def_bouton('Suivant ->', self.big_boss.suivant_lab, 2, sticky="w")
-        btn.add_commentaire(self, "Accès au labyrinthe suivant", position_out=["B","L","R","T"])#\n(raccourci : 's')")
+        com = btn.add_commentaire(self, "Accès au labyrinthe suivant", position_out=["B","L","R","T"])#\n(raccourci : 's')")
+        self.big_boss.commentaires.append(com)
         #self.bind("<KeyRelease-s>", self.big_boss.suivant_lab)
     
     def redimentionner (self,event=None) :
@@ -1436,21 +1439,29 @@ class Message_fin_lab (tk.Toplevel) :
         self.boutons.init_grid(nb_colones=nb_boutons)
         
         if self.big_boss.type_lab == "aleatoire" :
-            self.boutons.def_bouton("Sauvegarder", self.sauvegarder, 3, commentaire="Engage le processus de sauvegarde du labyrinthe\n(raccourci : <flèche du bas>)", commentaire_position_out=["B","L","R","T"])
+            btn = self.boutons.def_bouton("Sauvegarder", self.sauvegarder, 3)
+            com = btn.add_commentaire(self, "Engage le processus de sauvegarde du labyrinthe\n(raccourci : <flèche du bas>)", position_out=["B","L","R","T"])
+            self.big_boss.commentaires.append(com)
             self.bind("<Down>", self.sauvegarder)
             
         if self.big_boss.type_lab == "aleatoire" :
-            com = "Génère un nouveau labyrinthe"
+            text_com = "Génère un nouveau labyrinthe"
         else :
-            com = "Passage au labyrinthe suivant"
-        self.boutons.def_bouton("Suivant ->", self.suivant, 2, commentaire=com+"\n(raccourci : <flèche de droite> ou <Entrée>)", commentaire_position_out=["B","L","R","T"])
+            text_com = "Passage au labyrinthe suivant"
+        btn = self.boutons.def_bouton("Suivant ->", self.suivant, 2)
+        com = btn.add_commentaire(self, text_com+"\n(raccourci : <flèche de droite> ou <Entrée>)", position_out=["B","L","R","T"])
+        self.big_boss.commentaires.append(com)
         self.bind("<Right>", self.suivant)
         self.bind("<Return>", self.suivant)
         
-        self.boutons.def_bouton("Recommencer", self.recomencer, 1, commentaire="Relance ce labyrinthe \n(raccourci : <flèche du haut>)", commentaire_position_out=["B","L","R","T"])
+        self.boutons.def_bouton("Recommencer", self.recomencer, 1)
+        com = btn.add_commentaire(self, "Relance ce labyrinthe \n(raccourci : <flèche du haut>)", position_out=["B","L","R","T"])
+        self.big_boss.commentaires.append(com)
         self.bind("<Up>", self.recomencer)
         
-        self.boutons.def_bouton("<- Précédent", self.precedent, 0, commentaire="Reviens au labyrinthe précédent\n(raccourci : <flèche de gauche>)", commentaire_position_out=["B","L","R","T"])
+        self.boutons.def_bouton("<- Précédent", self.precedent, 0)
+        com = btn.add_commentaire(self, "Reviens au labyrinthe précédent\n(raccourci : <flèche de gauche>)", position_out=["B","L","R","T"])
+        self.big_boss.commentaires.append(com)
         self.bind("<Left>", self.precedent)
         
         self.boutons.redimentionner(self.taille_police-2)
