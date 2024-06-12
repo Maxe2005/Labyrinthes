@@ -18,7 +18,7 @@ import copy
 
 
 
-class Entite_superieure () :
+class ES_laby (Outils.Entite_superieure) :
     def __init__(self, lab_builtder=None) -> None :
         """Constructeur, initialise les instances"""
         self.init_variables_globales()
@@ -42,17 +42,17 @@ class Entite_superieure () :
         
         self.fenetre.init_barres_boutons_et_text()
         self.init_mode_hard()
+        self.init_reglages([Reglages_generaux,\
+                            Reglages_lab_alea,\
+                            Reglages_apparence,\
+                            Reglages_balle,\
+                            Reglages_question_confirmation])
+        self.init_infos_generales(Fen_infos_generales)
     
     def lancement (self) :
         """Permet de lancer la fenêtre du jeu"""
         self.canvas.nouvelle_partie ()
-        for i in range (3) :
-            self.fenetre.after(500+(i*100), self.fenetre.redimentionner)
-        self.fenetre.focus()
-        for com in self.commentaires :
-            self.fenetre.after(500, com.test)
-        self.fenetre.protocol("WM_DELETE_WINDOW", self.on_closing)
-        self.fenetre.mainloop()
+        self.lancement_fenetre(self.commentaires)
     
     def lancement_builder_labs (self) :
         global Lab_builtder
@@ -65,42 +65,11 @@ class Entite_superieure () :
     
     def init_variables_globales (self) :
         """Permet de donner des valeurs arbitraires aux paramètres globaux (params par défaut)"""
-        self.ouvrir_param_defaut()
+        self.ouvrir_param_defaut("Autres/Parametres_defaut.csv", "parcoureur")
         self.type_lab = "classique"
         self.commentaires = []
         self.type_deplacement = self.parametres["type deplacement initial"]
-        self.reglages_fen = False
-        self.infos_fen = False
-    
-    def ouvrir_param_defaut (self) :
-        """Télécharge les paramètres par défauts """
-        self.parametres = {}
-        self.parametres_builder = []
-        with open("Autres/Parametres_defaut.csv") as f :
-            for ligne in f.readlines()[1:] :
-                l = ligne.split("\n")[0].split(",")
-                if l[0] == "parcoureur" :
-                    if len(l[2:]) == 1 :
-                        self.parametres[l[1]] = l[2]
-                    else :
-                        self.parametres[l[1]] = l[2:]
-                else :
-                    self.parametres_builder.append(ligne)
-    
-    def save_param_defaut (self) :
-        with open("Autres/Parametres_defaut.csv", "w") as f :
-            f.write("# Entitee du parametre, Nom du parametre, valeur du parametre\n")
-            for param in self.parametres :
-                if type(self.parametres[param]) == list :
-                    f.write("parcoureur,"+param+","+",".join(self.parametres[param])+"\n")
-                else :
-                    f.write("parcoureur,"+param+","+str(self.parametres[param])+"\n")
-            for param in self.parametres_builder :
-                f.write(param)
-    
-    def on_closing (self) :
-        self.save_param_defaut()
-        self.fenetre.destroy()
+        self.init_variables_tres_globales()
     
     def aller_a (self, event=None) :
         "Permet d´aller directement au Labyrinthe de son choix"
@@ -188,39 +157,6 @@ class Entite_superieure () :
             self.fenetre.boutons_lateraux_droits.cacher("new lab alea")
             self.canvas.nouvelle_partie()
     
-    def infos_generales (self) :
-        if self.infos_fen :
-            self.infos_fen.lift()
-            self.infos_fen.focus()
-        else :
-            self.infos_fen = Fen_infos_generales(self.fenetre, self)
-            self.infos_fen.protocol("WM_DELETE_WINDOW", self.infos_fen_on_closing)
-            self.infos_fen.mainloop()
-    
-    def infos_fen_on_closing (self) :
-        self.infos_fen.destroy()
-        self.infos_fen = False
-    
-    def reglages (self) :
-        if self.reglages_fen :
-            self.reglages_fen.lift()
-            self.reglages_fen.focus()
-        else :
-            self.reglages_fen = Outils.Reglages(self.fenetre)
-            self.reglages_fen.init_entitees (self, self.fenetre)
-            self.reglages_fen.lancement([Reglages_generaux,\
-                                        Reglages_lab_alea,\
-                                        Reglages_apparence,\
-                                        Reglages_balle,\
-                                        Reglages_question_confirmation],\
-                                        grille=self.grille, canvas=self.canvas, balle=self.balle)
-            self.reglages_fen.protocol("WM_DELETE_WINDOW", self.reglages_fen_on_closing)
-            self.reglages_fen.mainloop()
-    
-    def reglages_fen_on_closing (self) :
-        self.reglages_fen.destroy()
-        self.reglages_fen = False
-    
     def init_mode_hard (self) :
         self.mode_hard = False
         self.voyant_mode_hard = tk.Canvas(self.fenetre.barre_laterale_droite, border=10, bg="green")
@@ -230,7 +166,7 @@ class Entite_superieure () :
         moving = ", ".join(self.parametres["colors mode hard moving"])
         Outils.Commentaire(self.fenetre, self.voyant_mode_hard, "Voyant du Mode HARD affichant les états de la balle :\n\n- 'Ready' : balle à l'arrêt ("+ready+")\n- 'Impossible' : balle face à un mur ("+impossible+")\n- 'Moving' : balle en mouvement ("+moving+")\n\nIl y a plusieurs couleurs à l'état 'Moving' pour signaler\nles changement de dirrections (pour le déplacement Lisse)", aligne_in="left")
         #self.voyant_mode_hard = self.canvas_voyant_mode_hard.create_oval (20, 20, 70, 70,  fill= "green", outline= "black")
-
+    
     def mode_HARD (self, event=None) :
         if self.mode_hard :
             self.mode_hard = False
@@ -254,9 +190,21 @@ class Entite_superieure () :
                 color = self.parametres["color mode hard impossible"]
                 self.fenetre.after(1000, self.change_voyant_mode_hard, "ready", color)
             self.voyant_mode_hard.configure(bg=color)
+    
+    def get_extra_entitees (self, entitees_names:list) :
+        entitees = {}
+        entitees["fenetre"] = self.fenetre
+        entitees["canvas"] = self.canvas
+        entitees["grille"] = self.grille
+        entitees["balle"] = self.balle
+        
+        sortie = []
+        for el in entitees_names :
+            sortie.append(entitees[el])
+        return sortie
 
 
-class Laby_fen (tk.Tk) :
+class Laby_fen (Outils.Fenetre) :
     def __init__(self ,x=1000 ,y=800):
         tk.Tk.__init__(self)
         self.x = x # = self.winfo_screenwidth() -200
@@ -301,6 +249,7 @@ class Laby_fen (tk.Tk) :
         self.barre_laterale_droite.grid_rowconfigure(1, weight= 0)
         self.barre_laterale_droite.grid_rowconfigure(2, weight= 7)
         self.init_logo(self.barre_laterale_droite)
+        self.open_image("Idées LOGO/"+self.big_boss.parametres["logo parcoureur"], x_max= self.barre_laterale_droite.winfo_width())
         self.boutons_lateraux_droits = Outils.Boutons(self.barre_laterale_droite, self.big_boss, self, class_comentaire=Outils.Commentaire)
         self.init_boutons_barre_laterale_droite()
         self.boutons_lateraux_droits.grid(column=0, row=2, sticky=tk.NSEW)
@@ -350,23 +299,6 @@ class Laby_fen (tk.Tk) :
         com = btn.add_commentaire(self, "Permet d'activer (et désactiver) le mode HARD :\nDans ce mode la balle est invisible\n(raccourci : 'h')")
         self.big_boss.commentaires.append(com)
         self.bind("<KeyRelease-h>", self.big_boss.mode_HARD)
-    
-    def init_logo (self, boss, params=[0,0]) :
-        #self.logo = tk.Label(self.big_boss.barre_laterale_droite)
-        self.logo = tk.Button(boss, command=self.big_boss.infos_generales)
-        self.logo.grid(column=params[0], row=params[1])
-        self.open_image()
-    
-    def open_image (self) :
-        self.image = Image.open("Idées LOGO/"+self.big_boss.parametres["logo parcoureur"])
-        xx, yy = self.image.size
-        ratio = xx / yy
-        x_max = self.barre_laterale_droite.winfo_width()
-        x = round(70/100 * x_max)
-        y = round(x / ratio)
-        self.image = self.image.resize((x,y))
-        self.image_photo = ImageTk.PhotoImage(self.image)
-        self.logo["image"] = self.image_photo
     
     def init_configuration_barre_top (self) :
         self.barre_top = tk.Frame(self)
@@ -457,7 +389,7 @@ class Laby_fen (tk.Tk) :
         self.x = self.winfo_width()
         self.y = self.winfo_height()
         self.canvas.redimentionner()
-        self.open_image()
+        self.open_image("Idées LOGO/"+self.big_boss.parametres["logo parcoureur"], x_max= self.barre_laterale_droite.winfo_width())
         text_size = int(log(self.winfo_width()/100))
         self.barre_principale.redimentionner(text_size = int(text_size * 5))
         #self.chrono.label.config(font=("Arial", text_size/3))
@@ -468,12 +400,11 @@ class Laby_fen (tk.Tk) :
         #self.init_boutons_barre_top_left ()
 
 
-class Laby_canvas (tk.Canvas) :
+class Laby_canvas (Outils.Canvas) :
     "Canvas d´affichage du labyrinthe"
     def __init__(self, big_boss, param=[0,1]) :
-        tk.Canvas.__init__(self)
-        self. big_boss = big_boss
-        self.couleurs(change=False, initial_value=self.big_boss.parametres["initial color mode"])
+        self.big_boss = big_boss
+        Outils.Canvas.__init__(self, self.big_boss.parametres["initial color mode"])
         self.grid(column= param[0], row= param[1], sticky=tk.NSEW)
     
     def init_entitees (self, fenetre, grille, balle) :
@@ -490,19 +421,6 @@ class Laby_canvas (tk.Canvas) :
         self.trace_grille ()
         self.fenetre.barre_principale.refresh_all()
         self.balle.init_var ()
-    
-    def taille_auto (self) :
-        "Calcule la taille en pixel d'un coté des cases carré à partir de la hauteur h et le la longeur l de la grille de définition"
-        if self.winfo_height() / self.grille.y < self.winfo_width() / self.grille.x :
-            self.taille = self.winfo_height() / (self.grille.y+1)
-        else :
-            self.taille = self.winfo_width() / (self.grille.x+1)
-    
-    def origines (self) :
-        "Calcule et renvoi sous forme de tuple les origines en x et y (en haut à gauche du canvas)"
-        self.origine_x = (self.winfo_width() - (self.taille * (self.grille.x-1))) / 2
-        self.origine_y = (self.winfo_height() - (self.taille * (self.grille.y-1))) / 2
-        assert self.origine_x > 0 and self.origine_y > 0
     
     def trace_grille (self) :
         "Trace avec Tkinter un quadrillage de la grille g"
@@ -534,44 +452,11 @@ class Laby_canvas (tk.Canvas) :
         if self.grille.sortie_lab[1] == -1 :
             self.barre_horizontale (self.origine_x+self.taille*self.grille.sortie_lab[0], self.origine_y, self.taille, self.color_canvas)
     
-    def barre_verticale (self, ox, oy, t, color) :
-        "Trace dans le canvas une ligne verticale"
-        self.create_line (ox,oy,ox,oy+t, fill= color)
-    
-    def barre_horizontale (self, ox, oy, t, color) :
-        "Trace dans le canvas une ligne verticale"
-        self.create_line (ox,oy,ox+t,oy, fill= color)
-    
     def refresh_lab (self) :
         self.delete("all")
         self.balle.init()
         self.trace_grille ()
         self.fenetre.barre_principale.refresh_all()
-    
-    def couleurs (self, change=True, initial_value=False, event=None) :
-        if change :
-            if self.couleur_mode == "white" :
-                self.couleur_mode = "black"
-            else :
-                self.couleur_mode = "white"
-        elif initial_value :
-            self.couleur_mode = initial_value
-        if self.couleur_mode == "white" :
-            self.color_canvas = "white"
-            self["bg"] = self.color_canvas
-            self.color_grille = "black"
-            self.color_balle = "blue"
-            self.oposit_color_balle = "red"
-            self.color_balle_out = "black"
-        elif self.couleur_mode == "black" :
-            self.color_canvas = "black"
-            self["bg"] = self.color_canvas
-            self.color_grille = "white"
-            self.color_balle = "red"
-            self.oposit_color_balle = "blue"
-            self.color_balle_out = "white"
-        if change :
-            self.refresh_lab()
     
     def redimentionner (self) :
         self.taille_auto ()
@@ -1538,10 +1423,11 @@ class Reglages_lab_alea (Outils.Base_Reglages) :
     def __init__ (self, boss) :
         Outils.Base_Reglages.__init__(self, boss, "Générateur de labyrinthes")
     
-    def init_entitees (self, grille, canvas, balle) :
-        self.grille = grille
-        self.canvas = canvas
-        self.balle = balle
+    def init_entitees (self) :
+        entitees = self.big_boss.get_extra_entitees(["grille", "canvas", "balle"])
+        self.grille = entitees[0]
+        self.canvas = entitees[1]
+        self.balle = entitees[2]
     
     def lancement (self) :
         Outils.Base_Reglages.lancement(self, "Réglages du Générateur de Labyrinthes")
@@ -1712,10 +1598,11 @@ class Reglages_apparence (Outils.Base_Reglages) :
     def __init__ (self, boss) :
         Outils.Base_Reglages.__init__(self, boss, "Apparence Générale")
     
-    def init_entitees (self, grille, canvas, balle) :
-        self.grille = grille
-        self.canvas = canvas
-        self.balle = balle
+    def init_entitees (self) :
+        entitees = self.big_boss.get_extra_entitees(["grille", "canvas", "balle"])
+        self.grille = entitees[0]
+        self.canvas = entitees[1]
+        self.balle = entitees[2]
     
     def lancement (self) :
         Outils.Base_Reglages.lancement(self, "Réglages apparence générale")
@@ -1817,10 +1704,11 @@ class Reglages_balle (Outils.Base_Reglages) :
     def __init__ (self, boss) :
         Outils.Base_Reglages.__init__(self, boss, "Balle (joueur)")
     
-    def init_entitees (self, grille, canvas, balle) :
-        self.grille = grille
-        self.canvas = canvas
-        self.balle = balle
+    def init_entitees (self) :
+        entitees = self.big_boss.get_extra_entitees(["grille", "canvas", "balle"])
+        self.grille = entitees[0]
+        self.canvas = entitees[1]
+        self.balle = entitees[2]
     
     def lancement (self) :
         Outils.Base_Reglages.lancement(self, "Réglages de la Balle")
@@ -1902,10 +1790,11 @@ class Reglages_question_confirmation (Outils.Base_Reglages) :
     def __init__ (self, boss) :
         Outils.Base_Reglages.__init__(self, boss, "Alertes de confirmation")
     
-    def init_entitees (self, grille, canvas, balle) :
-        self.grille = grille
-        self.canvas = canvas
-        self.balle = balle
+    def init_entitees (self) :
+        entitees = self.big_boss.get_extra_entitees(["grille", "canvas", "balle"])
+        self.grille = entitees[0]
+        self.canvas = entitees[1]
+        self.balle = entitees[2]
     
     def lancement (self) :
         Outils.Base_Reglages.lancement(self, "Réglages des Alertes de Confirmation")
@@ -1973,10 +1862,11 @@ class Reglages_generaux (Outils.Base_Reglages) :
     def __init__ (self, boss) :
         Outils.Base_Reglages.__init__(self, boss, "Généraux")
     
-    def init_entitees (self, grille, canvas, balle) :
-        self.grille = grille
-        self.canvas = canvas
-        self.balle = balle
+    def init_entitees (self) :
+        entitees = self.big_boss.get_extra_entitees(["grille", "canvas", "balle"])
+        self.grille = entitees[0]
+        self.canvas = entitees[1]
+        self.balle = entitees[2]
     
     def lancement (self) :
         Outils.Base_Reglages.lancement(self, "Réglages Généraux")
@@ -2184,7 +2074,7 @@ self.button_reglages_lab_alea.grid_forget()
 
 
 if __name__ == "__main__" :
-    fen_lab = Entite_superieure()
+    fen_lab = ES_laby()
     fen_lab.lancement()
 
 
