@@ -1,7 +1,7 @@
 # Created on 10/02/23
 # Author : Maxence CHOISEL
 
-import Autres.Outils_Tkinter.Outils as Outils
+from ..Outils_Tkinter import Outils as Outils
 if __name__ == "__main__" :
     import Creer_labyrinthes as Laby_builder
 from typing import Literal

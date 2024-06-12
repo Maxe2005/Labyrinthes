@@ -1,7 +1,7 @@
 # Created on 12/06/22
 # Author : Maxence CHOISEL
 
-import Autres.Outils_Tkinter.Outils as Outils
+from ..Outils_Tkinter import Outils as Outils
 if __name__ == "__main__" :
     import Labyrinthes_copy as Laby_parcoureur
 import tkinter as tk
