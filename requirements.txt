@@ -1,0 +1,1 @@
+git+https://github.com/Maxe2005/Outils_Tkinter.git@main

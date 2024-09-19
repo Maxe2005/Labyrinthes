@@ -1,15 +1,15 @@
 # Created on 10/02/23
 # Author : Maxence CHOISEL
 
-from ..Outils_Tkinter import Outils as Outils
-if __name__ == "__main__" :
-    import Creer_labyrinthes as Laby_builder
-from typing import Literal
+import Outils_Tkinter as ot
+#if __name__ == "__main__" :
+#    import .Creer_labyrinthes as Laby_builder
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
 from tkinter.simpledialog import askinteger, askstring
 from math import log
+from typing import Literal
 from functools import partial
 from PIL import Image,ImageTk
 from random import randint
@@ -18,7 +18,7 @@ import copy
 
 
 
-class ES_laby (Outils.Entite_superieure) :
+class ES_laby (ot.Entite_superieure) :
     def __init__(self, lab_builtder=None) -> None :
         """Constructeur, initialise les instances"""
         self.init_variables_globales()
@@ -57,8 +57,9 @@ class ES_laby (Outils.Entite_superieure) :
     def lancement_builder_labs (self) :
         global Lab_builtder
         if __name__ == "__main__" :
-            Lab_builtder = Laby_builder.Entite_superieure_crea(self)
-            Lab_builtder.lancement()
+            #Lab_builtder = Laby_builder.Entite_superieure_crea(self)
+            #Lab_builtder.lancement()
+            pass
         else :
             Lab_builtder.fenetre.lift()
             Lab_builtder.fenetre.focus()
@@ -164,7 +165,7 @@ class ES_laby (Outils.Entite_superieure) :
         impossible = self.parametres["color mode hard impossible"]
         ready = self.parametres["color mode hard ready"]
         moving = ", ".join(self.parametres["colors mode hard moving"])
-        Outils.Commentaire(self.fenetre, self.voyant_mode_hard, "Voyant du Mode HARD affichant les états de la balle :\n\n- 'Ready' : balle à l'arrêt ("+ready+")\n- 'Impossible' : balle face à un mur ("+impossible+")\n- 'Moving' : balle en mouvement ("+moving+")\n\nIl y a plusieurs couleurs à l'état 'Moving' pour signaler\nles changement de dirrections (pour le déplacement Lisse)", aligne_in="left")
+        ot.Commentaire(self.fenetre, self.voyant_mode_hard, "Voyant du Mode HARD affichant les états de la balle :\n\n- 'Ready' : balle à l'arrêt ("+ready+")\n- 'Impossible' : balle face à un mur ("+impossible+")\n- 'Moving' : balle en mouvement ("+moving+")\n\nIl y a plusieurs couleurs à l'état 'Moving' pour signaler\nles changement de dirrections (pour le déplacement Lisse)", aligne_in="left")
         #self.voyant_mode_hard = self.canvas_voyant_mode_hard.create_oval (20, 20, 70, 70,  fill= "green", outline= "black")
     
     def mode_HARD (self, event=None) :
@@ -204,7 +205,7 @@ class ES_laby (Outils.Entite_superieure) :
         return sortie
 
 
-class Laby_fen (Outils.Fenetre) :
+class Laby_fen (ot.Structure_globale.Fenetre) :
     def __init__(self ,x=1000 ,y=800):
         tk.Tk.__init__(self)
         self.x = x # = self.winfo_screenwidth() -200
@@ -250,7 +251,7 @@ class Laby_fen (Outils.Fenetre) :
         self.barre_laterale_droite.grid_rowconfigure(2, weight= 7)
         self.init_logo(self.barre_laterale_droite)
         self.open_image("Idées LOGO/"+self.big_boss.parametres["logo parcoureur"], x_max= self.barre_laterale_droite.winfo_width())
-        self.boutons_lateraux_droits = Outils.Boutons(self.barre_laterale_droite, self.big_boss, self, class_comentaire=Outils.Commentaire)
+        self.boutons_lateraux_droits = ot.Boutons(self.barre_laterale_droite, self.big_boss, self, class_comentaire=ot.Commentaire)
         self.init_boutons_barre_laterale_droite()
         self.boutons_lateraux_droits.grid(column=0, row=2, sticky=tk.NSEW)
     
@@ -307,14 +308,14 @@ class Laby_fen (Outils.Fenetre) :
         self.barre_top.grid_columnconfigure(0, weight= 0)
         self.barre_top.grid_columnconfigure(1, weight= 1)
         self.barre_top.grid_columnconfigure(2, weight= 0)
-        self.boutons_top_left = Outils.Boutons(self.barre_top, self.big_boss, self, class_comentaire=Outils.Commentaire)
+        self.boutons_top_left = ot.Boutons(self.barre_top, self.big_boss, self, class_comentaire=ot.Commentaire)
         self.init_boutons_barre_top_left()
         self.boutons_top_left.grid(column=0, row=0, sticky=tk.NSEW, padx=10, ipadx=20)
         
         self.barre_principale = Barre_info(self.barre_top, self.big_boss, self.grille)
         self.barre_principale.grid(column= 1, row= 0, sticky=tk.NSEW)
         
-        self.boutons_top_right = Outils.Boutons(self.barre_top, self.big_boss, self, class_comentaire=Outils.Commentaire)
+        self.boutons_top_right = ot.Boutons(self.barre_top, self.big_boss, self, class_comentaire=ot.Commentaire)
         self.init_boutons_barre_top_right()
         self.boutons_top_right.grid(column=2, row=0, padx=20)#, sticky=tk.NSEW)
         
@@ -400,11 +401,11 @@ class Laby_fen (Outils.Fenetre) :
         #self.init_boutons_barre_top_left ()
 
 
-class Laby_canvas (Outils.Canvas) :
+class Laby_canvas (ot.Structure_globale.Canvas) :
     "Canvas d´affichage du labyrinthe"
     def __init__(self, big_boss, param=[0,1]) :
         self.big_boss = big_boss
-        Outils.Canvas.__init__(self, self.big_boss.parametres["initial color mode"])
+        ot.Structure_globale.Canvas.__init__(self, self.big_boss.parametres["initial color mode"])
         self.grid(column= param[0], row= param[1], sticky=tk.NSEW)
     
     def init_entitees (self, fenetre, grille, balle) :
@@ -430,7 +431,7 @@ class Laby_canvas (Outils.Canvas) :
                     self.barre_horizontale (self.origine_x + el[0]*self.taille, self.origine_y + el[1]*self.taille, self.taille, self.color_grille)
                 if el[2] == "2" :
                     self.barre_verticale (self.origine_x + el[0]*self.taille, self.origine_y + el[1]*self.taille, self.taille, self.color_grille)
-        elif self.big_boss.niveau.Niveau_max == False :
+        elif not(self.big_boss.niveau.Niveau_max) :
             for el in self.grille.Partitions_lab :
                 for y in range (el[0][1],el[1][1]) :
                     for x in range (el[0][0],el[1][0]) :
@@ -438,7 +439,7 @@ class Laby_canvas (Outils.Canvas) :
                             self.barre_horizontale (self.origine_x + x*self.taille, self.origine_y + y*self.taille, self.taille, self.color_grille)
                         if self.grille.lab[y][x] == "2" or self.grille.lab[y][x] == "3" :
                             self.barre_verticale (self.origine_x + x*self.taille, self.origine_y + y*self.taille, self.taille, self.color_grille)
-        if self.big_boss.niveau.numero > 1 and self.big_boss.niveau.Niveau_max == False :
+        if self.big_boss.niveau.numero > 1 and not(self.big_boss.niveau.Niveau_max) :
             self.trace_contours_lab ()
     
     def trace_contours_lab (self) :
@@ -535,7 +536,7 @@ class Laby_grille () :
     
     def grille_pleine (self,x,y) :
         "Crée une grille sans trous"
-        assert type(x) and type(y) == int
+        assert type(x) and type(y) is int
         assert x > 0 and y > 0
         g = []
         for j in range (y) :
@@ -700,7 +701,7 @@ class Laby_grille () :
         if self.y % self.taille_partition_y < self.taille_partition_y/2 and y >= self.y // self.taille_partition_y :
             y -= 1
         if x != self.position_joueur_back_lab_x or y != self.position_joueur_back_lab_y :
-            if self.big_boss.niveau.numero == 2 and self.back_lab_partition_grille_position_joueur[y][x] == False :
+            if self.big_boss.niveau.numero == 2 and not(self.back_lab_partition_grille_position_joueur[y][x]) :
                 count = 1
                 for el in self.back_lab_partition_grille_position_joueur :
                     for i in el :
@@ -738,7 +739,7 @@ class Laby_grille () :
         lab = self.grille_pleine (x,y)
         cases_visitées = [(self.entrée_lab[0],self.entrée_lab[1])]
         cases_contact_ext = {}
-        cases_contact_ext_list = []
+        #cases_contact_ext_list = []
         pos_x = self.entrée_lab[0]
         pos_y = self.entrée_lab[1]
         potentiel_sorties = []
@@ -813,13 +814,13 @@ class Laby_grille () :
             cases_visitées.append((pos_x,pos_y))
             if i < x*y-2 :
                 a = []
-                if not((pos_x, pos_y-1) in cases_visitées) and pos_y > 0 :
+                if (pos_x, pos_y-1) not in cases_visitées and pos_y > 0 :
                     a.append("N")
-                if not((pos_x, pos_y+1) in cases_visitées) and pos_y < y-1 :
+                if (pos_x, pos_y+1) not in cases_visitées and pos_y < y-1 :
                     a.append("S")
-                if not((pos_x+1, pos_y) in cases_visitées) and pos_x < x-1 :
+                if (pos_x+1, pos_y) not in cases_visitées and pos_x < x-1 :
                     a.append("E")
-                if not((pos_x-1, pos_y) in cases_visitées) and pos_x > 0 :
+                if (pos_x-1, pos_y) not in cases_visitées and pos_x > 0 :
                     a.append("O")
                 if a == [] :
                     if pos_x in (0, x-1) or pos_y in (0, y-1) :
@@ -876,7 +877,7 @@ class Laby_grille () :
         MsgBox = messagebox.askquestion ('Enregistrer un labyrinthe généré aléatoirement','Voulez-vous vraiment enregistrer le labyrinthe actuel ?',icon = 'warning')
         if MsgBox == 'yes':
             nom = askstring ( title = "Nom du labirinthe"  , prompt = "Quel sera le nom du labyrinthe à enregistrer ?" , initialvalue = "")
-            if nom == None :
+            if nom is None :
                 return
             else :
                 self.save_as (nom, self.lab, self.entrée_lab, self.sortie_lab)
@@ -1087,7 +1088,7 @@ class Laby_balle () :
                     self.init()
                     self.canvas.trace_contours_lab ()
                     self.contours_visibles = True
-                elif self.big_boss.niveau.numero == 4 and not(self.big_boss.niveau.Niveau_max) and condition_2 and not((self.x+dif_x, self.y+dif_y, type_mur) in self.grille.Murs_lab) :
+                elif self.big_boss.niveau.numero == 4 and not(self.big_boss.niveau.Niveau_max) and condition_2 and (self.x+dif_x, self.y+dif_y, type_mur) not in self.grille.Murs_lab :
                     self.grille.Murs_lab.append((self.x+dif_x, self.y+dif_y, type_mur))
                     if type_mur == "1" :
                         self.canvas.barre_horizontale (self.canvas.origine_x + (self.x+dif_x)*self.canvas.taille, self.canvas.origine_y + (self.y+dif_y)*self.canvas.taille, self.canvas.taille, self.canvas.color_grille)
@@ -1221,7 +1222,7 @@ class Niveaux_fen (tk.Toplevel) :
         texte = """Le Niveau 1 permet de parcourir les labyrinthes 'normalement'
 c'est à dire sans aucune gène particulière.
 \nLe Niveau 1 ne contient pas de Difficultées"""
-        Outils.Infos(self, titre, texte)
+        ot.Infos(self, titre, texte)
     
     def info_niv2 (self) :
         titre = "Informations Niveau 2"
@@ -1234,7 +1235,7 @@ Dans ce niveau, plus on augmente la Difficultée, plus les labyrinthes sont
 divisés/découpés en plus de morceaux (et donc les morceaux sont plus petits).
 A la Difficultée 1(respectivement 2 et 3), les morceaux découverts disparaissent
 quand la moitiée (respectivement 1/4 et 1/8) des morceaux ont été découverts."""
-        Outils.Infos(self, titre, texte, pourcentage_largeur=85)
+        ot.Infos(self, titre, texte, pourcentage_largeur=85)
     
     def info_niv3 (self) :
         titre = "Informations Niveau 3"
@@ -1246,7 +1247,7 @@ morceau, seul le morceau que vous parcourez est visible.
 Dans ce niveau, plus on augmente la Difficultée,
 plus les labyrinthes sont divisés/découpés en plus de
 morceaux (et donc les morceaux sont plus petits)"""
-        Outils.Infos(self, titre, texte, pourcentage_largeur=85)
+        ot.Infos(self, titre, texte, pourcentage_largeur=85)
     
     def info_niv4 (self) :
         titre = "Informations Niveau 4"
@@ -1258,12 +1259,12 @@ découvrez plus de la moitié des murs, ils re-disparaissent !
 Dans ce niveau, plus on augmente la Difficultée, plus les murs disparaissent tôt :
 à la Difficultée 1(respectivement 2 et 3), les murs découverts disparaissent
 quand la moitiée (respectivement 1/4 et 1/8) des murs ont été découverts."""
-        Outils.Infos(self, titre, texte, pourcentage_largeur=80)
+        ot.Infos(self, titre, texte, pourcentage_largeur=80)
 
 
-class Fen_infos_generales (Outils.Infos_generales) :
+class Fen_infos_generales (ot.Infos_generales) :
     def __init__ (self, boss, big_boss) :
-        Outils.Infos_generales.__init__(self, boss)
+        ot.Infos_generales.__init__(self, boss)
         self.big_boss = big_boss
         self.init_contenu()
     
@@ -1294,7 +1295,7 @@ class Message_fin_lab (tk.Toplevel) :
         self.init_text()
         self.text.grid(column=0, row=0, sticky=tk.NSEW)
         
-        self.boutons = Outils.Boutons(self, self.big_boss, self, class_comentaire=Outils.Commentaire)
+        self.boutons = ot.Boutons(self, self.big_boss, self, class_comentaire=ot.Commentaire)
         self.init_boutons()
         self.boutons.grid(column=0, row=1, sticky=tk.NSEW)
         
@@ -1408,7 +1409,7 @@ class Chrono(tk.Frame):
             self.after(1000, self.update_time)
     
     def update_label(self):
-        hours = self.time // 3600
+        #hours = self.time // 3600
         minutes = (self.time // 60) % 60
         seconds = self.time % 60
         self.label.config(text=f"{minutes:02d}:{seconds:02d}")
@@ -1419,9 +1420,9 @@ class Chrono(tk.Frame):
             messagebox.showinfo ('Fin du temps impartis','Le temps accordé est dépassé !',icon = 'error')
 
 
-class Reglages_lab_alea (Outils.Base_Reglages) :
+class Reglages_lab_alea (ot.Base_Reglages) :
     def __init__ (self, boss) :
-        Outils.Base_Reglages.__init__(self, boss, "Générateur de labyrinthes")
+        ot.Base_Reglages.__init__(self, boss, "Générateur de labyrinthes")
     
     def init_entitees (self) :
         entitees = self.big_boss.get_extra_entitees(["grille", "canvas", "balle"])
@@ -1430,7 +1431,7 @@ class Reglages_lab_alea (Outils.Base_Reglages) :
         self.balle = entitees[2]
     
     def lancement (self) :
-        Outils.Base_Reglages.lancement(self, "Réglages du Générateur de Labyrinthes")
+        ot.Base_Reglages.lancement(self, "Réglages du Générateur de Labyrinthes")
         
         self.init_taille_lab(1)
         self.init_position_start(2)
@@ -1469,7 +1470,7 @@ class Reglages_lab_alea (Outils.Base_Reglages) :
         nb_colones = self.valeur_colone.get()
         try :
             nb_colones = int(nb_colones)
-        except :
+        except TypeError :
             if self.boss.alerte_mauvaise_entree :
                 messagebox.showinfo ('Nombre de colones','L\'entrée "'+nb_colones+'" n\'est pas conforme pour un nombre de colones !',parent=self.boss ,icon = 'error')
         else :
@@ -1493,7 +1494,7 @@ class Reglages_lab_alea (Outils.Base_Reglages) :
         nb_lignes = self.valeur_ligne.get()
         try :
             nb_lignes = int(nb_lignes)
-        except :
+        except TypeError :
             if self.boss.alerte_mauvaise_entree :
                 messagebox.showinfo ('Nombre de lignes','L\'entrée "'+nb_lignes+'" n\'est pas conforme pour un nombre de lignes !',parent=self.boss ,icon = 'error')
         else :
@@ -1545,7 +1546,7 @@ class Reglages_lab_alea (Outils.Base_Reglages) :
         x = self.valeur_x.get()
         try :
             x = int(x)
-        except :
+        except TypeError :
             if self.boss.alerte_mauvaise_entree :
                 messagebox.showinfo ('Position x du départ','L\'entrée "'+x+'" n\'est pas conforme pour une position sur le labyrinthe !',parent=self.boss ,icon = 'error')
             self.valeur_x.set(0)
@@ -1568,7 +1569,7 @@ class Reglages_lab_alea (Outils.Base_Reglages) :
         y = self.valeur_y.get()
         try :
             y = int(y)
-        except :
+        except TypeError :
             if self.boss.alerte_mauvaise_entree :
                 messagebox.showinfo ('Position y du départ','L\'entrée "'+y+'" n\'est pas conforme pour une position sur le labyrinthe !',parent=self.boss ,icon = 'error')
             self.valeur_y.set(0)
@@ -1594,9 +1595,9 @@ class Reglages_lab_alea (Outils.Base_Reglages) :
             self.big_boss.parametres["lab alea entree y"] = self.valeur_y.get()
             self.grille.init_variables()
 
-class Reglages_apparence (Outils.Base_Reglages) :
+class Reglages_apparence (ot.Base_Reglages) :
     def __init__ (self, boss) :
-        Outils.Base_Reglages.__init__(self, boss, "Apparence Générale")
+        ot.Base_Reglages.__init__(self, boss, "Apparence Générale")
     
     def init_entitees (self) :
         entitees = self.big_boss.get_extra_entitees(["grille", "canvas", "balle"])
@@ -1605,7 +1606,7 @@ class Reglages_apparence (Outils.Base_Reglages) :
         self.balle = entitees[2]
     
     def lancement (self) :
-        Outils.Base_Reglages.lancement(self, "Réglages apparence générale")
+        ot.Base_Reglages.lancement(self, "Réglages apparence générale")
         
         self.initial_couleur_mode(1)
         self.logo(2)
@@ -1674,13 +1675,13 @@ class Reglages_apparence (Outils.Base_Reglages) :
         self.nom_logos_reverse = {}
         with open("Idées LOGO/#Index_logos_parcoureur.csv") as f :
             for ligne in f.readlines()[1:] :
-                l = ligne.split("\n")[0].split(",")
-                if len(l) == 1 :
-                    self.nom_logos[l[0]] = l[0]
-                    self.nom_logos_reverse[l[0]] = l[0]
-                elif len(l) == 2 :
-                    self.nom_logos[l[1]] = l[0]
-                    self.nom_logos_reverse[l[0]] = l[1]
+                li = ligne.split("\n")[0].split(",")
+                if len(li) == 1 :
+                    self.nom_logos[li[0]] = li[0]
+                    self.nom_logos_reverse[li[0]] = li[0]
+                elif len(li) == 2 :
+                    self.nom_logos[li[1]] = li[0]
+                    self.nom_logos_reverse[li[0]] = li[1]
                 else :
                     print("Erreur fichier 'Index_logos_parcoureur'")
     
@@ -1700,9 +1701,9 @@ class Reglages_apparence (Outils.Base_Reglages) :
         self.big_boss.parametres["logo parcoureur"] = self.nom_logos[self.combobox_nom_logo.get()]
         self.big_boss.fenetre.open_image()
 
-class Reglages_balle (Outils.Base_Reglages) :
+class Reglages_balle (ot.Base_Reglages) :
     def __init__ (self, boss) :
-        Outils.Base_Reglages.__init__(self, boss, "Balle (joueur)")
+        ot.Base_Reglages.__init__(self, boss, "Balle (joueur)")
     
     def init_entitees (self) :
         entitees = self.big_boss.get_extra_entitees(["grille", "canvas", "balle"])
@@ -1711,7 +1712,7 @@ class Reglages_balle (Outils.Base_Reglages) :
         self.balle = entitees[2]
     
     def lancement (self) :
-        Outils.Base_Reglages.lancement(self, "Réglages de la Balle")
+        ot.Base_Reglages.lancement(self, "Réglages de la Balle")
         
         self.deplacement(1)
     
@@ -1738,7 +1739,7 @@ class Reglages_balle (Outils.Base_Reglages) :
         vitesse.grid(column=2, row=0)
         text_vitesse = tk.Label(vitesse, text="Vitesse :", font=("Helvetica", 13))
         text_vitesse.grid(column=0, row=0)
-        Outils.Commentaire(self.boss, text_vitesse, "Temps d'attente (en milisecondes)\nentre deux partitions du mouvement\nde la balle entre deux cases")
+        ot.Commentaire(self.boss, text_vitesse, "Temps d'attente (en milisecondes)\nentre deux partitions du mouvement\nde la balle entre deux cases")
         self.valeur_vitesse = ttk.Spinbox(vitesse, from_=10, to=1000, wrap=True, font=("Helvetica", 15), width=5, command=self.verif_vitesse)
         self.valeur_vitesse.set(self.balle.vitesse)
         self.valeur_vitesse.grid(column=0, row=1)
@@ -1749,7 +1750,7 @@ class Reglages_balle (Outils.Base_Reglages) :
         decoupe = self.valeur_decoupe.get()
         try :
             decoupe = int(decoupe)
-        except :
+        except TypeError :
             if self.boss.alerte_mauvaise_entree :
                 messagebox.showinfo ('Valeur de découpe','La valeur "'+decoupe+'" n\'est pas conforme pour un nombre découpe du mouvement !',parent=self.boss ,icon = 'error')
         else :
@@ -1767,7 +1768,7 @@ class Reglages_balle (Outils.Base_Reglages) :
         vitesse = self.valeur_vitesse.get()
         try :
             vitesse = int(vitesse)
-        except :
+        except TypeError :
             if self.boss.alerte_mauvaise_entree :
                 messagebox.showinfo ('Vitesse','La vitesse "'+vitesse+'" n\'est pas conforme !',parent=self.boss ,icon = 'error')
         else :
@@ -1786,9 +1787,9 @@ class Reglages_balle (Outils.Base_Reglages) :
             self.big_boss.parametres["vitesse deplacement"] = self.valeur_vitesse.get()
             self.balle.init_variables()
 
-class Reglages_question_confirmation (Outils.Base_Reglages) :
+class Reglages_question_confirmation (ot.Base_Reglages) :
     def __init__ (self, boss) :
-        Outils.Base_Reglages.__init__(self, boss, "Alertes de confirmation")
+        ot.Base_Reglages.__init__(self, boss, "Alertes de confirmation")
     
     def init_entitees (self) :
         entitees = self.big_boss.get_extra_entitees(["grille", "canvas", "balle"])
@@ -1797,7 +1798,7 @@ class Reglages_question_confirmation (Outils.Base_Reglages) :
         self.balle = entitees[2]
     
     def lancement (self) :
-        Outils.Base_Reglages.lancement(self, "Réglages des Alertes de Confirmation")
+        ot.Base_Reglages.lancement(self, "Réglages des Alertes de Confirmation")
         
         self.lab_suivant(1)
         self.lab_precedent(2)
@@ -1858,9 +1859,9 @@ class Reglages_question_confirmation (Outils.Base_Reglages) :
         self.big_boss.parametres["question confirmation passage niveau 4"] = self.var_confirmation_niveau_4.get()
         self.big_boss.parametres["question confirmation passage niveau max"] = self.var_confirmation_niveau_max.get()
 
-class Reglages_generaux (Outils.Base_Reglages) :
+class Reglages_generaux (ot.Base_Reglages) :
     def __init__ (self, boss) :
-        Outils.Base_Reglages.__init__(self, boss, "Généraux")
+        ot.Base_Reglages.__init__(self, boss, "Généraux")
     
     def init_entitees (self) :
         entitees = self.big_boss.get_extra_entitees(["grille", "canvas", "balle"])
@@ -1869,7 +1870,7 @@ class Reglages_generaux (Outils.Base_Reglages) :
         self.balle = entitees[2]
     
     def lancement (self) :
-        Outils.Base_Reglages.lancement(self, "Réglages Généraux")
+        ot.Base_Reglages.lancement(self, "Réglages Généraux")
         
         self.initial_type_deplacement(1)
     
@@ -1905,7 +1906,7 @@ class Niveaux () :
         self. balle = balle
     
     def plus (self, event=None) :
-        if self.Niveau_max == False :
+        if not(self.Niveau_max) :
             if self.numero < self.nombre_de_niveaux :
                 self.numero += 1
             else :
@@ -1919,7 +1920,7 @@ class Niveaux () :
             messagebox.showinfo ('Changer de Niveau','Le Niveau est déjà au max !',icon = 'error')
     
     def moins (self, event=None) :
-        if self.Niveau_max == False  :
+        if not(self.Niveau_max)  :
             if self.numero == 1 :
                 self.numero = self.nombre_de_niveaux
             else :
@@ -1969,7 +1970,7 @@ class Niveaux () :
         return True
     
     def niveau_max (self, event=None) :
-        if self.Niveau_max == False :
+        if not(self.Niveau_max) :
             if int(self.big_boss.parametres["question confirmation passage niveau max"]) :
                 MsgBox = messagebox.askquestion ('Passer au Niveau max (impossible !!)','Dans le Niveau max tous les murs sont invisibles ! Alors bon courage !'+" "*180+'Voulez-vous vraiment passer au Niveau max ?',icon = 'warning')
             else :
