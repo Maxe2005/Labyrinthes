@@ -1,7 +1,7 @@
 # Entitee du parametre, Nom du parametre, valeur du parametre
 parcoureur,type deplacement initial,Lisse
-parcoureur,lab alea x,10
-parcoureur,lab alea y,5
+parcoureur,lab alea x,13
+parcoureur,lab alea y,10
 parcoureur,lab alea entree x,0
 parcoureur,lab alea entree y,0
 parcoureur,lab alea alerte mauvaise entree,1
