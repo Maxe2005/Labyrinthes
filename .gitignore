@@ -17,3 +17,9 @@ htmlcov/
 # Editors
 .vscode/
 .idea/
+
+# BMad Method tooling — installed/regenerable, not project source.
+# _bmad-output/ (generated artifacts, e.g. the PRD) is NOT ignored.
+# See README.md for setup instructions.
+.claude/skills/
+_bmad/
