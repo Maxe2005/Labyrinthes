@@ -106,7 +106,7 @@ Maze data is stored as plain CSV under dedicated top-level folders, each with a 
 
 #### Language and naming
 
-Code, identifiers, comments, and UI strings are in French throughout (`grille`, `balle`, `fenetre`, `parcoureur`, `réglages`, `Aller à`, etc.). Keep this convention when porting logic to `src/labyrinthes/` — identifiers and UI text should stay French, only the project's structure/tooling is being modernized.
+Code, identifiers, comments, and UI strings are in French throughout (`grille`, `balle`, `fenetre`, `parcoureur`, `réglages`, `Aller à`, etc.). This is legacy-only: on the `rewrite` branch, code, identifiers, comments, UI strings, on-disk data (folder names, CSV headers, save file naming), and documentation are all in English going forward (e.g. `grille` → `grid`, `balle` → `ball`, `parcoureur` → `player`, `Labyrinthes_classiques/` → an English-named equivalent, the `entité,nom,valeur` settings CSV header → `entity,name,value`). Only the conversation language with the user defaults to French; project artifacts do not. The maze cell-encoding scheme itself (cells as `"0"`/`"1"`/`"2"`/`"3"`) is digits, not language-dependent, and must be preserved as-is. Existing legacy save files need a migration/conversion path to the new English-named layout — see the PRD for details (`_bmad-output/planning-artifacts/prds/prd-Labyrinthes-2026-08-04/`).
 
 ## Known repo debt to be aware of (legacy code, `main`)
 

@@ -1,7 +1,7 @@
 [project]
 name = "labyrinthes"
 version = "0.1.0"
-description = "Éditeur et jeu de labyrinthes"
+description = "Maze editor and game"
 requires-python = ">=3.12"
 dependencies = []
 
