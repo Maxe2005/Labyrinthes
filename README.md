@@ -7,7 +7,7 @@ This is a long-running learning project, currently being rewritten from scratch 
 ## Setup (rewrite branch)
 
 ```bash
-python3 -m venv .venv
+python3 -m venv .venv --upgrade-deps
 source .venv/bin/activate
 pip install -e . --group dev
 ```
