@@ -37,6 +37,14 @@ Approach: port functionality from the legacy monoliths incrementally, one module
 
 Note: there is also an older `refonte` branch (mirrored as `origin/refonte-labyrinthes`) from an earlier rewrite attempt, which split the code into `src/Create_labyrinthe/`/`src/Labyrinthes/` and extracted shared widgets into an external `Outils_Tkinter` package. It has no tooling (no ruff/pytest/pyproject) and is unrelated to the `rewrite` branch — useful as prior art on the desired module split, not as a base to merge from.
 
+### Git workflow
+
+- **One branch per epic**, created from the `rewrite` root branch and named after the epic's title in `_bmad-output/planning-artifacts/epics.md` (e.g. `epic-1-foundation-navigation-shell`). Reuse the same epic branch across all of that epic's stories rather than branching per story; it stays alive until the epic is done.
+- **Commit in atomic steps**: one logical unit of work per commit (e.g. one value object/module plus its tests), not one giant commit per story.
+- **Conventional Commits, in English**: a `feat:`/`fix:`/`perf:`/`docs:` subject line, plus a body explaining *why*, not just what.
+- **Story numbering must be visible in the subject line** whenever a commit belongs to a story, for quick identification — e.g. `feat(domain): add Cell value object with wall-bit decoding (story 1.1)`.
+- **Merge back** the epic branch into `rewrite` with `git merge --no-ff` (keeps a visible merge commit marking the epic branch's contribution) once a meaningful slice of work is ready.
+
 ## Legacy implementation (reference only)
 
 The following describes `Creer_labyrinthes.py` / `Labyrinthes_copy.py` / `Autres/` on `main`, useful when porting a feature to `src/labyrinthes/` on the `rewrite` branch.
