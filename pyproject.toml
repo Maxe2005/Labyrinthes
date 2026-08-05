@@ -29,3 +29,7 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Lets `tests/test_architecture_boundaries_scanner.py` import
+# `tests.test_architecture_boundaries` under plain `pytest`, not only `python -m pytest`
+# (which prepends cwd to sys.path on its own).
+pythonpath = ["."]
