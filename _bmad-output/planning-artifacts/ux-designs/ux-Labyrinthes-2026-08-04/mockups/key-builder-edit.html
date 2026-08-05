@@ -1,0 +1,215 @@
+<title>Labyrinthes — Key screen: Builder edit</title>
+<style>
+/*
+  KEY SCREEN — Builder edit screen (light), mid-edit state + hover-tooltip detail.
+  Governs: EXPERIENCE.md → Information Architecture → "Builder — edit screen" row;
+           EXPERIENCE.md → Component Patterns → tool-btn, hud-chip, maze-frame, wall-bar,
+             marker, ghost-marker, Top bar/breadcrumb-Home-button, pill-btn, kbd-tag + hover tooltip;
+           EXPERIENCE.md → State Patterns → "Builder" rows (Mid-edit; Entry set, exit not set);
+           EXPERIENCE.md → Key Flows → UJ-B steps 3-5;
+           DESIGN.md → Components → wall-bar (broken = gap, not dashed), ghost-marker
+             (superseded to fully absent until Set Exit is used), kbd-tag + hover tooltip.
+  Primary section: mid-edit canonical state (some walls broken as clean gaps, entry set,
+  exit NOT set — no ghost-marker rendered anywhere). Secondary section: the same tool-btn
+  pattern with its hover tooltip shown open, illustrating kbd-tag-on-button + separate
+  hover-tooltip-describing-the-action.
+*/
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 40px 24px 64px;
+  background: #eef2f7;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #1c2733;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+}
+.mono { font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas, monospace; }
+
+.intro { max-width: 900px; text-align: left; }
+.intro h1 { font-size: 20px; font-weight: 700; margin: 0 0 6px; letter-spacing: -0.01em; }
+.intro h1 span { color: #2563eb; }
+.intro p { margin: 0; font-size: 14px; line-height: 1.55; color: #5b6b7c; }
+
+.col-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; text-align: left; width: 900px; max-width: 92vw; }
+
+:root {
+  --c-bg: #eef2f7; --c-window: #ffffff; --c-panel: #f7f9fc; --c-border: #d7dee6;
+  --c-ink: #1c2733; --c-ink-soft: #5b6b7c; --c-accent: #2563eb; --c-accent-bg: #dbeafe;
+  --c-accent-on-tint: #1d4ed8; --c-wall: #263445; --c-corridor: #ffffff;
+  --c-entry: #16a34a; --c-exit: #d97706; --c-ghost: #94a3b8;
+}
+
+.window {
+  width: 900px; max-width: 92vw; background: var(--c-window);
+  border: 1px solid var(--c-border); border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.08);
+  overflow: hidden;
+}
+.os-titlebar { height: 34px; background: var(--c-panel); border-bottom: 1px solid var(--c-border); display: flex; align-items: center; gap: 8px; padding: 0 12px; }
+.os-titlebar .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c-border); }
+.os-titlebar .label { margin-left: 6px; font-size: 12px; color: var(--c-ink-soft); font-weight: 600; }
+
+.topbar { display: flex; align-items: center; justify-content: space-between; padding: 10px 18px; border-bottom: 1px solid var(--c-border); background: var(--c-window); }
+.topbar-left { display: flex; align-items: center; gap: 14px; }
+.brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
+.brand .mark { width: 22px; height: 22px; border-radius: 5px; background: var(--c-wall); display: grid; place-items: center; }
+.brand .mark svg { width: 13px; height: 13px; }
+
+.crumb { display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; }
+.crumb .seg { color: var(--c-ink-soft); cursor: pointer; }
+.crumb .seg:hover { color: var(--c-accent); }
+.crumb .sep { color: var(--c-ink-soft); opacity: .6; }
+.crumb .current { color: var(--c-ink); }
+
+.topbar-right { display: flex; align-items: center; gap: 8px; }
+.icon-btn { width: 30px; height: 30px; border-radius: 6px; border: 1px solid var(--c-border); background: var(--c-panel); display: grid; place-items: center; cursor: pointer; color: var(--c-ink-soft); }
+.pill-btn {
+  border: 1px solid var(--c-border); background: var(--c-panel); color: var(--c-ink);
+  font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 6px;
+  display: flex; align-items: center; gap: 6px; cursor: pointer;
+}
+.pill-btn.primary { background: var(--c-accent); border-color: var(--c-accent); color: #fff; }
+.pill-btn .kbd { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 10px; border-radius: 3px; padding: 0 4px; }
+.pill-btn:not(.primary) .kbd { background: var(--c-window); border: 1px solid var(--c-border); color: var(--c-ink-soft); }
+.pill-btn.primary .kbd { background: rgba(255,255,255,.2); border: 1px solid rgba(255,255,255,.35); color: #fff; }
+
+.body-row { display: flex; min-height: 400px; }
+.side { width: 148px; background: var(--c-panel); border-right: 1px solid var(--c-border); padding: 16px 12px; display: flex; flex-direction: column; gap: 8px; }
+.side.right { border-right: none; border-left: 1px solid var(--c-border); }
+.side .group-label { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--c-ghost); font-weight: 700; margin: 6px 2px 2px; }
+.tool-btn {
+  position: relative;
+  display: flex; align-items: center; justify-content: space-between; gap: 6px;
+  background: var(--c-window); border: 1px solid var(--c-border); border-radius: 6px;
+  padding: 8px 10px; font-size: 12.5px; font-weight: 600; color: var(--c-ink); cursor: pointer;
+}
+.tool-btn .kbd { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 10px; background: var(--c-panel); border: 1px solid var(--c-border); border-radius: 3px; padding: 0 4px; color: var(--c-ink-soft); }
+.tool-btn.active { background: var(--c-accent-bg); border-color: var(--c-accent); color: var(--c-accent-on-tint); }
+.tool-btn.active .kbd { background: transparent; border-color: currentColor; color: inherit; opacity: .85; }
+
+.stage {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px;
+  background:
+    linear-gradient(var(--c-panel) 1px, transparent 1px) 0 0 / 100% 22px,
+    linear-gradient(90deg, var(--c-panel) 1px, transparent 1px) 0 0 / 22px 100%,
+    var(--c-window);
+}
+.hud { display: flex; align-items: stretch; gap: 10px; }
+.hud-chip { background: var(--c-panel); border: 1px solid var(--c-border); border-radius: 6px; padding: 7px 14px; text-align: left; min-width: 74px; }
+.hud-chip .k { font-size: 9px; text-transform: uppercase; letter-spacing: .07em; color: var(--c-ghost); font-weight: 700; }
+.hud-chip .v { font-size: 16px; font-weight: 700; color: var(--c-ink); margin-top: 1px; }
+.hud-chip.accent { background: var(--c-accent-bg); border-color: var(--c-accent); }
+.hud-chip.accent .v { color: var(--c-accent-on-tint); font-size: 12px; }
+
+.maze-frame { border: 1px solid var(--c-border); border-radius: 10px; background: var(--c-window); box-shadow: 0 1px 2px rgba(16,24,40,.05); padding: 20px; }
+.maze { position: relative; width: 392px; height: 280px; background: var(--c-corridor); border: 3px solid var(--c-wall); border-radius: 3px; }
+.wall-bar { position: absolute; height: 3px; background: var(--c-wall); }
+.marker { position: absolute; width: 22px; height: 22px; margin: -11px; border-radius: 5px; display: grid; place-items: center; }
+.marker.entry { background: var(--c-entry); box-shadow: 0 0 0 3px rgba(22,163,74,.15); }
+.marker svg { width: 12px; height: 12px; fill: #fff; }
+
+.legend-note { font-size: 11px; color: var(--c-ink-soft); text-align: center; max-width: 380px; }
+.legend-note b { color: var(--c-ink); }
+
+/* ---- tooltip section ---- */
+.tooltip-demo { display: flex; flex-direction: column; align-items: center; gap: 40px; }
+.tooltip-stage { display: flex; align-items: flex-start; gap: 60px; padding: 40px; background: var(--c-panel); }
+.tooltip-anchor { position: relative; width: 148px; }
+.tooltip-anchor .tool-btn { width: 100%; }
+.tooltip-bubble {
+  position: absolute; top: 100%; left: 0; margin-top: 10px; width: 220px;
+  background: var(--c-window); border: 1px solid var(--c-border); border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.12);
+  padding: 10px 12px; font-size: 14px; line-height: 1.55; color: var(--c-ink); font-weight: 400;
+}
+.tooltip-bubble::before {
+  content: ""; position: absolute; top: -6px; left: 20px; width: 10px; height: 10px;
+  background: var(--c-window); border-left: 1px solid var(--c-border); border-top: 1px solid var(--c-border);
+  transform: rotate(45deg);
+}
+.tooltip-name { font-size: 11px; font-weight: 700; color: var(--c-ink-soft); margin: 0 0 10px; text-transform: uppercase; letter-spacing: .06em; }
+</style>
+
+<div class="intro">
+  <h1><span>Key screen /</span> Builder — edit screen</h1>
+  <p>Mid-edit state: some walls broken (rendered as clean gaps, never dashed), entry set, exit not yet set — per the corrected decision, no ghost-marker or placeholder is drawn at the exit until the user clicks a cell with Set Exit active. The `Test in Player` pill-btn is the deliberate Home-bypass exception (UJ-B step 5).</p>
+</div>
+
+<div class="col-label">Primary — mid-edit, entry set / exit not set</div>
+<div class="window">
+  <div class="os-titlebar"><div class="dot"></div><div class="dot"></div><div class="dot"></div><span class="label">Labyrinthes — Builder</span></div>
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="brand">
+        <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg></span>
+        Labyrinthes
+      </div>
+      <div class="crumb">
+        <span class="seg">Home</span><span class="sep">/</span>
+        <span class="current">Builder</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <button class="pill-btn"><span>Test in Player</span> <span class="kbd">T</span></button>
+      <button class="pill-btn primary"><span>Save</span> <span class="kbd">⌘S</span></button>
+      <button class="icon-btn" title="Settings"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87"/></svg></button>
+    </div>
+  </div>
+
+  <div class="body-row">
+    <aside class="side">
+      <div class="group-label">Tools</div>
+      <div class="tool-btn active"><span>Break Wall</span> <span class="kbd">B</span></div>
+      <div class="tool-btn"><span>Set Entry</span> <span class="kbd">E</span></div>
+      <div class="tool-btn"><span>Set Exit</span> <span class="kbd">X</span></div>
+      <div class="tool-btn"><span>Undo</span> <span class="kbd">⌘Z</span></div>
+    </aside>
+
+    <main class="stage">
+      <div class="hud">
+        <div class="hud-chip"><div class="k">Grid</div><div class="v mono">7×5</div></div>
+        <div class="hud-chip"><div class="k">Walls broken</div><div class="v mono">9</div></div>
+        <div class="hud-chip accent"><div class="k">Status</div><div class="v">Draft</div></div>
+      </div>
+
+      <div class="maze-frame">
+        <div class="maze">
+          <!-- top row: one segment left intact, the next segment broken (rendered as a gap — nothing drawn) -->
+          <div class="wall-bar" style="top:54.5px; left:0; width:168px;"></div>
+          <!-- gap here: wall between col2-3 at this row is broken -->
+          <div class="wall-bar" style="top:110.5px; left:56px; width:336px;"></div>
+          <div class="wall-bar" style="top:166.5px; left:0; width:112px;"></div>
+          <!-- gap here: wall broken -->
+          <div class="wall-bar" style="top:166.5px; left:224px; width:112px;"></div>
+          <div class="wall-bar" style="top:222.5px; left:56px; width:336px;"></div>
+
+          <div class="marker entry" style="top:28px; left:28px;" title="Entry"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg></div>
+          <!-- exit not set: nothing rendered at the exit cell -->
+        </div>
+      </div>
+    </main>
+
+    <aside class="side right">
+      <div class="group-label">Grid</div>
+      <div class="tool-btn"><span>Resize</span> <span class="kbd">G</span></div>
+      <div class="tool-btn"><span>Clear all</span> <span class="kbd">⇧C</span></div>
+      <div class="group-label">Export</div>
+      <div class="tool-btn"><span>New Maze</span> <span class="kbd">N</span></div>
+    </aside>
+  </div>
+</div>
+<div class="col-label" style="text-align:center; font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--c-ink-soft); font-size: 12px;">Exit not set: no marker or placeholder is drawn anywhere until Set Exit is used to place one.</div>
+
+<div class="tooltip-demo">
+  <div class="col-label">Secondary — hover tooltip open on a tool-btn</div>
+  <div class="tooltip-stage">
+    <div class="tooltip-anchor">
+      <p class="tooltip-name">Tool side bar (hover state)</p>
+      <div class="tool-btn active"><span>Break Wall</span> <span class="kbd">B</span></div>
+      <div class="tooltip-bubble">Removes the wall between the cursor and the next cell.</div>
+    </div>
+  </div>
+</div>

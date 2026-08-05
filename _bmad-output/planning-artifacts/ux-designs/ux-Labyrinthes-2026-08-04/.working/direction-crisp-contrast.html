@@ -1,0 +1,259 @@
+<title>Labyrinthes — Direction: Crisp Contrast</title>
+<style>
+/*
+  DIRECTION 3 — "CRISP CONTRAST"
+  Register: stark, high-contrast, confident — almost editorial. Rationale:
+  pure black/white fields with one hot accent used only for danger/attention
+  (HARD mode, broken walls) make state changes unmissable at a glance; heavy
+  type weight and near-zero radius read as precise and a little fearless,
+  which suits a HARD/invisible-ball mode well. Density is sparse — big
+  numbers, lots of negative space, nothing decorative.
+
+  Hex values used:
+    --bg        #0b0b0c  page backdrop
+    --window    #111113  window chrome
+    --panel     #17171a  side panels
+    --line      #2a2a2e  hairline separators
+    --ink       #f5f5f4  primary text (near-white)
+    --ink-soft  #8a8a90  secondary text
+    --accent    #f2ff2e  hot accent (HARD / focus)
+    --danger    #ff3b30  broken-wall / alert accent
+    --wall      #f5f5f4  maze walls (near-white on black)
+    --corridor  #0b0b0c  maze open floor
+    --entry     #f5f5f4  entry marker
+    --exit      #f2ff2e  exit marker
+*/
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 40px 24px 64px; background: #0b0b0c;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #f5f5f4; display: flex; flex-direction: column; align-items: center; gap: 40px;
+}
+.intro { max-width: 760px; text-align: left; }
+.intro h1 { font-size: 22px; font-weight: 900; margin: 0 0 8px; letter-spacing: -0.02em; text-transform: uppercase; }
+.intro h1 span { color: #f2ff2e; }
+.intro p { margin: 0; font-size: 14px; line-height: 1.6; color: #8a8a90; }
+
+.window {
+  width: 900px; max-width: 92vw; background: #111113; border: 1px solid #2a2a2e;
+  border-radius: 4px; overflow: hidden;
+}
+.os-titlebar {
+  height: 32px; background: #17171a; border-bottom: 1px solid #2a2a2e;
+  display: flex; align-items: center; gap: 8px; padding: 0 14px;
+}
+.os-titlebar .dot { width: 8px; height: 8px; border-radius: 50%; background: #2a2a2e; }
+.os-titlebar .label { margin-left: 8px; font-size: 11px; color: #8a8a90; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 22px; border-bottom: 1px solid #2a2a2e;
+}
+.topbar-left { display: flex; align-items: center; gap: 20px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 16px; text-transform: uppercase; letter-spacing: .02em; }
+.brand .mark { width: 24px; height: 24px; background: #f5f5f4; display: grid; place-items: center; }
+.brand .mark svg { width: 14px; height: 14px; }
+
+.switch { display: flex; border: 1px solid #2a2a2e; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+.switch button { border: 0; background: transparent; color: #8a8a90; padding: 8px 16px; cursor: pointer; font: inherit; }
+.switch button.active { background: #f5f5f4; color: #0b0b0c; }
+
+.topbar-right { display: flex; align-items: center; gap: 10px; }
+.icon-btn { width: 30px; height: 30px; border: 1px solid #2a2a2e; background: transparent; display: grid; place-items: center; cursor: pointer; color: #f5f5f4; }
+.pill-btn {
+  border: 1px solid #2a2a2e; background: transparent; color: #f5f5f4; font-weight: 800;
+  font-size: 11px; text-transform: uppercase; letter-spacing: .04em; padding: 8px 14px;
+  display: flex; align-items: center; gap: 8px; cursor: pointer;
+}
+.pill-btn.primary { background: #f2ff2e; border-color: #f2ff2e; color: #0b0b0c; }
+.kbd { font-size: 10px; font-weight: 700; border: 1px solid currentColor; padding: 1px 5px; opacity: .7; }
+
+.body { display: flex; min-height: 470px; }
+.side { width: 160px; background: #17171a; border-right: 1px solid #2a2a2e; padding: 18px 12px; display: flex; flex-direction: column; gap: 6px; }
+.side.right { border-right: none; border-left: 1px solid #2a2a2e; }
+.group-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #55555b; margin: 10px 4px 2px; }
+.tool-btn {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  background: transparent; border: 1px solid #2a2a2e; padding: 10px 12px;
+  font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; color: #f5f5f4; cursor: pointer;
+}
+.tool-btn.active { background: #f2ff2e; border-color: #f2ff2e; color: #0b0b0c; }
+.tool-btn.danger { border-color: #ff3b30; color: #ff3b30; }
+
+.stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: 26px; background: #0b0b0c; }
+
+.hud { display: flex; gap: 2px; border: 1px solid #2a2a2e; }
+.hud-chip { padding: 10px 20px; text-align: left; min-width: 84px; border-right: 1px solid #2a2a2e; }
+.hud-chip:last-child { border-right: none; }
+.hud-chip .k { font-size: 9px; text-transform: uppercase; letter-spacing: .08em; color: #55555b; font-weight: 800; }
+.hud-chip .v { font-size: 22px; font-weight: 900; color: #f5f5f4; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.hud-chip.hard { background: #f2ff2e; }
+.hud-chip.hard .k, .hud-chip.hard .v { color: #0b0b0c; }
+
+.maze-frame { border: 1px solid #2a2a2e; padding: 18px; position: relative; }
+.maze { position: relative; width: 378px; height: 270px; background: #0b0b0c; border: 6px solid #f5f5f4; }
+.wall-bar { position: absolute; height: 6px; background: #f5f5f4; }
+.marker { position: absolute; width: 20px; height: 20px; margin: -10px; display: grid; place-items: center; }
+.marker.entry { border: 2px solid #f5f5f4; }
+.marker.exit { background: #f2ff2e; }
+.fog {
+  position: absolute; inset: 6px; pointer-events: none;
+  background: radial-gradient(circle at 27px 27px, transparent 0, transparent 34px, rgba(0,0,0,.88) 90px);
+}
+.status-light {
+  position: absolute; top: -13px; left: 24px; display: flex; align-items: center; gap: 8px;
+  background: #111113; border: 1px solid #2a2a2e; padding: 5px 10px 5px 8px; font-size: 11px; font-weight: 800; letter-spacing: .03em; text-transform: uppercase;
+}
+.status-light .led { width: 8px; height: 8px; border-radius: 50%; background: #ff3b30; box-shadow: 0 0 8px #ff3b30; }
+.hard-badge {
+  position: absolute; top: -13px; right: 24px; background: #ff3b30; color: #fff; font-weight: 900;
+  font-size: 11px; letter-spacing: .06em; padding: 5px 12px;
+}
+
+.legend { display: flex; gap: 18px; font-size: 11px; color: #8a8a90; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 8px; height: 8px; display: inline-block; }
+
+.section-label { width: 900px; max-width: 92vw; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; color: #55555b; text-align: left; }
+
+.ghost-marker { position: absolute; width: 20px; height: 20px; margin: -10px; border: 1.5px dashed #55555b; display: grid; place-items: center; color: #55555b; font-size: 11px; font-weight: 900; }
+.wall-bar.broken { background: repeating-linear-gradient(90deg, #ff3b30 0 5px, transparent 5px 9px); height: 6px; }
+</style>
+
+<div class="intro">
+  <h1><span>Direction 3 /</span> Crisp Contrast</h1>
+  <p>Near-black fields, hairline dividers and a single hot accent give every state maximum legibility with zero decoration — ideal for HARD mode, where the whole point is that you can't see the ball and need every other signal to be unambiguous. Type is heavy, space is generous, nothing competes for attention.</p>
+</div>
+
+<!-- HERO: Player, HARD mode (invisible ball) -->
+<div class="window">
+  <div class="os-titlebar">
+    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+    <span class="label">Labyrinthes — Player</span>
+  </div>
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="brand">
+        <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#0b0b0c" stroke-width="2.5"><rect x="3" y="3" width="18" height="18"/><path d="M3 9h18M9 3v18"/></svg></span>
+        Labyrinthes
+      </div>
+      <div class="switch"><button>Builder</button><button class="active">Player</button></div>
+    </div>
+    <div class="topbar-right">
+      <button class="pill-btn"><span>New Maze</span><span class="kbd">N</span></button>
+      <button class="icon-btn">⚙</button>
+      <button class="icon-btn">☾</button>
+    </div>
+  </div>
+
+  <div class="body">
+    <aside class="side">
+      <div class="group-label">Session</div>
+      <div class="tool-btn"><span>Pause</span><span class="kbd">Space</span></div>
+      <div class="tool-btn"><span>Restart</span><span class="kbd">R</span></div>
+      <div class="group-label">Mode</div>
+      <div class="tool-btn danger"><span>Hard</span><span class="kbd">✓</span></div>
+    </aside>
+
+    <main class="stage">
+      <div class="hud">
+        <div class="hud-chip"><div class="k">Level</div><div class="v">4</div></div>
+        <div class="hud-chip"><div class="k">Difficulty</div><div class="v">3</div></div>
+        <div class="hud-chip hard"><div class="k">Time</div><div class="v">01:07</div></div>
+      </div>
+
+      <div class="maze-frame">
+        <div class="status-light"><span class="led"></span>Last move: ↑</div>
+        <div class="hard-badge">Hard</div>
+        <div class="maze">
+          <div class="wall-bar" style="top:51px; left:0; width:324px;"></div>
+          <div class="wall-bar" style="top:105px; left:54px; width:324px;"></div>
+          <div class="wall-bar" style="top:159px; left:0; width:324px;"></div>
+          <div class="wall-bar" style="top:213px; left:54px; width:324px;"></div>
+          <div class="marker entry" style="top:27px; left:27px;"></div>
+          <div class="marker exit" style="top:243px; left:351px;"></div>
+          <div class="fog"></div>
+        </div>
+      </div>
+
+      <div class="legend">
+        <span><i style="background:#f5f5f4"></i>Entry</span>
+        <span><i style="background:#f2ff2e"></i>Exit</span>
+        <span><i style="background:#ff3b30"></i>Ball hidden — track by feel</span>
+      </div>
+    </main>
+
+    <aside class="side right">
+      <div class="group-label">Shortcuts</div>
+      <div class="tool-btn"><span>Legend</span><span class="kbd">L</span></div>
+      <div class="tool-btn"><span>Ball speed</span><span class="kbd">±</span></div>
+      <div class="group-label">Movement</div>
+      <div class="tool-btn active"><span>Discrete</span><span class="kbd">✓</span></div>
+    </aside>
+  </div>
+</div>
+
+<!-- SECONDARY: Builder, in-progress edit -->
+<div class="section-label">Secondary screen — Builder, in-progress edit</div>
+<div class="window">
+  <div class="os-titlebar">
+    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+    <span class="label">Labyrinthes — Builder</span>
+  </div>
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="brand">
+        <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#0b0b0c" stroke-width="2.5"><rect x="3" y="3" width="18" height="18"/><path d="M3 9h18M9 3v18"/></svg></span>
+        Labyrinthes
+      </div>
+      <div class="switch"><button class="active">Builder</button><button>Player</button></div>
+    </div>
+    <div class="topbar-right">
+      <button class="pill-btn"><span>Save</span><span class="kbd">⌘S</span></button>
+      <button class="pill-btn primary"><span>New Maze</span><span class="kbd">N</span></button>
+      <button class="icon-btn">⚙</button>
+    </div>
+  </div>
+
+  <div class="body" style="min-height:410px;">
+    <aside class="side">
+      <div class="group-label">Tools</div>
+      <div class="tool-btn active"><span>Break Wall</span><span class="kbd">B</span></div>
+      <div class="tool-btn"><span>Set Entry</span><span class="kbd">E</span></div>
+      <div class="tool-btn"><span>Set Exit</span><span class="kbd">X</span></div>
+      <div class="tool-btn"><span>Undo</span><span class="kbd">⌘Z</span></div>
+    </aside>
+
+    <main class="stage">
+      <div class="hud">
+        <div class="hud-chip"><div class="k">Grid</div><div class="v">7×5</div></div>
+        <div class="hud-chip"><div class="k">Broken</div><div class="v">9</div></div>
+        <div class="hud-chip hard"><div class="k">Status</div><div class="v" style="font-size:15px;">Draft</div></div>
+      </div>
+
+      <div class="maze-frame">
+        <div class="maze">
+          <div class="wall-bar" style="top:51px; left:0; width:162px;"></div>
+          <div class="wall-bar broken" style="top:51px; left:162px; width:162px;"></div>
+          <div class="wall-bar" style="top:105px; left:54px; width:324px;"></div>
+          <div class="wall-bar" style="top:159px; left:0; width:324px;"></div>
+          <div class="wall-bar" style="top:213px; left:54px; width:324px;"></div>
+          <div class="marker entry" style="top:27px; left:27px;"></div>
+          <div class="ghost-marker" style="top:243px; left:351px;">?</div>
+        </div>
+      </div>
+
+      <div class="legend">
+        <span><i style="background:#f5f5f4"></i>Entry set</span>
+        <span><i style="background:#55555b"></i>Exit not set</span>
+        <span><i style="background:#ff3b30"></i>Recently broken wall</span>
+      </div>
+    </main>
+
+    <aside class="side right">
+      <div class="group-label">Grid</div>
+      <div class="tool-btn"><span>Resize</span><span class="kbd">G</span></div>
+      <div class="tool-btn"><span>Clear all</span><span class="kbd">⇧C</span></div>
+    </aside>
+  </div>
+</div>

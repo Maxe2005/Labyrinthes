@@ -1,0 +1,212 @@
+<title>Labyrinthes — Key screen: Player maze-selection</title>
+<style>
+/*
+  KEY SCREEN — Player maze-selection screen (light only).
+  Governs: EXPERIENCE.md → Information Architecture → "Player — maze-selection screen" row;
+           EXPERIENCE.md → Component Patterns → Top bar/breadcrumb-Home-button, pill-btn;
+           EXPERIENCE.md → State Patterns → "Player — selection" rows (Empty, Populated);
+           EXPERIENCE.md → Key Flows → UJ-A step 2;
+           EXPERIENCE.md → Interaction Primitives (FR-9/FR-10 prev/next/jump-to-number).
+  Primary section: populated classic-maze gallery with prev/next/jump-to-number, plus a
+  clearly separate "Generate random" entry point. Secondary, smaller section: the empty
+  state (no classics found) — inline empty-state message, generate-random still available.
+*/
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 40px 24px 64px;
+  background: #eef2f7;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #1c2733;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+}
+.mono { font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas, monospace; }
+
+.intro { max-width: 900px; text-align: left; }
+.intro h1 { font-size: 20px; font-weight: 700; margin: 0 0 6px; letter-spacing: -0.01em; }
+.intro h1 span { color: #2563eb; }
+.intro p { margin: 0; font-size: 14px; line-height: 1.55; color: #5b6b7c; }
+
+.col-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; text-align: left; width: 820px; max-width: 92vw; }
+
+:root {
+  --c-bg: #eef2f7; --c-window: #ffffff; --c-panel: #f7f9fc; --c-border: #d7dee6;
+  --c-ink: #1c2733; --c-ink-soft: #5b6b7c; --c-accent: #2563eb; --c-accent-bg: #dbeafe;
+  --c-accent-on-tint: #1d4ed8; --c-wall: #263445; --c-corridor: #ffffff; --c-ghost: #94a3b8;
+  --c-entry: #16a34a; --c-exit: #d97706;
+}
+
+.window {
+  width: 820px; max-width: 92vw; background: var(--c-window);
+  border: 1px solid var(--c-border); border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.08);
+  overflow: hidden;
+}
+.os-titlebar { height: 34px; background: var(--c-panel); border-bottom: 1px solid var(--c-border); display: flex; align-items: center; gap: 8px; padding: 0 12px; }
+.os-titlebar .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c-border); }
+.os-titlebar .label { margin-left: 6px; font-size: 12px; color: var(--c-ink-soft); font-weight: 600; }
+
+.topbar { display: flex; align-items: center; justify-content: space-between; padding: 10px 18px; border-bottom: 1px solid var(--c-border); background: var(--c-window); }
+.topbar-left { display: flex; align-items: center; gap: 14px; }
+.brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
+.brand .mark { width: 22px; height: 22px; border-radius: 5px; background: var(--c-wall); display: grid; place-items: center; }
+.brand .mark svg { width: 13px; height: 13px; }
+.crumb { display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; }
+.crumb .seg { color: var(--c-ink-soft); cursor: pointer; }
+.crumb .seg:hover { color: var(--c-accent); }
+.crumb .sep { color: var(--c-ink-soft); opacity: .6; }
+.crumb .current { color: var(--c-ink); }
+.topbar-right { display: flex; align-items: center; gap: 8px; }
+.icon-btn { width: 30px; height: 30px; border-radius: 6px; border: 1px solid var(--c-border); background: var(--c-panel); display: grid; place-items: center; cursor: pointer; color: var(--c-ink-soft); }
+
+.body-pad { padding: 26px 28px; display: flex; flex-direction: column; gap: 24px; }
+
+.section-title { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--c-ghost); font-weight: 700; margin: 0 0 12px; }
+
+.gallery-head { display: flex; align-items: center; justify-content: space-between; }
+.pager { display: flex; align-items: center; gap: 10px; }
+.pager button.icon-btn { width: 26px; height: 26px; }
+.jump { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--c-ink-soft); }
+.jump input {
+  width: 40px; text-align: center; font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px; font-weight: 700; color: var(--c-ink); border: 1px solid var(--c-border);
+  border-radius: 5px; padding: 4px 2px; background: var(--c-window);
+}
+
+.gallery-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.maze-card {
+  border: 1px solid var(--c-border); border-radius: 8px; background: var(--c-window);
+  padding: 12px; display: flex; flex-direction: column; gap: 8px; cursor: pointer;
+}
+.maze-card.selected { border-color: var(--c-accent); background: var(--c-accent-bg); }
+.thumb {
+  position: relative; width: 100%; aspect-ratio: 4 / 3; background: var(--c-corridor);
+  border: 2px solid var(--c-wall); border-radius: 3px; overflow: hidden;
+}
+.thumb .wb { position: absolute; background: var(--c-wall); }
+.thumb .dot { position: absolute; width: 6px; height: 6px; border-radius: 2px; margin: -3px; }
+.thumb .dot.entry { background: var(--c-entry); }
+.thumb .dot.exit { background: var(--c-exit); }
+.card-name { font-size: 12px; font-weight: 700; color: var(--c-ink); }
+.card-meta { font-size: 10px; color: var(--c-ink-soft); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+
+.random-zone {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  background: var(--c-panel); border: 1px solid var(--c-border); border-radius: 10px; padding: 16px 20px;
+}
+.random-zone .txt h3 { margin: 0 0 4px; font-size: 14px; font-weight: 700; color: var(--c-ink); }
+.random-zone .txt p { margin: 0; font-size: 13px; color: var(--c-ink-soft); }
+.pill-btn {
+  border: 1px solid var(--c-border); background: var(--c-window); color: var(--c-ink);
+  font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 6px;
+  display: flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap;
+}
+.pill-btn.primary { background: var(--c-accent); border-color: var(--c-accent); color: #fff; }
+.pill-btn .kbd { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 10px; border-radius: 3px; padding: 0 4px; }
+.pill-btn:not(.primary) .kbd { background: var(--c-panel); border: 1px solid var(--c-border); color: var(--c-ink-soft); }
+.pill-btn.primary .kbd { background: rgba(255,255,255,.2); border: 1px solid rgba(255,255,255,.35); color: #fff; }
+
+.empty-state { text-align: center; padding: 30px 20px; border: 1px dashed var(--c-border); border-radius: 10px; }
+.empty-state p { margin: 0 0 14px; font-size: 14px; line-height: 1.55; color: var(--c-ink-soft); }
+
+/* small thumb wall/marker helper positions, per-card */
+</style>
+
+<div class="intro">
+  <h1><span>Key screen /</span> Player — maze-selection screen</h1>
+  <p>Classic maze gallery with previous/next/jump-to-number (FR-9/FR-10), plus a clearly separate "Generate random" entry point. Home breadcrumb in the top bar, distinct from the gameplay screen it leads into.</p>
+</div>
+
+<div class="col-label">Primary — populated gallery</div>
+<div class="window">
+  <div class="os-titlebar"><div class="dot"></div><div class="dot"></div><div class="dot"></div><span class="label">Labyrinthes — Player</span></div>
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="brand">
+        <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg></span>
+        Labyrinthes
+      </div>
+      <div class="crumb"><span class="seg">Home</span><span class="sep">/</span><span class="current">Player</span></div>
+    </div>
+    <div class="topbar-right">
+      <button class="icon-btn" title="Settings"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87"/></svg></button>
+    </div>
+  </div>
+
+  <div class="body-pad">
+    <div>
+      <div class="gallery-head">
+        <p class="section-title">Classic Mazes</p>
+        <div class="pager">
+          <button class="icon-btn" title="Previous"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></button>
+          <div class="jump">Maze <input type="text" value="4" /> of 12</div>
+          <button class="icon-btn" title="Next"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></button>
+        </div>
+      </div>
+
+      <div class="gallery-grid">
+        <div class="maze-card">
+          <div class="thumb">
+            <div class="wb" style="top:32%; left:0; width:60%; height:2px;"></div>
+            <div class="wb" style="top:64%; left:40%; width:60%; height:2px;"></div>
+            <div class="dot entry" style="top:12%; left:12%;"></div>
+            <div class="dot exit" style="top:88%; left:88%;"></div>
+          </div>
+          <div class="card-name">Classic Maze 2</div>
+          <div class="card-meta">7×5</div>
+        </div>
+        <div class="maze-card">
+          <div class="thumb">
+            <div class="wb" style="top:45%; left:20%; width:80%; height:2px;"></div>
+            <div class="dot entry" style="top:15%; left:85%;"></div>
+            <div class="dot exit" style="top:85%; left:15%;"></div>
+          </div>
+          <div class="card-name">Classic Maze 3</div>
+          <div class="card-meta">6×6</div>
+        </div>
+        <div class="maze-card selected">
+          <div class="thumb">
+            <div class="wb" style="top:30%; left:0; width:55%; height:2px;"></div>
+            <div class="wb" style="top:60%; left:45%; width:55%; height:2px;"></div>
+            <div class="dot entry" style="top:12%; left:12%;"></div>
+            <div class="dot exit" style="top:88%; left:88%;"></div>
+          </div>
+          <div class="card-name">Classic Maze 4</div>
+          <div class="card-meta">8×6 — best 00:42</div>
+        </div>
+        <div class="maze-card">
+          <div class="thumb">
+            <div class="wb" style="top:50%; left:0; width:40%; height:2px;"></div>
+            <div class="wb" style="top:25%; left:60%; width:40%; height:2px;"></div>
+            <div class="dot entry" style="top:15%; left:15%;"></div>
+            <div class="dot exit" style="top:85%; left:85%;"></div>
+          </div>
+          <div class="card-name">Classic Maze 5</div>
+          <div class="card-meta">7×7</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="random-zone">
+      <div class="txt">
+        <h3>Generate random</h3>
+        <p>Choose dimensions and difficulty, and play a freshly generated maze.</p>
+      </div>
+      <button class="pill-btn primary"><span>Generate random</span> <span class="kbd">N</span></button>
+    </div>
+  </div>
+</div>
+
+<div class="col-label">Secondary — empty state (no classics found)</div>
+<div class="window" style="width: 560px;">
+  <div class="body-pad" style="padding: 22px;">
+    <p class="section-title">Classic Mazes</p>
+    <div class="empty-state">
+      <p>No classic mazes were found. Build one in the Builder, or play a random maze now.</p>
+      <button class="pill-btn primary"><span>Generate random</span> <span class="kbd">N</span></button>
+    </div>
+  </div>
+</div>

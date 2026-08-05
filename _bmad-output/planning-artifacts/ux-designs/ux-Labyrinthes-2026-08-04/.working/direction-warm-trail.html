@@ -1,0 +1,305 @@
+<title>Labyrinthes — Direction: Warm Trail</title>
+<style>
+/*
+  DIRECTION 2 — "WARM TRAIL"
+  Register: warm, rounded, playful-but-grown-up — an app you'd hand a friend
+  without a manual. Rationale: generous corner radii, a cream + coral
+  palette and big friendly type make mistakes feel low-stakes and wins feel
+  celebrated; density is deliberately low, only the essentials are on
+  screen, so a first-time player never feels lost.
+
+  Hex values used:
+    --bg        #fff8f0  page backdrop
+    --window    #fffdf9  window chrome
+    --panel     #fff1e4  side panels
+    --border    #f3dfc9  soft borders
+    --ink       #4a3221  primary text (warm brown-black)
+    --ink-soft  #9a7c5c  secondary text
+    --coral     #ff6b4a  primary accent
+    --coral-dark #e8532f active/hover
+    --sun       #ffd166  secondary accent (exit / celebration)
+    --mint      #2fb88c  entry accent
+    --wall      #6b4a35  maze walls (warm brown)
+    --corridor  #fffdf9  maze open floor
+    --ball      #ff6b4a  ball
+*/
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 40px 24px 64px;
+  background: #fff8f0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #4a3221;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 44px;
+}
+.intro { max-width: 760px; text-align: left; }
+.intro h1 { font-size: 22px; font-weight: 800; margin: 0 0 8px; letter-spacing: -0.01em; }
+.intro h1 span { color: #ff6b4a; }
+.intro p { margin: 0; font-size: 14.5px; line-height: 1.6; color: #9a7c5c; }
+
+.window {
+  width: 900px;
+  max-width: 92vw;
+  background: #fffdf9;
+  border: 1px solid #f3dfc9;
+  border-radius: 26px;
+  box-shadow: 0 20px 50px rgba(180,110,60,.16), 0 4px 10px rgba(180,110,60,.08);
+  overflow: hidden;
+}
+.os-titlebar {
+  height: 40px;
+  background: #fff1e4;
+  border-bottom: 1px solid #f3dfc9;
+  display: flex; align-items: center; gap: 8px; padding: 0 16px;
+}
+.os-titlebar .dot { width: 11px; height: 11px; border-radius: 50%; background: #f3dfc9; }
+.os-titlebar .label { margin-left: 8px; font-size: 12.5px; color: #9a7c5c; font-weight: 700; }
+
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 24px; background: #fffdf9; border-bottom: 1px solid #f3dfc9;
+}
+.topbar-left { display: flex; align-items: center; gap: 18px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; }
+.brand .mark {
+  width: 32px; height: 32px; border-radius: 12px;
+  background: linear-gradient(135deg, #ff6b4a, #ffd166);
+  display: grid; place-items: center; font-size: 16px;
+}
+
+.switch {
+  display: flex; background: #fff1e4; border-radius: 999px; padding: 4px; gap: 2px;
+}
+.switch button {
+  border: 0; background: transparent; color: #9a7c5c; font-weight: 700;
+  padding: 9px 18px; border-radius: 999px; cursor: pointer; font-size: 13.5px; font: inherit;
+}
+.switch button.active { background: #ff6b4a; color: #fff; box-shadow: 0 4px 10px rgba(255,107,74,.35); }
+
+.topbar-right { display: flex; align-items: center; gap: 10px; }
+.icon-btn {
+  width: 38px; height: 38px; border-radius: 14px; border: none;
+  background: #fff1e4; display: grid; place-items: center; cursor: pointer;
+}
+.pill-btn {
+  border: none; background: #fff1e4; color: #4a3221; font-weight: 700;
+  font-size: 13px; padding: 10px 18px; border-radius: 14px;
+  display: flex; align-items: center; gap: 8px; cursor: pointer;
+}
+.pill-btn.primary { background: #ff6b4a; color: #fff; box-shadow: 0 6px 14px rgba(255,107,74,.32); }
+.kbd {
+  font-size: 10px; font-weight: 700; background: rgba(255,255,255,.55);
+  border-radius: 6px; padding: 2px 6px; opacity: .8;
+}
+.pill-btn:not(.primary) .kbd { background: #fff; color: #9a7c5c; }
+
+.body { display: flex; min-height: 480px; }
+.side {
+  width: 168px; background: #fff1e4; padding: 22px 14px; display: flex;
+  flex-direction: column; gap: 10px;
+}
+.group-label { font-size: 11px; font-weight: 800; color: #c7a887; margin: 8px 4px 0; text-transform: uppercase; letter-spacing: .04em; }
+.tool-btn {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  background: #fffdf9; border: none; border-radius: 16px; padding: 12px 14px;
+  font-size: 13.5px; font-weight: 700; color: #4a3221; cursor: pointer;
+  box-shadow: 0 2px 6px rgba(180,110,60,.08);
+}
+.tool-btn .kbd { background: #fff1e4; }
+.tool-btn.active { background: #ff6b4a; color: #fff; box-shadow: 0 6px 14px rgba(255,107,74,.3); }
+.tool-btn.active .kbd { background: rgba(255,255,255,.25); color: #fff; }
+
+.stage {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 22px; padding: 30px; background: #fffdf9;
+  position: relative;
+}
+.hud { display: flex; gap: 12px; }
+.hud-chip {
+  background: #fff1e4; border-radius: 16px; padding: 10px 18px; text-align: left; min-width: 78px;
+}
+.hud-chip .k { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: #c7a887; font-weight: 800; }
+.hud-chip .v { font-size: 19px; font-weight: 800; color: #4a3221; margin-top: 2px; }
+.hud-chip.celebrate { background: linear-gradient(135deg, #ffe6a8, #ffd166); }
+.hud-chip.celebrate .v { color: #a8641f; }
+
+.maze-frame {
+  border-radius: 28px; background: #fff1e4; padding: 22px;
+  box-shadow: inset 0 2px 6px rgba(180,110,60,.06);
+  position: relative;
+}
+.maze {
+  position: relative; width: 420px; height: 300px; background: #fffdf9;
+  border: 8px solid #6b4a35; border-radius: 24px;
+}
+.wall-bar { position: absolute; height: 8px; background: #6b4a35; border-radius: 6px; }
+.marker { position: absolute; width: 30px; height: 30px; margin: -15px; border-radius: 12px; display: grid; place-items: center; font-size: 15px; }
+.marker.entry { background: #2fb88c; box-shadow: 0 6px 14px rgba(47,184,140,.35); }
+.marker.exit { background: linear-gradient(135deg, #ffd166, #ff9f4a); box-shadow: 0 6px 14px rgba(255,180,60,.4); }
+.ball {
+  position: absolute; width: 26px; height: 26px; margin: -13px; border-radius: 50%;
+  background: radial-gradient(circle at 32% 28%, #ff9a80, #ff6b4a 65%);
+  box-shadow: 0 0 0 6px rgba(255,107,74,.18), 0 6px 16px rgba(255,107,74,.4);
+  display: grid; place-items: center; font-size: 13px;
+}
+.confetti { position: absolute; font-size: 15px; }
+
+.banner {
+  position: absolute; top: -18px; left: 50%; transform: translateX(-50%);
+  background: linear-gradient(135deg, #ff6b4a, #ffb14a); color: #fff; font-weight: 800;
+  font-size: 14px; padding: 10px 22px; border-radius: 999px;
+  box-shadow: 0 10px 24px rgba(255,107,74,.4);
+  white-space: nowrap;
+}
+
+.legend { display: flex; gap: 16px; font-size: 12px; color: #9a7c5c; font-weight: 600; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 4px; display: inline-block; }
+
+.section-label {
+  width: 900px; max-width: 92vw; font-size: 12px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: .06em; color: #c7a887; text-align: left;
+}
+.empty-hint {
+  position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%);
+  background: #fff1e4; color: #9a7c5c; font-size: 12px; font-weight: 700;
+  padding: 8px 16px; border-radius: 999px; white-space: nowrap;
+}
+</style>
+
+<div class="intro">
+  <h1><span>Direction 2 /</span> Warm Trail</h1>
+  <p>Soft cream and coral, big rounded corners, and a light celebratory touch turn "you solved a maze" into a genuine little win. Chrome stays sparse and forgiving — fewer stats on screen, larger touch targets — so a friend who's never used it feels invited rather than tested.</p>
+</div>
+
+<!-- HERO: Player, win state -->
+<div class="window">
+  <div class="os-titlebar">
+    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+    <span class="label">Labyrinthes — Player</span>
+  </div>
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="brand"><span class="mark">🧭</span> Labyrinthes</div>
+      <div class="switch">
+        <button>Builder</button>
+        <button class="active">Player</button>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <button class="pill-btn"><span>New Maze</span><span class="kbd">N</span></button>
+      <button class="icon-btn">⚙️</button>
+      <button class="icon-btn">🌙</button>
+    </div>
+  </div>
+
+  <div class="body">
+    <aside class="side">
+      <div class="group-label">Session</div>
+      <div class="tool-btn"><span>⏸ Pause</span><span class="kbd">Space</span></div>
+      <div class="tool-btn"><span>↺ Restart</span><span class="kbd">R</span></div>
+      <div class="tool-btn"><span>🔊 Sound</span><span class="kbd">M</span></div>
+    </aside>
+
+    <main class="stage">
+      <div class="hud">
+        <div class="hud-chip"><div class="k">Level</div><div class="v">2</div></div>
+        <div class="hud-chip"><div class="k">Difficulty</div><div class="v">1</div></div>
+        <div class="hud-chip celebrate"><div class="k">Time</div><div class="v">00:38</div></div>
+      </div>
+
+      <div class="maze-frame">
+        <div class="banner">🎉 You reached the exit!</div>
+        <div class="maze">
+          <div class="wall-bar" style="top:56px; left:0; width:360px;"></div>
+          <div class="wall-bar" style="top:116px; left:60px; width:360px;"></div>
+          <div class="wall-bar" style="top:176px; left:0; width:360px;"></div>
+          <div class="wall-bar" style="top:236px; left:60px; width:360px;"></div>
+
+          <div class="marker entry" style="top:30px; left:30px;">🏁</div>
+          <div class="confetti" style="top:6px; left:355px;">✨</div>
+          <div class="confetti" style="top:34px; left:410px;">🎊</div>
+          <div class="confetti" style="top:250px; left:340px;">✨</div>
+          <div class="ball" style="top:270px; left:390px;">😊</div>
+        </div>
+      </div>
+
+      <div class="legend">
+        <span><i style="background:#2fb88c"></i>Entry</span>
+        <span><i style="background:#ffd166"></i>Exit reached</span>
+        <span><i style="background:#ff6b4a"></i>Your ball</span>
+      </div>
+    </main>
+
+    <aside class="side right">
+      <div class="group-label">Shortcuts</div>
+      <div class="tool-btn"><span>Legend</span><span class="kbd">L</span></div>
+      <div class="tool-btn"><span>Ball speed</span><span class="kbd">±</span></div>
+      <div class="group-label">Mode</div>
+      <div class="tool-btn active"><span>Random</span><span class="kbd">✓</span></div>
+    </aside>
+  </div>
+</div>
+
+<!-- SECONDARY: Builder, empty new maze -->
+<div class="section-label">Secondary screen — Builder, empty new maze</div>
+<div class="window">
+  <div class="os-titlebar">
+    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+    <span class="label">Labyrinthes — Builder</span>
+  </div>
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="brand"><span class="mark">🧭</span> Labyrinthes</div>
+      <div class="switch">
+        <button class="active">Builder</button>
+        <button>Player</button>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <button class="pill-btn"><span>Save</span><span class="kbd">⌘S</span></button>
+      <button class="pill-btn primary"><span>New Maze</span><span class="kbd">N</span></button>
+      <button class="icon-btn">⚙️</button>
+    </div>
+  </div>
+
+  <div class="body" style="min-height:420px;">
+    <aside class="side">
+      <div class="group-label">Tools</div>
+      <div class="tool-btn"><span>⛏ Break Wall</span><span class="kbd">B</span></div>
+      <div class="tool-btn"><span>🚩 Set Entry</span><span class="kbd">E</span></div>
+      <div class="tool-btn"><span>🏁 Set Exit</span><span class="kbd">X</span></div>
+      <div class="tool-btn"><span>↺ Undo</span><span class="kbd">⌘Z</span></div>
+    </aside>
+
+    <main class="stage">
+      <div class="hud">
+        <div class="hud-chip"><div class="k">Grid</div><div class="v">7×5</div></div>
+        <div class="hud-chip"><div class="k">Status</div><div class="v" style="font-size:14px;">New</div></div>
+      </div>
+
+      <div class="maze-frame">
+        <div class="maze" style="opacity:.9;">
+          <div class="wall-bar" style="top:56px; left:0; width:360px;"></div>
+          <div class="wall-bar" style="top:116px; left:60px; width:360px;"></div>
+          <div class="wall-bar" style="top:176px; left:0; width:360px;"></div>
+          <div class="wall-bar" style="top:236px; left:60px; width:360px;"></div>
+        </div>
+        <div class="empty-hint">Start breaking walls to trace a path ✏️</div>
+      </div>
+
+      <div class="legend">
+        <span><i style="background:#c7a887"></i>Blank canvas — nothing placed yet</span>
+      </div>
+    </main>
+
+    <aside class="side right">
+      <div class="group-label">Grid</div>
+      <div class="tool-btn"><span>Resize</span><span class="kbd">G</span></div>
+      <div class="tool-btn"><span>Clear all</span><span class="kbd">⇧C</span></div>
+    </aside>
+  </div>
+</div>

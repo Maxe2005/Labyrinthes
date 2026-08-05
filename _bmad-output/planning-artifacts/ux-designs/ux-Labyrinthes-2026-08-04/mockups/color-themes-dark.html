@@ -1,0 +1,1056 @@
+<!--
+  Labyrinthes -- Color Theme Mockups: Dark Mode Candidates
+  BMad UX Discovery / "color-themes" tool
+
+  Concrete hex values per variation (also duplicated as CSS custom-property
+  declarations further down, and as visible token chips in each column):
+
+     Blueprint (Light &mdash; locked reference)
+  bg: #eef2f7  (page backdrop)
+  window: #ffffff  (window chrome)
+  panel: #f7f9fc  (side panels / HUD chips)
+  border: #d7dee6  (hairline borders)
+  ink: #1c2733  (primary text)
+  ink-soft: #5b6b7c  (secondary text)
+  accent: #2563eb  (interactive / active accent)
+  accent-bg: #dbeafe  (accent tint background)
+  wall: #263445  (maze walls)
+  corridor: #ffffff  (maze open floor)
+  entry: #16a34a  (entry marker)
+  exit: #d97706  (exit marker)
+  ball: #2563eb  (ball)
+  ghost: #94a3b8  (disabled / not-yet-set state)
+
+     Obsidian Draft (Dark candidate A &mdash; near-black, high contrast)
+  bg: #0a0d12  (page backdrop)
+  window: #12161d  (window chrome)
+  panel: #171c25  (side panels / HUD chips)
+  border: #2a323d  (hairline borders)
+  ink: #eef2f7  (primary text)
+  ink-soft: #8b97a8  (secondary text)
+  accent: #3b82f6  (interactive / active accent)
+  accent-bg: #16233d  (accent tint background)
+  wall: #3a4656  (maze walls)
+  corridor: #05070a  (maze open floor)
+  entry: #22c55e  (entry marker)
+  exit: #f59e0b  (exit marker)
+  ball: #3b82f6  (ball)
+  ghost: #4b5563  (disabled / not-yet-set state)
+
+     Blueprint Nocturne (Dark candidate B &mdash; navy, blueprint-paper-at-night)
+  bg: #0d1b2e  (page backdrop)
+  window: #132846  (window chrome)
+  panel: #17304f  (side panels / HUD chips)
+  border: #2c4a6e  (hairline borders)
+  ink: #dce8f7  (primary text)
+  ink-soft: #7fa0c4  (secondary text)
+  accent: #4d8fee  (interactive / active accent)
+  accent-bg: #1e3f66  (accent tint background)
+  wall: #a9c6e8  (maze walls)
+  corridor: #0a1830  (maze open floor)
+  entry: #34d399  (entry marker)
+  exit: #fbbf24  (exit marker)
+  ball: #60a5fa  (ball)
+  ghost: #5c7c9c  (disabled / not-yet-set state)
+
+     Graphite Studio (Dark candidate C &mdash; warm-neutral graphite)
+  bg: #1a1815  (page backdrop)
+  window: #211f1b  (window chrome)
+  panel: #26241f  (side panels / HUD chips)
+  border: #3a3630  (hairline borders)
+  ink: #ece8e1  (primary text)
+  ink-soft: #a39c8f  (secondary text)
+  accent: #4f8ef7  (interactive / active accent)
+  accent-bg: #23283a  (accent tint background)
+  wall: #7a7266  (maze walls)
+  corridor: #100f0d  (maze open floor)
+  entry: #4ade80  (entry marker)
+  exit: #fb923c  (exit marker)
+  ball: #4f8ef7  (ball)
+  ghost: #6b655a  (disabled / not-yet-set state)
+-->
+<title>Labyrinthes &mdash; Dark Theme Candidates</title>
+<style>
+  :root {
+    color-scheme: light dark;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 32px 24px 64px;
+    background: #f0f0f2;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #1a1a1a;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    body { background: #0b0b0d; color: #e8e8ea; }
+  }
+
+  .page-head {
+    max-width: 1400px;
+    margin: 0 auto 28px;
+  }
+
+  .page-head h1 {
+    margin: 0 0 6px;
+    font-size: 22px;
+    font-weight: 700;
+  }
+
+  .page-head p {
+    margin: 0;
+    font-size: 14px;
+    opacity: 0.75;
+    max-width: 72ch;
+    line-height: 1.5;
+  }
+
+  .board {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(280px, 1fr));
+    gap: 18px;
+    align-items: start;
+  }
+
+  @media (max-width: 1180px) {
+    .board { grid-template-columns: repeat(2, minmax(280px, 1fr)); }
+  }
+
+  @media (max-width: 620px) {
+    .board { grid-template-columns: 1fr; }
+  }
+
+  /* ---- per-variation token declarations ---- */
+
+  .theme-col.light {
+      --bg: #eef2f7;
+      --window: #ffffff;
+      --panel: #f7f9fc;
+      --border: #d7dee6;
+      --ink: #1c2733;
+      --ink-soft: #5b6b7c;
+      --accent: #2563eb;
+      --accent-bg: #dbeafe;
+      --wall: #263445;
+      --corridor: #ffffff;
+      --entry: #16a34a;
+      --exit: #d97706;
+      --ball: #2563eb;
+      --ghost: #94a3b8;
+    }
+
+    .theme-col.obsidian {
+      --bg: #0a0d12;
+      --window: #12161d;
+      --panel: #171c25;
+      --border: #2a323d;
+      --ink: #eef2f7;
+      --ink-soft: #8b97a8;
+      --accent: #3b82f6;
+      --accent-bg: #16233d;
+      --wall: #3a4656;
+      --corridor: #05070a;
+      --entry: #22c55e;
+      --exit: #f59e0b;
+      --ball: #3b82f6;
+      --ghost: #4b5563;
+    }
+
+    .theme-col.nocturne {
+      --bg: #0d1b2e;
+      --window: #132846;
+      --panel: #17304f;
+      --border: #2c4a6e;
+      --ink: #dce8f7;
+      --ink-soft: #7fa0c4;
+      --accent: #4d8fee;
+      --accent-bg: #1e3f66;
+      --wall: #a9c6e8;
+      --corridor: #0a1830;
+      --entry: #34d399;
+      --exit: #fbbf24;
+      --ball: #60a5fa;
+      --ghost: #5c7c9c;
+    }
+
+    .theme-col.graphite {
+      --bg: #1a1815;
+      --window: #211f1b;
+      --panel: #26241f;
+      --border: #3a3630;
+      --ink: #ece8e1;
+      --ink-soft: #a39c8f;
+      --accent: #4f8ef7;
+      --accent-bg: #23283a;
+      --wall: #7a7266;
+      --corridor: #100f0d;
+      --entry: #4ade80;
+      --exit: #fb923c;
+      --ball: #4f8ef7;
+      --ghost: #6b655a;
+    }
+
+  /* ---- shared column shell (reads variant tokens via var()) ---- */
+
+  .theme-col {
+    background: var(--window);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.10);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .col-head h2 {
+    margin: 0 0 2px;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .col-head .sub {
+    margin: 0 0 10px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ink-soft);
+  }
+
+  .col-head .register {
+    margin: 0 0 8px;
+    font-size: 13px;
+    font-style: italic;
+    line-height: 1.4;
+    color: var(--ink);
+  }
+
+  .col-head .note {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+  }
+
+  .chips {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px;
+  }
+
+  .chip {
+    display: grid;
+    grid-template-columns: 16px 1fr auto;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 6px;
+    border-radius: 6px;
+  }
+
+  .swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .chip-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .chip-role {
+    font-family: "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    font-size: 10.5px;
+    color: var(--ink);
+  }
+
+  .chip-label {
+    font-size: 10px;
+    color: var(--ink-soft);
+  }
+
+  .chip-hex {
+    font-family: "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    font-size: 10.5px;
+    color: var(--ink-soft);
+  }
+
+  /* ---- UI snippet: mini app chrome + HUD row + maze fragment ---- */
+
+  .snippet .window {
+    background: var(--window);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  }
+
+  .titlebar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .brand {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: 0.01em;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 4px;
+  }
+
+  .tab {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 5px;
+    color: var(--ink-soft);
+  }
+
+  .tab.active {
+    background: var(--accent-bg);
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .hud {
+    display: flex;
+    gap: 6px;
+    padding: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .hud-chip {
+    flex: 1;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .hud-label {
+    font-size: 8.5px;
+    letter-spacing: 0.05em;
+    color: var(--ink-soft);
+  }
+
+  .hud-value {
+    font-family: "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .maze-wrap {
+    padding: 12px 10px 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    background:
+      repeating-linear-gradient(0deg, transparent 0 15px, var(--border) 15px 16px),
+      repeating-linear-gradient(90deg, transparent 0 15px, var(--border) 15px 16px),
+      var(--bg);
+    background-blend-mode: normal;
+    position: relative;
+  }
+
+  .maze-wrap::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--bg);
+    opacity: 0.55;
+    pointer-events: none;
+  }
+
+  .maze-grid {
+    position: relative;
+    display: grid;
+    grid-template-columns: 6px 26px 6px 26px 6px 26px 6px;
+    grid-template-rows: 6px 26px 6px 26px 6px;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+  }
+
+  .cell.wall { background: var(--wall); }
+  .cell.corridor { background: var(--corridor); }
+
+  .cell {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .marker {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .entry-marker {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    background: var(--entry);
+    box-shadow: 0 0 0 1px var(--corridor);
+  }
+
+  .ball-marker {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--ball);
+    box-shadow: 0 0 0 1px var(--corridor), 0 1px 2px rgba(0,0,0,0.3);
+  }
+
+  .maze-caption {
+    margin: 0;
+    font-size: 10px;
+    color: var(--ink-soft);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .mini-swatch {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    margin: 0 4px 0 2px;
+  }
+</style>
+
+<div class="page-head">
+  <h1>Labyrinthes &mdash; Dark Theme Candidates</h1>
+  <p>
+    Light &ldquo;Blueprint&rdquo; is locked (column 1, reference only). The three columns to its
+    right are distinct dark-mode registers to sit alongside it, each keeping the technical
+    drafting-table personality: monospace HUD stats, hairline grid backdrop, small radius,
+    subtle shadows, medium-high density.
+  </p>
+</div>
+
+<div class="board">
+    <section class="theme-col light">
+      <header class="col-head">
+        <h2>Blueprint</h2>
+        <p class="sub">Light &mdash; locked reference</p>
+        <p class="register">&ldquo;Daylight drafting table: crisp linework, calm precision, quiet confidence.&rdquo;</p>
+        <p class="note">LOCKED &mdash; shown as-is for comparison. Do not alter.</p>
+      </header>
+
+      <div class="chips">
+          <div class="chip">
+            <span class="swatch" style="background:var(--bg);"></span>
+            <span class="chip-text"><span class="chip-role">--bg</span><span class="chip-label">page backdrop</span></span>
+            <span class="chip-hex">#eef2f7</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--window);"></span>
+            <span class="chip-text"><span class="chip-role">--window</span><span class="chip-label">window chrome</span></span>
+            <span class="chip-hex">#ffffff</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--panel);"></span>
+            <span class="chip-text"><span class="chip-role">--panel</span><span class="chip-label">side panels / HUD chips</span></span>
+            <span class="chip-hex">#f7f9fc</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--border);"></span>
+            <span class="chip-text"><span class="chip-role">--border</span><span class="chip-label">hairline borders</span></span>
+            <span class="chip-hex">#d7dee6</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--ink);"></span>
+            <span class="chip-text"><span class="chip-role">--ink</span><span class="chip-label">primary text</span></span>
+            <span class="chip-hex">#1c2733</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--ink-soft);"></span>
+            <span class="chip-text"><span class="chip-role">--ink-soft</span><span class="chip-label">secondary text</span></span>
+            <span class="chip-hex">#5b6b7c</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--accent);"></span>
+            <span class="chip-text"><span class="chip-role">--accent</span><span class="chip-label">interactive / active accent</span></span>
+            <span class="chip-hex">#2563eb</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--accent-bg);"></span>
+            <span class="chip-text"><span class="chip-role">--accent-bg</span><span class="chip-label">accent tint background</span></span>
+            <span class="chip-hex">#dbeafe</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--wall);"></span>
+            <span class="chip-text"><span class="chip-role">--wall</span><span class="chip-label">maze walls</span></span>
+            <span class="chip-hex">#263445</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--corridor);"></span>
+            <span class="chip-text"><span class="chip-role">--corridor</span><span class="chip-label">maze open floor</span></span>
+            <span class="chip-hex">#ffffff</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--entry);"></span>
+            <span class="chip-text"><span class="chip-role">--entry</span><span class="chip-label">entry marker</span></span>
+            <span class="chip-hex">#16a34a</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--exit);"></span>
+            <span class="chip-text"><span class="chip-role">--exit</span><span class="chip-label">exit marker</span></span>
+            <span class="chip-hex">#d97706</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--ball);"></span>
+            <span class="chip-text"><span class="chip-role">--ball</span><span class="chip-label">ball</span></span>
+            <span class="chip-hex">#2563eb</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--ghost);"></span>
+            <span class="chip-text"><span class="chip-role">--ghost</span><span class="chip-label">disabled / not-yet-set state</span></span>
+            <span class="chip-hex">#94a3b8</span>
+          </div>
+      </div>
+
+      <div class="snippet">
+        <div class="window">
+          <div class="titlebar">
+            <span class="brand">Labyrinthes</span>
+            <span class="tabs">
+              <span class="tab">Builder</span>
+              <span class="tab active">Player</span>
+            </span>
+          </div>
+          <div class="hud">
+            <div class="hud-chip">
+              <span class="hud-label">LEVEL</span>
+              <span class="hud-value">04</span>
+            </div>
+            <div class="hud-chip">
+              <span class="hud-label">DIFFICULTY</span>
+              <span class="hud-value">Normal</span>
+            </div>
+            <div class="hud-chip">
+              <span class="hud-label">TIME</span>
+              <span class="hud-value">00:47</span>
+            </div>
+          </div>
+          <div class="maze-wrap">
+            <div class="maze-grid">
+            <div class="cell wall" style="grid-column:1/2;grid-row:1/2;"></div>
+            <div class="cell wall" style="grid-column:2/3;grid-row:1/2;"></div>
+            <div class="cell wall" style="grid-column:3/4;grid-row:1/2;"></div>
+            <div class="cell wall" style="grid-column:4/5;grid-row:1/2;"></div>
+            <div class="cell wall" style="grid-column:5/6;grid-row:1/2;"></div>
+            <div class="cell wall" style="grid-column:6/7;grid-row:1/2;"></div>
+            <div class="cell wall" style="grid-column:7/8;grid-row:1/2;"></div>
+            <div class="cell wall" style="grid-column:1/2;grid-row:2/3;"></div>
+            <div class="cell corridor" style="grid-column:2/3;grid-row:2/3;"><span class="marker entry-marker" title="Entry"></span></div>
+            <div class="cell corridor" style="grid-column:3/4;grid-row:2/3;"></div>
+            <div class="cell corridor" style="grid-column:4/5;grid-row:2/3;"></div>
+            <div class="cell wall" style="grid-column:5/6;grid-row:2/3;"></div>
+            <div class="cell corridor" style="grid-column:6/7;grid-row:2/3;"></div>
+            <div class="cell wall" style="grid-column:7/8;grid-row:2/3;"></div>
+            <div class="cell wall" style="grid-column:1/2;grid-row:3/4;"></div>
+            <div class="cell wall" style="grid-column:2/3;grid-row:3/4;"></div>
+            <div class="cell wall" style="grid-column:3/4;grid-row:3/4;"></div>
+            <div class="cell corridor" style="grid-column:4/5;grid-row:3/4;"></div>
+            <div class="cell wall" style="grid-column:5/6;grid-row:3/4;"></div>
+            <div class="cell wall" style="grid-column:6/7;grid-row:3/4;"></div>
+            <div class="cell wall" style="grid-column:7/8;grid-row:3/4;"></div>
+            <div class="cell wall" style="grid-column:1/2;grid-row:4/5;"></div>
+            <div class="cell corridor" style="grid-column:2/3;grid-row:4/5;"></div>
+            <div class="cell wall" style="grid-column:3/4;grid-row:4/5;"></div>
+            <div class="cell corridor" style="grid-column:4/5;grid-row:4/5;"><span class="marker ball-marker" title="Ball"></span></div>
+            <div class="cell wall" style="grid-column:5/6;grid-row:4/5;"></div>
+            <div class="cell corridor" style="grid-column:6/7;grid-row:4/5;"></div>
+            <div class="cell wall" style="grid-column:7/8;grid-row:4/5;"></div>
+            <div class="cell wall" style="grid-column:1/2;grid-row:5/6;"></div>
+            <div class="cell wall" style="grid-column:2/3;grid-row:5/6;"></div>
+            <div class="cell wall" style="grid-column:3/4;grid-row:5/6;"></div>
+            <div class="cell wall" style="grid-column:4/5;grid-row:5/6;"></div>
+            <div class="cell wall" style="grid-column:5/6;grid-row:5/6;"></div>
+            <div class="cell wall" style="grid-column:6/7;grid-row:5/6;"></div>
+            <div class="cell wall" style="grid-column:7/8;grid-row:5/6;"></div>
+            </div>
+            <p class="maze-caption">entry <span class="mini-swatch" style="background:var(--entry);"></span> &middot; ball <span class="mini-swatch" style="background:var(--ball);"></span></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="theme-col obsidian">
+      <header class="col-head">
+        <h2>Obsidian Draft</h2>
+        <p class="sub">Dark candidate A &mdash; near-black, high contrast</p>
+        <p class="register">&ldquo;Server-room focus: near-black canvas, razor contrast, eyes locked on the maze.&rdquo;</p>
+        <p class="note">Accent brightened 2563eb&rarr;3b82f6 for AA contrast on near-black. Wall/corridor relationship inverted vs. light: walls read as the lit structural bars, corridor recedes as the darkest void.</p>
+      </header>
+
+      <div class="chips">
+          <div class="chip">
+            <span class="swatch" style="background:var(--bg);"></span>
+            <span class="chip-text"><span class="chip-role">--bg</span><span class="chip-label">page backdrop</span></span>
+            <span class="chip-hex">#0a0d12</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--window);"></span>
+            <span class="chip-text"><span class="chip-role">--window</span><span class="chip-label">window chrome</span></span>
+            <span class="chip-hex">#12161d</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--panel);"></span>
+            <span class="chip-text"><span class="chip-role">--panel</span><span class="chip-label">side panels / HUD chips</span></span>
+            <span class="chip-hex">#171c25</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--border);"></span>
+            <span class="chip-text"><span class="chip-role">--border</span><span class="chip-label">hairline borders</span></span>
+            <span class="chip-hex">#2a323d</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--ink);"></span>
+            <span class="chip-text"><span class="chip-role">--ink</span><span class="chip-label">primary text</span></span>
+            <span class="chip-hex">#eef2f7</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--ink-soft);"></span>
+            <span class="chip-text"><span class="chip-role">--ink-soft</span><span class="chip-label">secondary text</span></span>
+            <span class="chip-hex">#8b97a8</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--accent);"></span>
+            <span class="chip-text"><span class="chip-role">--accent</span><span class="chip-label">interactive / active accent</span></span>
+            <span class="chip-hex">#3b82f6</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--accent-bg);"></span>
+            <span class="chip-text"><span class="chip-role">--accent-bg</span><span class="chip-label">accent tint background</span></span>
+            <span class="chip-hex">#16233d</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--wall);"></span>
+            <span class="chip-text"><span class="chip-role">--wall</span><span class="chip-label">maze walls</span></span>
+            <span class="chip-hex">#3a4656</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--corridor);"></span>
+            <span class="chip-text"><span class="chip-role">--corridor</span><span class="chip-label">maze open floor</span></span>
+            <span class="chip-hex">#05070a</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--entry);"></span>
+            <span class="chip-text"><span class="chip-role">--entry</span><span class="chip-label">entry marker</span></span>
+            <span class="chip-hex">#22c55e</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--exit);"></span>
+            <span class="chip-text"><span class="chip-role">--exit</span><span class="chip-label">exit marker</span></span>
+            <span class="chip-hex">#f59e0b</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--ball);"></span>
+            <span class="chip-text"><span class="chip-role">--ball</span><span class="chip-label">ball</span></span>
+            <span class="chip-hex">#3b82f6</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--ghost);"></span>
+            <span class="chip-text"><span class="chip-role">--ghost</span><span class="chip-label">disabled / not-yet-set state</span></span>
+            <span class="chip-hex">#4b5563</span>
+          </div>
+      </div>
+
+      <div class="snippet">
+        <div class="window">
+          <div class="titlebar">
+            <span class="brand">Labyrinthes</span>
+            <span class="tabs">
+              <span class="tab">Builder</span>
+              <span class="tab active">Player</span>
+            </span>
+          </div>
+          <div class="hud">
+            <div class="hud-chip">
+              <span class="hud-label">LEVEL</span>
+              <span class="hud-value">04</span>
+            </div>
+            <div class="hud-chip">
+              <span class="hud-label">DIFFICULTY</span>
+              <span class="hud-value">Normal</span>
+            </div>
+            <div class="hud-chip">
+              <span class="hud-label">TIME</span>
+              <span class="hud-value">00:47</span>
+            </div>
+          </div>
+          <div class="maze-wrap">
+            <div class="maze-grid">
+            <div class="cell wall" style="grid-column:1/2;grid-row:1/2;"></div>
+            <div class="cell wall" style="grid-column:2/3;grid-row:1/2;"></div>
+            <div class="cell wall" style="grid-column:3/4;grid-row:1/2;"></div>
+            <div class="cell wall" style="grid-column:4/5;grid-row:1/2;"></div>
+            <div class="cell wall" style="grid-column:5/6;grid-row:1/2;"></div>
+            <div class="cell wall" style="grid-column:6/7;grid-row:1/2;"></div>
+            <div class="cell wall" style="grid-column:7/8;grid-row:1/2;"></div>
+            <div class="cell wall" style="grid-column:1/2;grid-row:2/3;"></div>
+            <div class="cell corridor" style="grid-column:2/3;grid-row:2/3;"><span class="marker entry-marker" title="Entry"></span></div>
+            <div class="cell corridor" style="grid-column:3/4;grid-row:2/3;"></div>
+            <div class="cell corridor" style="grid-column:4/5;grid-row:2/3;"></div>
+            <div class="cell wall" style="grid-column:5/6;grid-row:2/3;"></div>
+            <div class="cell corridor" style="grid-column:6/7;grid-row:2/3;"></div>
+            <div class="cell wall" style="grid-column:7/8;grid-row:2/3;"></div>
+            <div class="cell wall" style="grid-column:1/2;grid-row:3/4;"></div>
+            <div class="cell wall" style="grid-column:2/3;grid-row:3/4;"></div>
+            <div class="cell wall" style="grid-column:3/4;grid-row:3/4;"></div>
+            <div class="cell corridor" style="grid-column:4/5;grid-row:3/4;"></div>
+            <div class="cell wall" style="grid-column:5/6;grid-row:3/4;"></div>
+            <div class="cell wall" style="grid-column:6/7;grid-row:3/4;"></div>
+            <div class="cell wall" style="grid-column:7/8;grid-row:3/4;"></div>
+            <div class="cell wall" style="grid-column:1/2;grid-row:4/5;"></div>
+            <div class="cell corridor" style="grid-column:2/3;grid-row:4/5;"></div>
+            <div class="cell wall" style="grid-column:3/4;grid-row:4/5;"></div>
+            <div class="cell corridor" style="grid-column:4/5;grid-row:4/5;"><span class="marker ball-marker" title="Ball"></span></div>
+            <div class="cell wall" style="grid-column:5/6;grid-row:4/5;"></div>
+            <div class="cell corridor" style="grid-column:6/7;grid-row:4/5;"></div>
+            <div class="cell wall" style="grid-column:7/8;grid-row:4/5;"></div>
+            <div class="cell wall" style="grid-column:1/2;grid-row:5/6;"></div>
+            <div class="cell wall" style="grid-column:2/3;grid-row:5/6;"></div>
+            <div class="cell wall" style="grid-column:3/4;grid-row:5/6;"></div>
+            <div class="cell wall" style="grid-column:4/5;grid-row:5/6;"></div>
+            <div class="cell wall" style="grid-column:5/6;grid-row:5/6;"></div>
+            <div class="cell wall" style="grid-column:6/7;grid-row:5/6;"></div>
+            <div class="cell wall" style="grid-column:7/8;grid-row:5/6;"></div>
+            </div>
+            <p class="maze-caption">entry <span class="mini-swatch" style="background:var(--entry);"></span> &middot; ball <span class="mini-swatch" style="background:var(--ball);"></span></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="theme-col nocturne">
+      <header class="col-head">
+        <h2>Blueprint Nocturne</h2>
+        <p class="sub">Dark candidate B &mdash; navy, blueprint-paper-at-night</p>
+        <p class="register">&ldquo;The drafting table after hours: navy paper under a desk lamp, still unmistakably a blueprint.&rdquo;</p>
+        <p class="note">Most literal read of &ldquo;blueprint&rdquo;: pale cyan-white linework on deep navy paper, echoing real architectural blueprints. Accent lifted to 4d8fee; wall/corridor also inverted (pale walls, dark corridor voids).</p>
+      </header>
+
+      <div class="chips">
+          <div class="chip">
+            <span class="swatch" style="background:var(--bg);"></span>
+            <span class="chip-text"><span class="chip-role">--bg</span><span class="chip-label">page backdrop</span></span>
+            <span class="chip-hex">#0d1b2e</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--window);"></span>
+            <span class="chip-text"><span class="chip-role">--window</span><span class="chip-label">window chrome</span></span>
+            <span class="chip-hex">#132846</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--panel);"></span>
+            <span class="chip-text"><span class="chip-role">--panel</span><span class="chip-label">side panels / HUD chips</span></span>
+            <span class="chip-hex">#17304f</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--border);"></span>
+            <span class="chip-text"><span class="chip-role">--border</span><span class="chip-label">hairline borders</span></span>
+            <span class="chip-hex">#2c4a6e</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--ink);"></span>
+            <span class="chip-text"><span class="chip-role">--ink</span><span class="chip-label">primary text</span></span>
+            <span class="chip-hex">#dce8f7</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--ink-soft);"></span>
+            <span class="chip-text"><span class="chip-role">--ink-soft</span><span class="chip-label">secondary text</span></span>
+            <span class="chip-hex">#7fa0c4</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--accent);"></span>
+            <span class="chip-text"><span class="chip-role">--accent</span><span class="chip-label">interactive / active accent</span></span>
+            <span class="chip-hex">#4d8fee</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--accent-bg);"></span>
+            <span class="chip-text"><span class="chip-role">--accent-bg</span><span class="chip-label">accent tint background</span></span>
+            <span class="chip-hex">#1e3f66</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--wall);"></span>
+            <span class="chip-text"><span class="chip-role">--wall</span><span class="chip-label">maze walls</span></span>
+            <span class="chip-hex">#a9c6e8</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--corridor);"></span>
+            <span class="chip-text"><span class="chip-role">--corridor</span><span class="chip-label">maze open floor</span></span>
+            <span class="chip-hex">#0a1830</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--entry);"></span>
+            <span class="chip-text"><span class="chip-role">--entry</span><span class="chip-label">entry marker</span></span>
+            <span class="chip-hex">#34d399</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--exit);"></span>
+            <span class="chip-text"><span class="chip-role">--exit</span><span class="chip-label">exit marker</span></span>
+            <span class="chip-hex">#fbbf24</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--ball);"></span>
+            <span class="chip-text"><span class="chip-role">--ball</span><span class="chip-label">ball</span></span>
+            <span class="chip-hex">#60a5fa</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--ghost);"></span>
+            <span class="chip-text"><span class="chip-role">--ghost</span><span class="chip-label">disabled / not-yet-set state</span></span>
+            <span class="chip-hex">#5c7c9c</span>
+          </div>
+      </div>
+
+      <div class="snippet">
+        <div class="window">
+          <div class="titlebar">
+            <span class="brand">Labyrinthes</span>
+            <span class="tabs">
+              <span class="tab">Builder</span>
+              <span class="tab active">Player</span>
+            </span>
+          </div>
+          <div class="hud">
+            <div class="hud-chip">
+              <span class="hud-label">LEVEL</span>
+              <span class="hud-value">04</span>
+            </div>
+            <div class="hud-chip">
+              <span class="hud-label">DIFFICULTY</span>
+              <span class="hud-value">Normal</span>
+            </div>
+            <div class="hud-chip">
+              <span class="hud-label">TIME</span>
+              <span class="hud-value">00:47</span>
+            </div>
+          </div>
+          <div class="maze-wrap">
+            <div class="maze-grid">
+            <div class="cell wall" style="grid-column:1/2;grid-row:1/2;"></div>
+            <div class="cell wall" style="grid-column:2/3;grid-row:1/2;"></div>
+            <div class="cell wall" style="grid-column:3/4;grid-row:1/2;"></div>
+            <div class="cell wall" style="grid-column:4/5;grid-row:1/2;"></div>
+            <div class="cell wall" style="grid-column:5/6;grid-row:1/2;"></div>
+            <div class="cell wall" style="grid-column:6/7;grid-row:1/2;"></div>
+            <div class="cell wall" style="grid-column:7/8;grid-row:1/2;"></div>
+            <div class="cell wall" style="grid-column:1/2;grid-row:2/3;"></div>
+            <div class="cell corridor" style="grid-column:2/3;grid-row:2/3;"><span class="marker entry-marker" title="Entry"></span></div>
+            <div class="cell corridor" style="grid-column:3/4;grid-row:2/3;"></div>
+            <div class="cell corridor" style="grid-column:4/5;grid-row:2/3;"></div>
+            <div class="cell wall" style="grid-column:5/6;grid-row:2/3;"></div>
+            <div class="cell corridor" style="grid-column:6/7;grid-row:2/3;"></div>
+            <div class="cell wall" style="grid-column:7/8;grid-row:2/3;"></div>
+            <div class="cell wall" style="grid-column:1/2;grid-row:3/4;"></div>
+            <div class="cell wall" style="grid-column:2/3;grid-row:3/4;"></div>
+            <div class="cell wall" style="grid-column:3/4;grid-row:3/4;"></div>
+            <div class="cell corridor" style="grid-column:4/5;grid-row:3/4;"></div>
+            <div class="cell wall" style="grid-column:5/6;grid-row:3/4;"></div>
+            <div class="cell wall" style="grid-column:6/7;grid-row:3/4;"></div>
+            <div class="cell wall" style="grid-column:7/8;grid-row:3/4;"></div>
+            <div class="cell wall" style="grid-column:1/2;grid-row:4/5;"></div>
+            <div class="cell corridor" style="grid-column:2/3;grid-row:4/5;"></div>
+            <div class="cell wall" style="grid-column:3/4;grid-row:4/5;"></div>
+            <div class="cell corridor" style="grid-column:4/5;grid-row:4/5;"><span class="marker ball-marker" title="Ball"></span></div>
+            <div class="cell wall" style="grid-column:5/6;grid-row:4/5;"></div>
+            <div class="cell corridor" style="grid-column:6/7;grid-row:4/5;"></div>
+            <div class="cell wall" style="grid-column:7/8;grid-row:4/5;"></div>
+            <div class="cell wall" style="grid-column:1/2;grid-row:5/6;"></div>
+            <div class="cell wall" style="grid-column:2/3;grid-row:5/6;"></div>
+            <div class="cell wall" style="grid-column:3/4;grid-row:5/6;"></div>
+            <div class="cell wall" style="grid-column:4/5;grid-row:5/6;"></div>
+            <div class="cell wall" style="grid-column:5/6;grid-row:5/6;"></div>
+            <div class="cell wall" style="grid-column:6/7;grid-row:5/6;"></div>
+            <div class="cell wall" style="grid-column:7/8;grid-row:5/6;"></div>
+            </div>
+            <p class="maze-caption">entry <span class="mini-swatch" style="background:var(--entry);"></span> &middot; ball <span class="mini-swatch" style="background:var(--ball);"></span></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="theme-col graphite">
+      <header class="col-head">
+        <h2>Graphite Studio</h2>
+        <p class="sub">Dark candidate C &mdash; warm-neutral graphite</p>
+        <p class="register">&ldquo;A warm charcoal studio at night: soft neutral graphite, with the blue accent doing all the talking.&rdquo;</p>
+        <p class="note">Only variant to break from cool grays: bg/ink lean warm (olive-charcoal undertone). Accent kept a clean, slightly desaturated-neutral blue (4f8ef7) so it still pops against warm neutrals instead of blending in.</p>
+      </header>
+
+      <div class="chips">
+          <div class="chip">
+            <span class="swatch" style="background:var(--bg);"></span>
+            <span class="chip-text"><span class="chip-role">--bg</span><span class="chip-label">page backdrop</span></span>
+            <span class="chip-hex">#1a1815</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--window);"></span>
+            <span class="chip-text"><span class="chip-role">--window</span><span class="chip-label">window chrome</span></span>
+            <span class="chip-hex">#211f1b</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--panel);"></span>
+            <span class="chip-text"><span class="chip-role">--panel</span><span class="chip-label">side panels / HUD chips</span></span>
+            <span class="chip-hex">#26241f</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--border);"></span>
+            <span class="chip-text"><span class="chip-role">--border</span><span class="chip-label">hairline borders</span></span>
+            <span class="chip-hex">#3a3630</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--ink);"></span>
+            <span class="chip-text"><span class="chip-role">--ink</span><span class="chip-label">primary text</span></span>
+            <span class="chip-hex">#ece8e1</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--ink-soft);"></span>
+            <span class="chip-text"><span class="chip-role">--ink-soft</span><span class="chip-label">secondary text</span></span>
+            <span class="chip-hex">#a39c8f</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--accent);"></span>
+            <span class="chip-text"><span class="chip-role">--accent</span><span class="chip-label">interactive / active accent</span></span>
+            <span class="chip-hex">#4f8ef7</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--accent-bg);"></span>
+            <span class="chip-text"><span class="chip-role">--accent-bg</span><span class="chip-label">accent tint background</span></span>
+            <span class="chip-hex">#23283a</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--wall);"></span>
+            <span class="chip-text"><span class="chip-role">--wall</span><span class="chip-label">maze walls</span></span>
+            <span class="chip-hex">#7a7266</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--corridor);"></span>
+            <span class="chip-text"><span class="chip-role">--corridor</span><span class="chip-label">maze open floor</span></span>
+            <span class="chip-hex">#100f0d</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--entry);"></span>
+            <span class="chip-text"><span class="chip-role">--entry</span><span class="chip-label">entry marker</span></span>
+            <span class="chip-hex">#4ade80</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--exit);"></span>
+            <span class="chip-text"><span class="chip-role">--exit</span><span class="chip-label">exit marker</span></span>
+            <span class="chip-hex">#fb923c</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--ball);"></span>
+            <span class="chip-text"><span class="chip-role">--ball</span><span class="chip-label">ball</span></span>
+            <span class="chip-hex">#4f8ef7</span>
+          </div>
+          <div class="chip">
+            <span class="swatch" style="background:var(--ghost);"></span>
+            <span class="chip-text"><span class="chip-role">--ghost</span><span class="chip-label">disabled / not-yet-set state</span></span>
+            <span class="chip-hex">#6b655a</span>
+          </div>
+      </div>
+
+      <div class="snippet">
+        <div class="window">
+          <div class="titlebar">
+            <span class="brand">Labyrinthes</span>
+            <span class="tabs">
+              <span class="tab">Builder</span>
+              <span class="tab active">Player</span>
+            </span>
+          </div>
+          <div class="hud">
+            <div class="hud-chip">
+              <span class="hud-label">LEVEL</span>
+              <span class="hud-value">04</span>
+            </div>
+            <div class="hud-chip">
+              <span class="hud-label">DIFFICULTY</span>
+              <span class="hud-value">Normal</span>
+            </div>
+            <div class="hud-chip">
+              <span class="hud-label">TIME</span>
+              <span class="hud-value">00:47</span>
+            </div>
+          </div>
+          <div class="maze-wrap">
+            <div class="maze-grid">
+            <div class="cell wall" style="grid-column:1/2;grid-row:1/2;"></div>
+            <div class="cell wall" style="grid-column:2/3;grid-row:1/2;"></div>
+            <div class="cell wall" style="grid-column:3/4;grid-row:1/2;"></div>
+            <div class="cell wall" style="grid-column:4/5;grid-row:1/2;"></div>
+            <div class="cell wall" style="grid-column:5/6;grid-row:1/2;"></div>
+            <div class="cell wall" style="grid-column:6/7;grid-row:1/2;"></div>
+            <div class="cell wall" style="grid-column:7/8;grid-row:1/2;"></div>
+            <div class="cell wall" style="grid-column:1/2;grid-row:2/3;"></div>
+            <div class="cell corridor" style="grid-column:2/3;grid-row:2/3;"><span class="marker entry-marker" title="Entry"></span></div>
+            <div class="cell corridor" style="grid-column:3/4;grid-row:2/3;"></div>
+            <div class="cell corridor" style="grid-column:4/5;grid-row:2/3;"></div>
+            <div class="cell wall" style="grid-column:5/6;grid-row:2/3;"></div>
+            <div class="cell corridor" style="grid-column:6/7;grid-row:2/3;"></div>
+            <div class="cell wall" style="grid-column:7/8;grid-row:2/3;"></div>
+            <div class="cell wall" style="grid-column:1/2;grid-row:3/4;"></div>
+            <div class="cell wall" style="grid-column:2/3;grid-row:3/4;"></div>
+            <div class="cell wall" style="grid-column:3/4;grid-row:3/4;"></div>
+            <div class="cell corridor" style="grid-column:4/5;grid-row:3/4;"></div>
+            <div class="cell wall" style="grid-column:5/6;grid-row:3/4;"></div>
+            <div class="cell wall" style="grid-column:6/7;grid-row:3/4;"></div>
+            <div class="cell wall" style="grid-column:7/8;grid-row:3/4;"></div>
+            <div class="cell wall" style="grid-column:1/2;grid-row:4/5;"></div>
+            <div class="cell corridor" style="grid-column:2/3;grid-row:4/5;"></div>
+            <div class="cell wall" style="grid-column:3/4;grid-row:4/5;"></div>
+            <div class="cell corridor" style="grid-column:4/5;grid-row:4/5;"><span class="marker ball-marker" title="Ball"></span></div>
+            <div class="cell wall" style="grid-column:5/6;grid-row:4/5;"></div>
+            <div class="cell corridor" style="grid-column:6/7;grid-row:4/5;"></div>
+            <div class="cell wall" style="grid-column:7/8;grid-row:4/5;"></div>
+            <div class="cell wall" style="grid-column:1/2;grid-row:5/6;"></div>
+            <div class="cell wall" style="grid-column:2/3;grid-row:5/6;"></div>
+            <div class="cell wall" style="grid-column:3/4;grid-row:5/6;"></div>
+            <div class="cell wall" style="grid-column:4/5;grid-row:5/6;"></div>
+            <div class="cell wall" style="grid-column:5/6;grid-row:5/6;"></div>
+            <div class="cell wall" style="grid-column:6/7;grid-row:5/6;"></div>
+            <div class="cell wall" style="grid-column:7/8;grid-row:5/6;"></div>
+            </div>
+            <p class="maze-caption">entry <span class="mini-swatch" style="background:var(--entry);"></span> &middot; ball <span class="mini-swatch" style="background:var(--ball);"></span></p>
+          </div>
+        </div>
+      </div>
+    </section>
+</div>
