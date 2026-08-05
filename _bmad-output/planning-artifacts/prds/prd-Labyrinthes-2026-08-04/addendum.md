@@ -54,7 +54,7 @@ Low priority, explicitly confirmed by the author — to be tackled after the exi
 
 ## Legacy-to-English data migration (FR-23) — naming reference
 
-Existing legacy paths/headers and their role, to inform the migration script/shim decision (PRD §8, Open Question 4):
+Existing legacy paths/headers and their role, covered by the one-time conversion script decided in PRD FR-23:
 
 - `Labyrinthes_classiques/` — hand-built classic mazes shipped with the game.
 - `Labyrinthes_creation/` — work in progress from the builder.

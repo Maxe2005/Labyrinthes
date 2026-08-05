@@ -4,11 +4,16 @@
   KEY SCREEN — Home hub (light only — dark mode is covered by key-player-gameplay.html).
   Governs: EXPERIENCE.md → Information Architecture → "Home" row;
            EXPERIENCE.md → Component Patterns → icon-btn, pill-btn (New Maze absent here —
-             Home has no single most-likely-next-action pill, navigation cards do that job);
+             Home has no single most-likely-next-action pill, navigation cards do that job),
+             record-group (Personal Records grouping/expand behavior);
            EXPERIENCE.md → State Patterns → "Home" rows (Empty records, Populated records);
            EXPERIENCE.md → Key Flows → UJ-A step 1;
-           DESIGN.md → Components → top bar / brand-mark, icon-btn.
-  Primary section: populated Personal Records zone (a couple of local best-times).
+           DESIGN.md → Components → top bar / brand-mark, icon-btn, record-group.
+  Primary section: populated Personal Records zone, one row per maze — a single-combo
+  maze renders flat (no chevron), a multi-combo maze renders collapsed (chevron ▸,
+  headline = its most-recently-set-or-broken combo) or expanded (chevron ▾, full
+  Level×Difficulty combo list, canonical L1→L4/Max, D1→D3 order). Records never
+  compare across combos — see DESIGN.md → Components → record-group.
   Secondary, smaller section: the empty-records state (inline inviting message,
   no fabricated scores), per State Patterns → Home → Empty records.
 */
@@ -76,23 +81,41 @@ body {
 .records-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .records-label { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--c-ghost); font-weight: 700; }
 .records-list { display: flex; flex-direction: column; gap: 8px; }
+
+/* record-group: one row per maze. Single-combo mazes render flat (.no-toggle, chevron
+   slot kept empty for alignment). Multi-combo mazes get a clickable header row (chevron
+   + maze name + headline = most-recently-set-or-broken combo, never a cross-combo
+   "fastest" figure) and, when expanded, an indented combo list in canonical L→D order. */
+.record-group { background: var(--c-window); border: 1px solid var(--c-border); border-radius: 6px; overflow: hidden; }
 .record-row {
-  display: flex; align-items: center; justify-content: space-between;
-  background: var(--c-window); border: 1px solid var(--c-border); border-radius: 6px; padding: 9px 14px;
+  display: flex; align-items: center; gap: 10px; padding: 9px 14px; cursor: pointer; background: none; border: none; width: 100%; text-align: left; font: inherit; color: inherit;
 }
-.record-row .name { font-size: 13px; font-weight: 600; color: var(--c-ink); }
-.record-row .time { font-size: 15px; font-weight: 700; color: var(--c-ink); }
+.record-row.no-toggle { cursor: default; }
+.record-row:hover:not(.no-toggle) { background: var(--c-panel); }
+.record-row .chevron { width: 14px; flex: none; display: grid; place-items: center; color: var(--c-ink-soft); transition: transform .12s ease; }
+.record-group.expanded .record-row .chevron { transform: rotate(90deg); }
+.record-row .name { font-size: 13px; font-weight: 600; color: var(--c-ink); flex: 1; }
+.record-row .combo-tag { font-size: 10px; font-weight: 700; letter-spacing: .04em; color: var(--c-ink-soft); background: var(--c-panel); border: 1px solid var(--c-border); border-radius: 3px; padding: 2px 6px; }
+.record-row.no-toggle .combo-tag { background: var(--c-window); }
+.record-row .time { font-size: 15px; font-weight: 700; color: var(--c-ink); min-width: 46px; text-align: right; }
+.record-row .timestamp { font-size: 11px; color: var(--c-ink-soft); min-width: 64px; text-align: right; }
+
+.combo-list { display: none; flex-direction: column; border-top: 1px solid var(--c-border); }
+.record-group.expanded .combo-list { display: flex; }
+.combo-row { display: flex; align-items: center; gap: 10px; padding: 7px 14px 7px 38px; }
+.combo-row .combo-tag { font-size: 10px; font-weight: 700; letter-spacing: .04em; color: var(--c-ink-soft); background: var(--c-panel); border: 1px solid var(--c-border); border-radius: 3px; padding: 2px 6px; flex: 1 0 auto; width: fit-content; }
+.combo-row .time { margin-left: auto; font-size: 13px; font-weight: 700; color: var(--c-ink); }
 
 .empty-message { font-size: 14px; line-height: 1.55; color: var(--c-ink-soft); padding: 6px 2px; }
 </style>
 
 <div class="intro">
   <h1><span>Key screen /</span> Home</h1>
-  <p>Navigation hub: cards to Builder and Player, a Settings icon-btn, and the Personal Records zone (local best-times only, this milestone).</p>
+  <p>Navigation hub: cards to Builder and Player, a Settings icon-btn, and the Personal Records zone (local best-times only, this milestone) — grouped one row per maze, expandable to every Level×Difficulty combo that maze has a record for.</p>
   <p class="note">Light mode shown here; dark mode is covered by key-player-gameplay.html.</p>
 </div>
 
-<div class="col-label">Primary — populated Personal Records</div>
+<div class="col-label">Primary — populated Personal Records (flat single-combo, collapsed multi-combo, expanded multi-combo)</div>
 <div class="window">
   <div class="os-titlebar"><div class="dot"></div><div class="dot"></div><div class="dot"></div><span class="label">Labyrinthes — Home</span></div>
   <div class="topbar">
@@ -128,8 +151,49 @@ body {
     <div class="records-zone">
       <div class="records-head"><span class="records-label">Personal Records</span></div>
       <div class="records-list">
-        <div class="record-row"><span class="name">Classic Maze 4</span><span class="time mono">00:42</span></div>
-        <div class="record-row"><span class="name">Classic Maze 7</span><span class="time mono">01:15</span></div>
+
+        <!-- Single-combo maze: flat row, no chevron — nothing to expand. -->
+        <div class="record-group">
+          <button class="record-row no-toggle">
+            <span class="chevron"></span>
+            <span class="name">Classic Maze 7</span>
+            <span class="combo-tag">L2 · D2</span>
+            <span class="time mono">01:15</span>
+            <span class="timestamp">just now</span>
+          </button>
+        </div>
+
+        <!-- Multi-combo maze, collapsed (default state): headline = its most-recently-
+             set-or-broken combo, not a cross-combo "fastest" figure. -->
+        <div class="record-group">
+          <button class="record-row">
+            <span class="chevron"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M9 6l6 6-6 6"/></svg></span>
+            <span class="name">Classic Maze 4</span>
+            <span class="combo-tag">L1</span>
+            <span class="time mono">00:58</span>
+            <span class="timestamp">2 days ago</span>
+          </button>
+        </div>
+
+        <!-- Multi-combo maze, expanded: header stays, combo list appears below in
+             canonical Level→Difficulty order (not recency). L1 has no Difficulty
+             setting (FR-13), so its tag omits the "· D" segment. -->
+        <div class="record-group expanded">
+          <button class="record-row">
+            <span class="chevron"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M9 6l6 6-6 6"/></svg></span>
+            <span class="name">Classic Maze 9</span>
+            <span class="combo-tag">L2 · D1</span>
+            <span class="time mono">00:51</span>
+            <span class="timestamp">yesterday</span>
+          </button>
+          <div class="combo-list">
+            <div class="combo-row"><span class="combo-tag">L1</span><span class="time mono">00:39</span></div>
+            <div class="combo-row"><span class="combo-tag">L2 · D1</span><span class="time mono">00:51</span></div>
+            <div class="combo-row"><span class="combo-tag">L2 · D2</span><span class="time mono">01:04</span></div>
+            <div class="combo-row"><span class="combo-tag">L3 · D1</span><span class="time mono">01:22</span></div>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>

@@ -3,7 +3,7 @@ name: Labyrinthes
 status: final
 sources:
   - _bmad-output/planning-artifacts/prds/prd-Labyrinthes-2026-08-04/prd.md
-updated: 2026-08-04
+updated: 2026-08-05
 ---
 
 # Labyrinthes — Experience Spine
@@ -62,6 +62,7 @@ Behavioral rules only — visual specs live in `DESIGN.md.Components`.
 | `settings-window` | Reached from any top bar | Categorized sections/tabs (Appearance, Ball, Difficulty, Shortcuts, …). Opens as its own window, not an inline panel — so Builder/Player state stays visible/paused behind it rather than being replaced. |
 | First-activation explainer popup | Level/Difficulty controls | Auto-shows the first time the user activates a given Level or Difficulty tier (every tier, not just HARD). Auto-show-on-first-activation is configurable off in Settings. Independent of that setting, an ⓘ affordance next to the control always reopens the same explainer on demand. |
 | Inline error/empty-state message | Any form field, any list | Renders beside/under the concerned field or list, never as a modal. Persists until the underlying condition is resolved (e.g. dimensions back in 3–50/3–35 range), not dismissed by a button. |
+| `record-group` | Home, Personal Records zone | One row per maze that has at least one stored record (FR-27). A maze with exactly one (Level, Difficulty) combo renders **flat, no chevron** — there's nothing to expand. A maze with 2+ combos renders **collapsed by default**: a chevron toggle, the maze name, and a headline value that is its **single most-recently-set-or-broken combo** — never a cross-combo "fastest" figure, since Level/Difficulty times aren't comparable (FR-27's Consequences). Clicking the row (or its chevron) expands an indented combo list below the header, one line per (Level, Difficulty) the maze has a record for, tagged `L{n}` (Level 1, which has no Difficulty setting per FR-13) or `L{n} · D{n}` (Level 2 and up), ordered **canonically by Level then Difficulty ascending** — not by recency, so the expanded list stays a stable, scannable reference rather than reshuffling every time a different combo is played. The toggle is a real focusable control, activated by click or Enter/Space, per the Accessibility Floor. `[ASSUMPTION]` Expand/collapse state resets to collapsed on every Home load — nothing is persisted between visits; low-stakes, easy to revise to sticky-open if it proves annoying in practice. |
 | Win banner | Player gameplay, on solve | Appears inline around the maze-frame, offers a "continue" action per UJ-2. Does not block the maze from view. |
 | HARD-mode fog overlay + status light | Player gameplay, HARD mode | Fog overlay is present only while the ball is moving (the interval during which the ball itself is invisible per FR-14); at rest the maze renders normally, instantly (no fade/animation, see `DESIGN.md → components.fog-overlay`). The status light reflects ready/moving state and its color is read from the user's HARD-mode color setting (`[ASSUMPTION]` defaults before customization: `DESIGN.md → components.status-light-default`) — the same setting must drive both the "ready" and "moving" light states consistently (this fixes the legacy hardcoded-color bug in the addendum, where changing the color setting silently broke the return-to-ready toggle). |
 
@@ -70,7 +71,7 @@ Behavioral rules only — visual specs live in `DESIGN.md.Components`.
 | Surface | State | Treatment |
 |---|---|---|
 | Home | Empty records | Personal Records zone shows an inline message inviting the user to play their first maze — no fabricated placeholder scores. |
-| Home | Populated records | Local best-times listed, most relevant/recent first. |
+| Home | Populated records | One `record-group` row per maze, grouped by maze and ordered most-recently-set-or-broken first; see Component Patterns → `record-group` for the flat/collapsed/expanded treatment per maze's combo count. |
 | Builder | Empty new maze | Dimensions dialog is the entry state — nothing rendered in the maze-frame until dimensions are confirmed. |
 | Builder | Mid-edit | Normal editing state: tools active, HUD shows live grid size and walls-broken count. |
 | Builder | Entry set, exit not set | No `ghost-marker` rendered anywhere until the user clicks a cell with Set Exit active — no default/placeholder position. Save is blocked from the "Maze" (finished) path until both are set, but Sketch save remains available (a Sketch is explicitly allowed to be incomplete). |
@@ -91,12 +92,13 @@ Behavioral rules only — visual specs live in `DESIGN.md.Components`.
 - **Ball movement:** arrow keys drive the ball. Two configurable modes (FR-15): **Smooth** (direction can be redirected mid-move, continuous motion) and **Discrete** (cell-by-cell, one key press = one cell), with a configurable speed shared by both modes' underlying tick/animation rate.
 - **Wall editing gesture split:** a single click on a wall breaks/restores just that wall (FR-1). A click-and-drag defines a rectangular zone, resolved as one destroy-or-restore operation on release (FR-2). These are distinct gestures, not variations of one gesture, specifically so a slightly-imprecise single click never accidentally becomes a zone edit.
 - **Numeric input validation:** dimension fields (columns 3–50, rows 3–35) validate live and inline, in both the Builder's New Maze dialog and the Player's random-maze dialog, reading the same shared bounds (FR-4) rather than duplicated hardcoded values (fixes the legacy "Duplicated size bounds" defect in the addendum).
+- **Record-group disclosure:** a multi-combo `record-group`'s header row is a standard toggle — click or Enter/Space switches it between collapsed (headline combo only) and expanded (every combo listed), per Component Patterns above. A single-combo `record-group` has no toggle at all.
 
 ## Accessibility Floor
 
 Visual contrast values live in `DESIGN.md`; this section states the behavioral floor and sanity-checks the locked hex pairs against it.
 
-- **Full keyboard operability.** Every action reachable via its printed shortcut; no mouse-only affordance exists anywhere in Builder or Player.
+- **Full keyboard operability.** Every action reachable via its printed shortcut; no mouse-only affordance exists anywhere in Home, Builder, or Player — this includes the `record-group` expand/collapse toggle, a control this milestone's Personal Records feature adds to Home.
 - **Visible focus indicator** on every focusable control, at a contrast that meets the same AA bar as text (see below).
 - **WCAG AA text/background contrast.** Rough sanity check on the locked `DESIGN.md` token pairs (relative-luminance contrast ratios, not measured in a contrast tool — treat as directional):
   - Light mode: `{colors.ink}` on `{colors.window}` ≈ 15:1 (comfortably passes AA and AAA). `{colors.ink-soft}` on `{colors.window}`/`{colors.panel}` ≈ 5.5:1 (passes AA for normal text).
@@ -118,7 +120,7 @@ Visual contrast values live in `DESIGN.md`; this section states the behavioral f
 3. She picks the first classic maze. The gameplay screen opens: HUD (Level, Difficulty, Time, Pos), the maze centered in its frame, entry marker glowing green, ball at rest on it.
 4. She moves the ball with arrow keys (default Smooth movement) toward the amber exit marker, walls rendered as solid bars, corridor bright and legible.
 5. She reaches the exit.
-6. **Climax:** the win banner appears inline around the maze-frame — "Solved in 00:42." — with a continue action, and Home's Personal Records zone now has its first local entry the next time she returns there.
+6. **Climax:** the win banner appears inline around the maze-frame — "Solved in 00:42." — with a continue action, and Home's Personal Records zone now has its first local entry the next time she returns there — a flat `record-group` row (this one Level/Difficulty combo is her only record on this maze so far, no chevron yet).
 
 Failure path: not applicable to this journey (UJ-A is the successful-discovery path by definition); a stuck-mid-maze case is not a failure state in this product — there's no timer running unless Priya opts into one, so there is nothing to fail against on a first classic-maze run.
 

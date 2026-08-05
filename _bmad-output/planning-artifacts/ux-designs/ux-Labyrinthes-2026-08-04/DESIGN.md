@@ -2,7 +2,7 @@
 name: Labyrinthes — Blueprint
 description: Visual identity for the Labyrinthes maze-builder + maze-player desktop app pair — a drafting-table register (hairline grid, monospace HUD, single blue accent) in paired light/dark tokens.
 status: final
-updated: 2026-08-04
+updated: 2026-08-05
 colors:
   # Light "Blueprint" / dark "Obsidian Draft", paired as base/base-dark
   # kebab-case tokens — see Colors below for the full rationale.
@@ -209,6 +209,25 @@ components:
     text-color: '{colors.accent}'
     text-color-dark: '{colors.accent-dark}'
     radius: '{rounded.lg}'
+  record-group:
+    radius: '{rounded.md}'
+    background: '{colors.window}'
+    background-dark: '{colors.window-dark}'
+    border: '{colors.border}'
+    border-dark: '{colors.border-dark}'
+    row-padding: '{spacing.sm} {spacing.md}'
+    row-hover-background: '{colors.panel}'
+    row-hover-background-dark: '{colors.panel-dark}'
+    name-text: '{typography.body}'
+    combo-tag-text: '{typography.label}'
+    combo-tag-radius: '{rounded.xs}'
+    time-text: '{typography.hud-stat}'
+    timestamp-color: '{colors.ink-soft}'
+    timestamp-color-dark: '{colors.ink-soft-dark}'
+    chevron-size: 9px
+    chevron-color: '{colors.ink-soft}'
+    chevron-color-dark: '{colors.ink-soft-dark}'
+    combo-list-indent: '{spacing.5xl}'
   status-light:
     size: 10px
     radius: '{rounded.full}'
@@ -316,6 +335,7 @@ Visual specs only — behavioral rules live in `EXPERIENCE.md → Component Patt
 - **First-activation explainer popup** — a small `{rounded.lg}` popover/dialog, `{colors.window}`/`{colors.window-dark}` background, body copy in `{typography.body-secondary}`, anchored near the Level/Difficulty control it explains.
 - **Inline error / empty-state message** — no modal chrome: text directly under or beside the concerned field/action, `{typography.body-secondary}`, `{colors.exit}`/`{colors.exit-dark}` for error states (reusing the exit/warning hue rather than introducing a new red), `{colors.ink-soft}`/`{colors.ink-soft-dark}` for neutral empty states.
 - **Win banner** — `{rounded.lg}` radius, `{colors.accent-bg}`/`{colors.accent-bg-dark}` background, `{colors.accent}`/`{colors.accent-dark}` text, appears inline above/around the maze-frame on solve rather than as a modal takeover.
+- **`record-group`** (Home, Personal Records zone) — one card per maze, `{rounded.md}` radius, `{colors.window}`/`{colors.window-dark}` background over `{colors.border}`/`{colors.border-dark}`. The header row (`{spacing.sm} {spacing.md}` padding) holds, left to right: a 9px chevron glyph in `{colors.ink-soft}`/`{colors.ink-soft-dark}` (rotates 90° open, absent entirely for a single-combo maze), the maze name in `{typography.body}`, a small `{rounded.xs}` combo-tag pill in `{typography.label}` reading `L{n}` or `L{n} · D{n}`, the time in `{typography.hud-stat}`, and a relative timestamp ("2 days ago") in `{colors.ink-soft}`/`{colors.ink-soft-dark}` at 11px. Hovering a multi-combo header (it's clickable) tints the row `{colors.panel}`/`{colors.panel-dark}`; a single-combo header has no hover treatment, since it isn't interactive. When expanded, an indented (`{spacing.5xl}`) combo list appears below the header, one row per (Level, Difficulty), each with its own combo-tag + time pair, no chevron, no timestamp — see [`mockups/key-home.html`](mockups/key-home.html) for the flat/collapsed/expanded states side by side.
 - **HARD-mode fog overlay + status light** — while HARD mode is active, a translucent scrim in `{colors.bg}`/`{colors.bg-dark}` at `{components.fog-overlay.opacity}` (0.85, no animation — instant show/hide tied to ball-moving state) sits over the maze-frame during ball movement, standing in for "the ball is currently hidden." **Z-order is load-bearing:** the scrim sits above the corridor/ball plane but *below* wall-bars and markers, so walls, entry, and exit render crisply on top of it — only the ball's plane is obscured, never the structure. A small 10px `{rounded.full}` **status light** near the HUD shows ready-vs-moving state; its color is user-configurable in Settings (Appearance/Difficulty category). `[ASSUMPTION]` Default colors before the user customizes: ready = `{colors.accent}`/`{colors.accent-dark}`, moving = `{colors.exit}`/`{colors.exit-dark}` (amber, signals caution) — see `{components.status-light-default}`. Non-blocking; easy to revise.
 
 ## Do's and Don'ts
@@ -330,3 +350,4 @@ Visual specs only — behavioral rules live in `EXPERIENCE.md → Component Patt
 | Keep the wall/corridor brightness relationship mode-specific (light: bright corridor, dark wall; dark: near-black corridor, lit wall) | Derive dark-mode wall/corridor by mechanically inverting the light-mode hex values |
 | Show inline, contextual error/empty-state text next to the concerned control | Use modal dialogs for validation errors or empty states |
 | Reserve `{colors.accent}`/`{colors.accent-dark}` for interactive/active/live meaning | Use the accent hue decoratively or for a second unrelated status meaning |
+| Group a maze's records into one expandable `record-group` row, headlined by its most-recently-set-or-broken combo | Flatten a maze's multiple (Level, Difficulty) records into one row with no way to see the rest, or compute/show a cross-combo "fastest" time |
