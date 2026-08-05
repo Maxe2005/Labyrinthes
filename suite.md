@@ -1,0 +1,2 @@
+Il te reste ton idée initiale : mettre à jour le PRD via bmad-prd pour les Personal Records avant qu'on puisse les architecturer — je n'ai rien touché à ce sujet, j'attends que tu lances
+  ça. Sinon, l'étape suivante logique reste bmad-create-epics-and-stories.
