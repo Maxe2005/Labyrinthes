@@ -1,5 +1,5 @@
 # generated: 2026-08-05
-# last_updated: 2026-08-05
+# last_updated: 2026-08-06
 # project: Labyrinthes
 # project_key: NOKEY
 # tracking_system: file-system
@@ -46,7 +46,7 @@
 # re-run this workflow once a dedicated epics/stories pass gives it real stories.
 
 generated: 2026-08-05
-last_updated: 2026-08-05
+last_updated: 2026-08-06
 project: Labyrinthes
 project_key: NOKEY
 tracking_system: file-system
@@ -55,7 +55,7 @@ story_location: _bmad-output/implementation-artifacts
 development_status:
   epic-1: in-progress
   1-1-domain-model-foundation: done
-  1-2-automated-domain-ui-boundary-test: review
+  1-2-automated-domain-ui-boundary-test: done
   1-3-persistence-port-interfaces-mazerepository-settingsrepository: backlog
   1-4-concrete-mazerepository-single-shared-csv-read-write-implementation: backlog
   1-5-concrete-settingsrepository-scoped-persistence: backlog
