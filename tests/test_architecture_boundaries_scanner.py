@@ -17,7 +17,7 @@ instead of the boundary tests trivially passing.
 
 from pathlib import Path
 
-from tests.test_architecture_boundaries import find_forbidden_imports
+from tests.test_architecture_boundaries import ADAPTERS_TKINTER_SUBPACKAGES, find_forbidden_imports
 
 
 def _write(path: Path, content: str) -> Path:
@@ -27,9 +27,12 @@ def _write(path: Path, content: str) -> Path:
 
 
 def test_submodule_style_import_of_forbidden_target_is_detected(tmp_path):
+    # Absolute import naming a forbidden *submodule* as the imported name --
+    # distinct from test_relative_import_is_detected below, which exercises
+    # module-based (`from ..builder import x`) resolution instead.
     src_root = tmp_path / "src"
     home_dir = src_root / "labyrinthes" / "adapters" / "tkinter" / "home"
-    foo = _write(home_dir / "foo.py", "from ..builder import something\n")
+    foo = _write(home_dir / "foo.py", "from labyrinthes.adapters.tkinter import builder\n")
 
     violations = find_forbidden_imports(
         home_dir, src_root, ("labyrinthes.adapters.tkinter.builder",)
@@ -68,3 +71,13 @@ def test_directory_with_no_forbidden_imports_yields_zero_violations(tmp_path):
     violations = find_forbidden_imports(domain_dir, src_root, ("tkinter", "labyrinthes.adapters"))
 
     assert violations == []
+
+
+def test_storage_check_covers_all_four_tkinter_subpackages():
+    # Pins the exact subpackage set test_tkinter_does_not_import_storage_adapters
+    # scans. Iteration 2 of this story silently dropped "common" from this set;
+    # neither that test nor any other fixture caught it, because domain/ is
+    # clean by construction and adapters/tkinter/ doesn't exist yet in the real
+    # tree -- this test is what makes a repeat of that exact regression fail
+    # loudly instead of leaving the suite tautologically green.
+    assert set(ADAPTERS_TKINTER_SUBPACKAGES) == {"home", "builder", "player", "common"}

@@ -25,6 +25,7 @@ SRC_ROOT = PACKAGE_ROOT.parent
 REPO_ROOT = SRC_ROOT.parent
 
 SCREEN_PACKAGES = ("home", "builder", "player")
+ADAPTERS_TKINTER_SUBPACKAGES = (*SCREEN_PACKAGES, "common")
 
 
 def iter_python_files(directory: Path) -> list[Path]:
@@ -146,9 +147,14 @@ def test_common_does_not_import_screens():
 def test_tkinter_does_not_import_storage_adapters():
     # AD-9: the whole adapters/tkinter/ tree, not only the three screens --
     # common/ must be covered too (this is what iteration 2 of this story missed).
+    # ADAPTERS_TKINTER_SUBPACKAGES is pinned by
+    # test_storage_check_covers_all_four_tkinter_subpackages in
+    # test_architecture_boundaries_scanner.py so a regression here (e.g.
+    # dropping "common" again) fails loudly even against today's pre-feature
+    # tree, where this test itself would otherwise stay vacuously green.
     forbidden = ("labyrinthes.adapters.storage",)
     violations = []
-    for subpackage in (*SCREEN_PACKAGES, "common"):
+    for subpackage in ADAPTERS_TKINTER_SUBPACKAGES:
         directory = PACKAGE_ROOT / "adapters" / "tkinter" / subpackage
         violations.extend(find_forbidden_imports(directory, SRC_ROOT, forbidden))
     assert not violations, _format_violations(violations)
