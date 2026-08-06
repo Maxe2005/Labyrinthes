@@ -1,46 +1,59 @@
 import tkinter as tk
 
-from labyrinthes.adapters.tkinter.common import PillButton, SettingsWindow, TopBar
+from labyrinthes.adapters.tkinter.common import PillButton, SettingsWindow, Theme, TopBar
 from labyrinthes.adapters.tkinter.common.navigation import ScreenId
 from labyrinthes.adapters.tkinter.home.screen import mount
 
 
-def test_mount_returns_a_frame_parented_under_the_given_parent(tk_root, navigate_stub):
+def test_mount_returns_a_frame_parented_under_the_given_parent(
+    tk_root, navigate_stub, toggle_theme_stub
+):
     navigate, _ = navigate_stub
-    frame = mount(tk_root, None, navigate)
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(tk_root, None, navigate, Theme.LIGHT, toggle_theme)
 
     assert isinstance(frame, tk.Frame)
     assert frame.master is tk_root
 
 
-def test_mount_renders_a_top_bar_with_no_breadcrumb(tk_root, navigate_stub, find_all):
+def test_mount_renders_a_top_bar_with_no_breadcrumb(
+    tk_root, navigate_stub, toggle_theme_stub, find_all
+):
     navigate, _ = navigate_stub
-    frame = mount(tk_root, None, navigate)
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(tk_root, None, navigate, Theme.LIGHT, toggle_theme)
 
     top_bars = find_all(frame, TopBar)
     assert len(top_bars) == 1
     assert top_bars[0]._breadcrumb is None
 
 
-def test_mount_renders_the_brand_mark(tk_root, navigate_stub, find_all):
+def test_mount_renders_the_brand_mark(tk_root, navigate_stub, toggle_theme_stub, find_all):
     navigate, _ = navigate_stub
-    frame = mount(tk_root, None, navigate)
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(tk_root, None, navigate, Theme.LIGHT, toggle_theme)
 
     labels = {label.cget("text") for label in find_all(frame, tk.Label)}
     assert "Labyrinthes" in labels
 
 
-def test_mount_renders_open_builder_and_open_player_entry_points(tk_root, navigate_stub, find_all):
+def test_mount_renders_open_builder_and_open_player_entry_points(
+    tk_root, navigate_stub, toggle_theme_stub, find_all
+):
     navigate, _ = navigate_stub
-    frame = mount(tk_root, None, navigate)
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(tk_root, None, navigate, Theme.LIGHT, toggle_theme)
 
     labels = {button._label.cget("text") for button in find_all(frame, PillButton)}
     assert labels == {"Open Builder", "Open Player"}
 
 
-def test_open_builder_button_navigates_to_builder_with_no_state(tk_root, navigate_stub, find_all):
+def test_open_builder_button_navigates_to_builder_with_no_state(
+    tk_root, navigate_stub, toggle_theme_stub, find_all
+):
     navigate, calls = navigate_stub
-    frame = mount(tk_root, None, navigate)
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(tk_root, None, navigate, Theme.LIGHT, toggle_theme)
 
     open_builder = next(
         b for b in find_all(frame, PillButton) if b._label.cget("text") == "Open Builder"
@@ -52,9 +65,12 @@ def test_open_builder_button_navigates_to_builder_with_no_state(tk_root, navigat
     assert calls == [(ScreenId.BUILDER, None)]
 
 
-def test_open_player_button_navigates_to_player_with_no_state(tk_root, navigate_stub, find_all):
+def test_open_player_button_navigates_to_player_with_no_state(
+    tk_root, navigate_stub, toggle_theme_stub, find_all
+):
     navigate, calls = navigate_stub
-    frame = mount(tk_root, None, navigate)
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(tk_root, None, navigate, Theme.LIGHT, toggle_theme)
 
     open_player = next(
         b for b in find_all(frame, PillButton) if b._label.cget("text") == "Open Player"
@@ -65,10 +81,11 @@ def test_open_player_button_navigates_to_player_with_no_state(tk_root, navigate_
 
 
 def test_settings_icon_click_opens_a_non_modal_settings_window_leaving_home_mounted(
-    tk_root, navigate_stub, find_all
+    tk_root, navigate_stub, toggle_theme_stub, find_all
 ):
     navigate, _ = navigate_stub
-    frame = mount(tk_root, None, navigate)
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(tk_root, None, navigate, Theme.LIGHT, toggle_theme)
 
     top_bar = find_all(frame, TopBar)[0]
     top_bar._settings_button._on_click()
@@ -77,3 +94,16 @@ def test_settings_icon_click_opens_a_non_modal_settings_window_leaving_home_moun
     assert len(settings_windows) == 1
     assert settings_windows[0].grab_status() is None
     assert frame.winfo_exists()
+
+
+def test_theme_toggle_icon_click_invokes_the_passed_in_toggle_theme_callable(
+    tk_root, navigate_stub, toggle_theme_stub, find_all
+):
+    navigate, _ = navigate_stub
+    toggle_theme, calls = toggle_theme_stub
+    frame = mount(tk_root, None, navigate, Theme.LIGHT, toggle_theme)
+
+    top_bar = find_all(frame, TopBar)[0]
+    top_bar._theme_toggle_button._on_click()
+
+    assert calls == [1]

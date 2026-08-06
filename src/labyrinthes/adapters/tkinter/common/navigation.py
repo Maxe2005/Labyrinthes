@@ -16,9 +16,10 @@ import enum
 import tkinter as tk
 from collections.abc import Callable
 
+from labyrinthes.adapters.tkinter.common.tokens import Theme
 from labyrinthes.domain.maze import Maze
 
-__all__ = ["NavigateFn", "ScreenId", "ScreenMountFn"]
+__all__ = ["NavigateFn", "ScreenId", "ScreenMountFn", "ToggleThemeFn"]
 
 
 class ScreenId(enum.Enum):
@@ -35,8 +36,15 @@ class ScreenId(enum.Enum):
 # spec's Design Notes on why not just pass `Router` itself).
 NavigateFn = Callable[[ScreenId, Maze | None], None]
 
-# Every screen's `mount()` signature (Story 1.8): `Router`'s own `MountFn`
-# (`app/router.py`) stays the unchanged 2-arg shape from Story 1.7;
-# `composition_root.build_app()` is what bridges the two, wrapping each
-# `ScreenMountFn` into a `MountFn` bound to one `NavigateFn` closure.
-ScreenMountFn = Callable[[tk.Widget, Maze | None, NavigateFn], tk.Frame]
+# The narrow capability `mount()` receives to trigger a theme toggle
+# (Story 1.9) -- a screen only ever needs to fire the toggle, never to
+# `subscribe()` another listener or read `.theme` outside of what `mount()`
+# already handed it (see the spec's Design Notes).
+ToggleThemeFn = Callable[[], None]
+
+# Every screen's `mount()` signature (Story 1.8, extended by Story 1.9):
+# `Router`'s own `MountFn` (`app/router.py`) stays the unchanged 2-arg
+# shape from Story 1.7; `composition_root.build_app()` is what bridges the
+# two, wrapping each `ScreenMountFn` into a `MountFn` bound to one
+# `NavigateFn` closure plus the live `theme`/`ToggleThemeFn` pair.
+ScreenMountFn = Callable[[tk.Widget, Maze | None, NavigateFn, Theme, ToggleThemeFn], tk.Frame]

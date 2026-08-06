@@ -5,6 +5,7 @@ _KEY_NAMES = [
     "MAZE_MAX_COLUMNS",
     "MAZE_MIN_ROWS",
     "MAZE_MAX_ROWS",
+    "THEME",
 ]
 
 

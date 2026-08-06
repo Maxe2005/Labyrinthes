@@ -1,9 +1,9 @@
-"""`TopBar` -- brand mark + optional breadcrumb + Settings icon (Story 1.8).
+"""`TopBar` -- brand mark + optional breadcrumb + Settings/theme-toggle icons (Story 1.8/1.9).
 
 Composed by every screen's `mount()`. Per the epic's top-bar pattern: the
 brand mark/wordmark always sits left, an optional `Breadcrumb` sits next to
-it, and the Settings `icon-btn` sits right -- theme toggle is Story 1.9's
-addition, not this one's.
+it, and the `icon-btn`s (Settings, theme toggle) sit right, in that
+left-to-right order.
 """
 
 from __future__ import annotations
@@ -35,6 +35,7 @@ class TopBar(tk.Frame):
         theme: Theme,
         breadcrumb_segments: list[BreadcrumbSegment] | None = None,
         on_settings: Callable[[], None] | None = None,
+        on_theme_toggle: Callable[[], None] | None = None,
     ) -> None:
         colors = colors_for(theme)
         super().__init__(
@@ -58,6 +59,19 @@ class TopBar(tk.Frame):
         if breadcrumb_segments is not None:
             self._breadcrumb = Breadcrumb(self, breadcrumb_segments, theme=theme)
             self._breadcrumb.pack(side="left", padx=(0, SPACING["lg"]))
+
+        # Packed before the Settings button: with `side="right"`, the first
+        # widget packed lands nearest the right edge, so packing this one
+        # first is what puts it to the *right* of Settings in the final
+        # left-to-right layout (see this module's docstring).
+        self._theme_toggle_button = IconButton(
+            self,
+            glyph="🌙",  # moon, same glyph in both themes per the locked mockups
+            theme=theme,
+            tooltip="Toggle theme.",
+            command=on_theme_toggle,
+        )
+        self._theme_toggle_button.pack(side="right", padx=SPACING["lg"], pady=SPACING["sm"])
 
         self._settings_button = IconButton(
             self,

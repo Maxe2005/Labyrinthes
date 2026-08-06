@@ -12,7 +12,12 @@ from labyrinthes.adapters.tkinter.common.breadcrumb import Breadcrumb, Breadcrum
 from labyrinthes.adapters.tkinter.common.hud_chip import HudChip
 from labyrinthes.adapters.tkinter.common.icon_btn import IconButton
 from labyrinthes.adapters.tkinter.common.kbd_tag import KbdTag
-from labyrinthes.adapters.tkinter.common.navigation import NavigateFn, ScreenId, ScreenMountFn
+from labyrinthes.adapters.tkinter.common.navigation import (
+    NavigateFn,
+    ScreenId,
+    ScreenMountFn,
+    ToggleThemeFn,
+)
 from labyrinthes.adapters.tkinter.common.pill_btn import PillButton
 from labyrinthes.adapters.tkinter.common.settings_window import SettingsWindow
 from labyrinthes.adapters.tkinter.common.tokens import (
@@ -46,6 +51,7 @@ __all__ = [
     "ScreenMountFn",
     "SettingsWindow",
     "Theme",
+    "ToggleThemeFn",
     "ToolButton",
     "ToolButtonGroup",
     "Tooltip",
