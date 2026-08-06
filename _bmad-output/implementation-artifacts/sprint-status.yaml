@@ -61,7 +61,7 @@ development_status:
   1-5-concrete-settingsrepository-scoped-persistence: done
   1-6-design-token-system-shared-tkinter-widget-primitives: done
   1-7-single-composition-root-screen-router: done
-  1-8-home-breadcrumb-navigation-settings-access: backlog
+  1-8-home-breadcrumb-navigation-settings-access: done
   1-9-light-dark-theme-toggle-wired-end-to-end: backlog
   1-10-accessibility-floor-keyboard-shortcut-consistency: backlog
   epic-1-retrospective: optional

@@ -1,30 +1,28 @@
-"""`ScreenId` and `Router` -- the screen-swap mechanism every screen navigates through.
+"""`Router` -- the screen-swap mechanism every screen navigates through.
 
 `Router` never imports a concrete screen module (`composition_root.py` is the
 only place that does, AD-10) -- it only knows about `MountFn` callables
 registered against a `ScreenId`, keeping the "screens never import each
 other" boundary trivially true rather than merely tested.
+
+`ScreenId` itself is defined in `adapters/tkinter/common/navigation.py`
+(Story 1.8) -- screens need real, runtime access to its members, which
+would require importing `app/` if it stayed here, inverting the epic's
+one-way `app/ -> adapters/ -> application/ -> domain/` dependency
+direction. It is re-exported unchanged below so
+`from labyrinthes.app.router import ScreenId` keeps working.
 """
 
 from __future__ import annotations
 
-import enum
 import tkinter as tk
 from collections.abc import Callable
 
+from labyrinthes.adapters.tkinter.common.navigation import ScreenId
 from labyrinthes.app.errors import UnregisteredScreenError
 from labyrinthes.domain.maze import Maze
 
 __all__ = ["MountFn", "Router", "ScreenId"]
-
-
-class ScreenId(enum.Enum):
-    """Stable identity for a screen the router can navigate to."""
-
-    HOME = "home"
-    BUILDER = "builder"
-    PLAYER = "player"
-
 
 MountFn = Callable[[tk.Widget, Maze | None], tk.Frame]
 

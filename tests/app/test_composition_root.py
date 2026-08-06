@@ -28,7 +28,7 @@ def test_build_app_destroys_the_root_if_wiring_fails_partway_through(monkeypatch
         def pack(self, **kwargs) -> None:
             pass
 
-    def failing_mount_home(parent, state):
+    def failing_mount_home(parent, state, navigate):
         raise RuntimeError("boom")
 
     monkeypatch.setattr(composition_root.tk, "Tk", FakeRoot)
@@ -39,6 +39,27 @@ def test_build_app_destroys_the_root_if_wiring_fails_partway_through(monkeypatch
         build_app()
 
     assert destroy_calls == [True]
+
+
+def test_navigate_closure_bound_into_a_screens_mount_drives_the_real_router(monkeypatch):
+    captured_navigate = {}
+
+    def capturing_mount_home(parent, state, navigate):
+        captured_navigate["navigate"] = navigate
+        return tk.Frame(parent)
+
+    monkeypatch.setattr(composition_root, "mount_home", capturing_mount_home)
+    app = build_app()
+
+    try:
+        app.root.withdraw()
+        assert "navigate" in captured_navigate
+
+        captured_navigate["navigate"](ScreenId.BUILDER, None)
+
+        assert app.router.current_screen_id == ScreenId.BUILDER
+    finally:
+        app.root.destroy()
 
 
 def test_main_builds_the_app_and_calls_mainloop_on_its_root(monkeypatch):
