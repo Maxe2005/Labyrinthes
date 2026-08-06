@@ -1,5 +1,23 @@
 # Deferred Work
 
+## Deferred from: code review of spec-1-8-home-breadcrumb-navigation-settings-access (2026-08-06)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-8-home-breadcrumb-navigation-settings-access.md`
+  summary: `TopBar` draws a full-perimeter 1px border (`highlightthickness=1` on all four sides) instead of the locked mockups' `.topbar { border-bottom: 1px solid var(--c-border) }` (bottom-only).
+  evidence: confirmed by direct inspection of `src/labyrinthes/adapters/tkinter/common/top_bar.py` against `key-builder-edit.html`/`key-player-selection.html`'s `.topbar` CSS rule. Cosmetic only (no AC references border placement); fixing it needs a small restructure (a dedicated bottom-border strip, since Tk's `highlightthickness` has no single-side variant), not a one-line token swap like the other Story 1.8 styling patches, so it was left for a dedicated visual-polish pass.
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-8-home-breadcrumb-navigation-settings-access.md`
+  summary: `Router.navigate()` destroys the previously-mounted screen's frame, which cascades (via Tk's own parent-child `Toplevel` semantics) to silently close any `SettingsWindow` still open on that screen — e.g. opening Settings on Builder, then clicking the breadcrumb's "Home" segment, discards the Settings dialog with no warning.
+  evidence: confirmed empirically (destroying a parent `Frame` destroys its child `Toplevel`) and by direct inspection of `src/labyrinthes/app/router.py`'s `navigate()`. Not addressed this story: `SettingsWindow` holds no real, stateful controls yet (Appearance is a placeholder), so there is nothing to lose today; revisit once a later story gives Settings actual persisted state, where silently discarding an open dialog would be more consequential. No AC requires Settings to survive a navigation away from its parent screen.
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-8-home-breadcrumb-navigation-settings-access.md`
+  summary: The `Breadcrumb`'s clickable "Home" segment (the sole way back to Home from Builder/Player) is only reachable via a raw `<Button-1>` bind on a `tk.Label`, with no keyboard focus/activation path (no `takefocus`, no `<Return>`/`<space>` binding) — mouse-only.
+  evidence: confirmed by direct inspection of `src/labyrinthes/adapters/tkinter/common/breadcrumb.py`. Matches the same, already-existing gap in every other clickable `common/` widget built so far (`IconButton`, `PillButton`, `ToolButton` — none is keyboard-focusable either), which is explicitly Story 1.10's stated scope ("Accessibility floor & keyboard shortcut consistency"), not this story's or Story 1.6's.
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-8-home-breadcrumb-navigation-settings-access.md`
+  summary: `Theme.LIGHT` is hardcoded independently in five separate call sites (`home/screen.py`, `builder/screen.py`, `player/screen.py`'s `mount()`s, plus each of their `SettingsWindow`-opening closures) with no single shared source of truth.
+  evidence: confirmed by direct inspection — each is a local `theme = Theme.LIGHT` literal. Explicitly, deliberately scoped this way by this story's spec ("every screen hardcodes `Theme.LIGHT` for now — Story 1.9 wires real theme selection end-to-end"); flagged here so Story 1.9's implementer knows to consolidate all five call sites, not just the three `mount()` ones.
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-8-home-breadcrumb-navigation-settings-access.md`
+  summary: `TopBar.__init__`'s `if breadcrumb_segments is not None:` check doesn't distinguish `None` from `[]` — an empty list still constructs a (visually empty) `Breadcrumb` instance, so `top_bar._breadcrumb` ends up non-`None` even though nothing renders, diverging from the "no breadcrumb at depth 0" contract other code (and tests) check via `is None`.
+  evidence: confirmed by direct inspection of `src/labyrinthes/adapters/tkinter/common/top_bar.py:58`. Not reachable today: every current call site passes either `None` (Home) or a concrete 2-element list (Builder/Player), never `[]`.
+
 ## Deferred from: code review of 1-1-domain-model-foundation (2026-08-05)
 
 - `Grid.filled` has no type validation; a non-`int` width/height raises a raw `TypeError` instead of `DomainValidationError` [src/labyrinthes/domain/grid.py:54] — deferred, pre-existing pattern across the whole diff (no value object in this story validates argument *types*, only business-domain invariants; consistent with the codebase having no static type-checker configured yet).

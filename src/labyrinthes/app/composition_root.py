@@ -3,6 +3,14 @@
 The only module allowed to import concrete screen modules directly (AD-10) --
 `Router` itself never imports one, so the "screens never import each other"
 boundary stays trivially true rather than merely tested.
+
+Story 1.8 adds one more piece of wiring: `Router`/`Router.register`/
+`MountFn` stayed exactly as Story 1.7 left them (2-arg, `(parent, state)`),
+but every screen's `mount()` now takes a third `navigate: NavigateFn`
+parameter. This module is what bridges the gap -- it builds one `navigate`
+closure over `router.navigate` and binds it into each screen's 3-arg
+`mount` before `register()`-ing the resulting 2-arg adapter, so `Router`
+itself never needs to know `navigate` exists.
 """
 
 from __future__ import annotations
@@ -11,9 +19,11 @@ import tkinter as tk
 from dataclasses import dataclass
 
 from labyrinthes.adapters.tkinter.builder.screen import mount as mount_builder
+from labyrinthes.adapters.tkinter.common.navigation import NavigateFn, ScreenMountFn
 from labyrinthes.adapters.tkinter.home.screen import mount as mount_home
 from labyrinthes.adapters.tkinter.player.screen import mount as mount_player
-from labyrinthes.app.router import Router, ScreenId
+from labyrinthes.app.router import MountFn, Router, ScreenId
+from labyrinthes.domain.maze import Maze
 
 __all__ = ["App", "build_app", "main"]
 
@@ -24,6 +34,20 @@ class App:
 
     root: tk.Tk
     router: Router
+
+
+def _bind_navigate(mount: ScreenMountFn, navigate: NavigateFn) -> MountFn:
+    """Adapt a screen's 3-arg `mount` into the 2-arg `MountFn` `Router.register()` expects.
+
+    Binds the same `navigate` closure into every screen rather than each
+    screen threading it through by hand -- `Router`'s own contract/tests
+    (Story 1.7) stay untouched by this story.
+    """
+
+    def bound(parent: tk.Widget, state: Maze | None) -> tk.Frame:
+        return mount(parent, state, navigate)
+
+    return bound
 
 
 def build_app() -> App:
@@ -39,9 +63,13 @@ def build_app() -> App:
         container.pack(fill="both", expand=True)
 
         router = Router(container)
-        router.register(ScreenId.HOME, mount_home)
-        router.register(ScreenId.BUILDER, mount_builder)
-        router.register(ScreenId.PLAYER, mount_player)
+
+        def navigate(screen_id: ScreenId, state: Maze | None = None) -> None:
+            router.navigate(screen_id, state)
+
+        router.register(ScreenId.HOME, _bind_navigate(mount_home, navigate))
+        router.register(ScreenId.BUILDER, _bind_navigate(mount_builder, navigate))
+        router.register(ScreenId.PLAYER, _bind_navigate(mount_player, navigate))
         router.navigate(ScreenId.HOME)
     except Exception:
         root.destroy()
