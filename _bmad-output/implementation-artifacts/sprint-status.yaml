@@ -56,7 +56,7 @@ development_status:
   epic-1: in-progress
   1-1-domain-model-foundation: done
   1-2-automated-domain-ui-boundary-test: done
-  1-3-persistence-port-interfaces-mazerepository-settingsrepository: backlog
+  1-3-persistence-port-interfaces-mazerepository-settingsrepository: done
   1-4-concrete-mazerepository-single-shared-csv-read-write-implementation: backlog
   1-5-concrete-settingsrepository-scoped-persistence: backlog
   1-6-design-token-system-shared-tkinter-widget-primitives: backlog
