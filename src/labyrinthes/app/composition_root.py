@@ -4,13 +4,17 @@ The only module allowed to import concrete screen modules directly (AD-10) --
 `Router` itself never imports one, so the "screens never import each other"
 boundary stays trivially true rather than merely tested.
 
-Story 1.8 adds one more piece of wiring: `Router`/`Router.register`/
-`MountFn` stayed exactly as Story 1.7 left them (2-arg, `(parent, state)`),
-but every screen's `mount()` now takes a third `navigate: NavigateFn`
-parameter. This module is what bridges the gap -- it builds one `navigate`
-closure over `router.navigate` and binds it into each screen's 3-arg
-`mount` before `register()`-ing the resulting 2-arg adapter, so `Router`
-itself never needs to know `navigate` exists.
+Story 1.8 added one piece of wiring: `Router`/`Router.register`/`MountFn`
+stayed exactly as Story 1.7 left them (2-arg, `(parent, state)`), but every
+screen's `mount()` took a third `navigate: NavigateFn` parameter, bridged
+here. Story 1.9 extends the same bridge: `mount()` now also takes
+`theme: Theme` and `toggle_theme: ToggleThemeFn`, sourced from one
+`ThemeController` built from a `SettingsRepository`. This module also
+tracks the `state` most recently passed to `navigate()` and subscribes a
+listener that re-navigates the currently-mounted screen with that state
+whenever the theme changes -- `Tk` widgets have no reactive re-theming
+primitive, so a full re-navigate (already `Router.navigate()`'s only mode
+of operation) is the smallest correct way to apply a new theme's tokens.
 """
 
 from __future__ import annotations
@@ -18,11 +22,15 @@ from __future__ import annotations
 import tkinter as tk
 from dataclasses import dataclass
 
+from labyrinthes.adapters.storage.json_settings_repository import JsonSettingsRepository
 from labyrinthes.adapters.tkinter.builder.screen import mount as mount_builder
 from labyrinthes.adapters.tkinter.common.navigation import NavigateFn, ScreenMountFn
+from labyrinthes.adapters.tkinter.common.tokens import Theme
 from labyrinthes.adapters.tkinter.home.screen import mount as mount_home
 from labyrinthes.adapters.tkinter.player.screen import mount as mount_player
 from labyrinthes.app.router import MountFn, Router, ScreenId
+from labyrinthes.app.theme_controller import ThemeController
+from labyrinthes.application.settings_repository import SettingsRepository
 from labyrinthes.domain.maze import Maze
 
 __all__ = ["App", "build_app", "main"]
@@ -36,41 +44,75 @@ class App:
     router: Router
 
 
-def _bind_navigate(mount: ScreenMountFn, navigate: NavigateFn) -> MountFn:
-    """Adapt a screen's 3-arg `mount` into the 2-arg `MountFn` `Router.register()` expects.
+def _bind_screen(
+    mount: ScreenMountFn, navigate: NavigateFn, theme_controller: ThemeController
+) -> MountFn:
+    """Adapt a screen's 5-arg `mount` into the 2-arg `MountFn` `Router.register()` expects.
 
     Binds the same `navigate` closure into every screen rather than each
     screen threading it through by hand -- `Router`'s own contract/tests
-    (Story 1.7) stay untouched by this story.
+    (Story 1.7) stay untouched by this story. `theme_controller.theme` is
+    read fresh inside `bound()` on every call (not captured once at
+    registration time), so a re-navigate triggered after a theme toggle
+    picks up the live value rather than whatever theme was active when
+    `register()` ran.
     """
 
     def bound(parent: tk.Widget, state: Maze | None) -> tk.Frame:
-        return mount(parent, state, navigate)
+        return mount(parent, state, navigate, theme_controller.theme, theme_controller.toggle)
 
     return bound
 
 
-def build_app() -> App:
+def build_app(settings_repository: SettingsRepository | None = None) -> App:
     """Create the single `Tk()` root, register all three screens, and navigate to Home.
+
+    `settings_repository` defaults to a real `JsonSettingsRepository()`
+    (the default, relative `./settings/` root) -- tests inject a
+    `tmp_path`-rooted or in-memory instance instead so they never touch
+    that real on-disk location.
 
     If wiring fails partway through (e.g. Home's `mount()` raises), the
     just-created `root` is destroyed before the exception propagates rather
     than being leaked as an orphaned, never-shown window.
     """
+    if settings_repository is None:
+        settings_repository = JsonSettingsRepository()
+
     root = tk.Tk()
     try:
         container = tk.Frame(root)
         container.pack(fill="both", expand=True)
 
         router = Router(container)
+        theme_controller = ThemeController(settings_repository)
+
+        last_state: Maze | None = None
 
         def navigate(screen_id: ScreenId, state: Maze | None = None) -> None:
+            nonlocal last_state
+            last_state = state
             router.navigate(screen_id, state)
 
-        router.register(ScreenId.HOME, _bind_navigate(mount_home, navigate))
-        router.register(ScreenId.BUILDER, _bind_navigate(mount_builder, navigate))
-        router.register(ScreenId.PLAYER, _bind_navigate(mount_player, navigate))
-        router.navigate(ScreenId.HOME)
+        def on_theme_change(new_theme: Theme) -> None:
+            # No-op before the first `navigate()` (`current_screen_id`
+            # still `None`) -- not reachable in practice since `build_app`
+            # always navigates to Home before returning, but guarded per
+            # the spec's I/O matrix all the same.
+            current_screen_id = router.current_screen_id
+            if current_screen_id is not None:
+                navigate(current_screen_id, last_state)
+
+        theme_controller.subscribe(on_theme_change)
+
+        router.register(ScreenId.HOME, _bind_screen(mount_home, navigate, theme_controller))
+        router.register(ScreenId.BUILDER, _bind_screen(mount_builder, navigate, theme_controller))
+        router.register(ScreenId.PLAYER, _bind_screen(mount_player, navigate, theme_controller))
+        # Through the `navigate` closure, not `router.navigate()` directly,
+        # so `last_state` is tracked from the very first screen onward --
+        # correctness here would otherwise depend on Home always being
+        # stateless rather than being structurally guaranteed.
+        navigate(ScreenId.HOME)
     except Exception:
         root.destroy()
         raise

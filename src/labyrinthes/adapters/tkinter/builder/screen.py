@@ -15,6 +15,7 @@ from labyrinthes.adapters.tkinter.common import (
     ScreenId,
     SettingsWindow,
     Theme,
+    ToggleThemeFn,
     TopBar,
 )
 from labyrinthes.domain.maze import Maze
@@ -22,14 +23,19 @@ from labyrinthes.domain.maze import Maze
 __all__ = ["mount"]
 
 
-def mount(parent: tk.Widget, state: Maze | None, navigate: NavigateFn) -> tk.Frame:
+def mount(
+    parent: tk.Widget,
+    state: Maze | None,
+    navigate: NavigateFn,
+    theme: Theme,
+    toggle_theme: ToggleThemeFn,
+) -> tk.Frame:
     """Build the placeholder Builder screen `Frame`, parented under `parent`.
 
-    `state` is accepted per the shared `mount(parent, state, navigate)`
-    interface (AD-10) but unused here -- Epic 2 wires the real
-    edit-a-maze hand-off.
+    `state` is accepted per the shared `mount(parent, state, navigate,
+    theme, toggle_theme)` interface (AD-10) but unused here -- Epic 2 wires
+    the real edit-a-maze hand-off.
     """
-    theme = Theme.LIGHT
     frame = tk.Frame(parent)
 
     def open_settings() -> None:
@@ -44,6 +50,7 @@ def mount(parent: tk.Widget, state: Maze | None, navigate: NavigateFn) -> tk.Fra
         theme=theme,
         breadcrumb_segments=breadcrumb_segments,
         on_settings=open_settings,
+        on_theme_toggle=toggle_theme,
     )
     top_bar.pack(fill="x")
 

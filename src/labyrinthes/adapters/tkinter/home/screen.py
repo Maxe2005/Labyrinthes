@@ -17,6 +17,7 @@ from labyrinthes.adapters.tkinter.common import (
     ScreenId,
     SettingsWindow,
     Theme,
+    ToggleThemeFn,
     TopBar,
 )
 from labyrinthes.domain.maze import Maze
@@ -24,13 +25,19 @@ from labyrinthes.domain.maze import Maze
 __all__ = ["mount"]
 
 
-def mount(parent: tk.Widget, state: Maze | None, navigate: NavigateFn) -> tk.Frame:
+def mount(
+    parent: tk.Widget,
+    state: Maze | None,
+    navigate: NavigateFn,
+    theme: Theme,
+    toggle_theme: ToggleThemeFn,
+) -> tk.Frame:
     """Build the Home screen `Frame`, parented under `parent`.
 
-    `state` is accepted per the shared `mount(parent, state, navigate)`
-    interface (AD-10) but unused here -- Home has no maze state to receive.
+    `state` is accepted per the shared `mount(parent, state, navigate,
+    theme, toggle_theme)` interface (AD-10) but unused here -- Home has no
+    maze state to receive.
     """
-    theme = Theme.LIGHT
     frame = tk.Frame(parent)
 
     def open_settings() -> None:
@@ -39,7 +46,13 @@ def mount(parent: tk.Widget, state: Maze | None, navigate: NavigateFn) -> tk.Fra
         # touches the router -- the screen underneath stays mounted.
         SettingsWindow(frame, theme=theme)
 
-    top_bar = TopBar(frame, theme=theme, breadcrumb_segments=None, on_settings=open_settings)
+    top_bar = TopBar(
+        frame,
+        theme=theme,
+        breadcrumb_segments=None,
+        on_settings=open_settings,
+        on_theme_toggle=toggle_theme,
+    )
     top_bar.pack(fill="x")
 
     entry_points = tk.Frame(frame)

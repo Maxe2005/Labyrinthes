@@ -22,6 +22,17 @@ def navigate_stub():
 
 
 @pytest.fixture
+def toggle_theme_stub():
+    """A `ToggleThemeFn` stub plus the list of calls it recorded."""
+    calls = []
+
+    def toggle_theme():
+        calls.append(1)
+
+    return toggle_theme, calls
+
+
+@pytest.fixture
 def find_all():
     """A function that recursively collects every `widget_type` descendant of a widget."""
 
