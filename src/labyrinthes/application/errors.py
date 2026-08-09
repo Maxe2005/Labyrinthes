@@ -1,7 +1,9 @@
-"""Application-layer errors: not-found conditions raised by the ports.
+"""Application-layer errors raised by the ports: not-found conditions and
+corrupt/malformed persisted content.
 
-Both subclass `LabyrinthesError` (`domain/errors.py`) — the project's one
-typed exception hierarchy — rather than introducing a bespoke shape per port.
+All four subclass `LabyrinthesError` (`domain/errors.py`) — the project's
+one typed exception hierarchy — rather than introducing a bespoke shape per
+port.
 """
 
 from labyrinthes.domain.errors import LabyrinthesError

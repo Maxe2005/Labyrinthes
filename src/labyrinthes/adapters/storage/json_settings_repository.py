@@ -33,10 +33,11 @@ class JsonSettingsRepository(SettingsRepository):
             raise SettingNotFoundError(f"No {scope.value} setting named {key!r}")
         try:
             return read_setting_value(path)
-        except FileNotFoundError:
+        except (FileNotFoundError, IsADirectoryError):
             # TOCTOU: the file passed the `is_file()` check above but is
-            # gone by the time we open it. Indistinguishable from "never
-            # set" at this point, so reuse the same not-found error.
+            # gone -- or replaced by a directory -- by the time we open it.
+            # Indistinguishable from "never set" at this point, so reuse
+            # the same not-found error.
             raise SettingNotFoundError(f"No {scope.value} setting named {key!r}") from None
 
     def set(self, scope: SettingsScope, key: str, value: SettingValue) -> None:

@@ -100,3 +100,21 @@ def test_get_raises_setting_not_found_error_on_a_toctou_race(tmp_path, monkeypat
 
     with pytest.raises(SettingNotFoundError):
         repository.get(SettingsScope.BUILDER, "foo")
+
+
+def test_get_raises_setting_not_found_error_when_the_file_is_replaced_by_a_directory(
+    tmp_path, monkeypatch
+):
+    # A stricter variant of the TOCTOU race above: the path is replaced by a
+    # directory (not removed) between the `is_file()` check and the read --
+    # `path.open("r")` then raises `IsADirectoryError`, a sibling of
+    # `FileNotFoundError`, not a subclass of it.
+    repository = JsonSettingsRepository(root=tmp_path)
+    path = setting_file_path(tmp_path, SettingsScope.BUILDER, "foo")
+    path.mkdir(parents=True)
+    monkeypatch.setattr(
+        "labyrinthes.adapters.storage.json_settings_repository.Path.is_file", lambda self: True
+    )
+
+    with pytest.raises(SettingNotFoundError):
+        repository.get(SettingsScope.BUILDER, "foo")
