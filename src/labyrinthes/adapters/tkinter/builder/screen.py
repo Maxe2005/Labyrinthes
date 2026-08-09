@@ -39,6 +39,9 @@ def mount(
     frame = tk.Frame(parent)
 
     def open_settings() -> None:
+        # `frame` (not `parent`) as the `Toplevel`'s master: closing Builder
+        # never has to hunt this window down separately, and it never
+        # touches the router -- the screen underneath stays mounted.
         SettingsWindow(frame, theme=theme)
 
     breadcrumb_segments = [

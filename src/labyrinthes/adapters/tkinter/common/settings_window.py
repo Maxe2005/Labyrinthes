@@ -7,6 +7,22 @@ nothing behind them would invite dead UI, so only the category-nav
 *structure* is built now (see the spec's Design Notes). Never calls
 `grab_set()`: the screen that opened this window stays fully mounted and
 interactive behind it.
+
+Lifecycle (Story 1.11): each screen's `open_settings()` constructs this as
+`SettingsWindow(frame, theme=theme)` -- a real Tk child `Toplevel` of that
+screen's own `frame`, not of the `Tk` root. That parenting is deliberate,
+not an oversight: `Router.navigate()` mounts the next screen, packs it,
+then calls `previous_frame.destroy()`, and Tk's own parent-child
+`Toplevel` semantics destroy this window as a cascade side effect of that
+call. So a `SettingsWindow` left open on a screen does **not** survive
+navigating away from that screen -- it silently closes along with it. This
+was empirically confirmed and explicitly accepted three times before
+being written down here (Stories 1.8, 1.9, 1.10; see
+`deferred-work.md`'s matching entries), each time for the same reason:
+"Appearance" is still the only category and it holds nothing but
+`_APPEARANCE_PLACEHOLDER`, so there is no persisted draft state to lose.
+Reparenting `SettingsWindow` to survive navigation is deliberately out of
+scope until a future story gives it real state worth protecting.
 """
 
 from __future__ import annotations
