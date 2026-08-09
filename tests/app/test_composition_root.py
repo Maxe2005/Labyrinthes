@@ -3,10 +3,21 @@ import tkinter as tk
 import pytest
 
 from labyrinthes.adapters.storage.json_settings_repository import JsonSettingsRepository
+from labyrinthes.adapters.tkinter.common import SettingsWindow, TopBar
 from labyrinthes.adapters.tkinter.common.tokens import Theme
 from labyrinthes.app import composition_root
 from labyrinthes.app.composition_root import App, build_app
 from labyrinthes.app.router import Router, ScreenId
+
+
+def _find_all(widget: tk.Widget, widget_type: type) -> list:
+    """Recursively collect every `widget_type` descendant of `widget`."""
+    found = []
+    for child in widget.winfo_children():
+        if isinstance(child, widget_type):
+            found.append(child)
+        found.extend(_find_all(child, widget_type))
+    return found
 
 
 def test_build_app_creates_exactly_one_tk_root_with_home_mounted_first(tmp_path):
@@ -148,3 +159,28 @@ def test_theme_persisted_by_one_build_app_call_is_seen_by_a_second_build_app_cal
         assert captured_theme["theme"] == Theme.DARK
     finally:
         second_app.root.destroy()
+
+
+def test_settings_window_opened_on_home_survives_a_real_navigate_to_builder(tmp_path):
+    # End-to-end regression for Story 1.11: exercises the real `Router` and
+    # real screen `mount()`s (no `navigate_stub`), unlike the per-screen
+    # tests that only mirror `Router.navigate()`'s `frame.destroy()` call
+    # in isolation.
+    app = build_app(settings_repository=JsonSettingsRepository(root=tmp_path))
+    try:
+        app.root.withdraw()
+        assert app.router.current_screen_id == ScreenId.HOME
+
+        top_bar = _find_all(app.root, TopBar)[0]
+        top_bar._settings_button._on_click()
+
+        settings_windows = _find_all(app.root, SettingsWindow)
+        assert len(settings_windows) == 1
+        settings_window = settings_windows[0]
+
+        app.router.navigate(ScreenId.BUILDER)
+
+        assert app.router.current_screen_id == ScreenId.BUILDER
+        assert settings_window.winfo_exists() == 1
+    finally:
+        app.root.destroy()

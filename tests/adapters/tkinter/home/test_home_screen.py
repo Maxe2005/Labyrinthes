@@ -91,13 +91,16 @@ def test_settings_icon_click_opens_a_non_modal_settings_window_leaving_home_moun
     top_bar = find_all(frame, TopBar)[0]
     top_bar._settings_button._on_click()
 
-    settings_windows = [c for c in frame.winfo_children() if isinstance(c, SettingsWindow)]
+    # `SettingsWindow` is parented to `tk_root` (the persistent container),
+    # not to `frame` itself (Story 1.11) -- see
+    # `test_destroying_the_screens_frame_leaves_an_open_settings_window_open`.
+    settings_windows = [c for c in tk_root.winfo_children() if isinstance(c, SettingsWindow)]
     assert len(settings_windows) == 1
     assert settings_windows[0].grab_status() is None
     assert frame.winfo_exists()
 
 
-def test_destroying_the_screens_frame_closes_an_open_settings_window(
+def test_destroying_the_screens_frame_leaves_an_open_settings_window_open(
     tk_root, navigate_stub, toggle_theme_stub, find_all
 ):
     navigate, _ = navigate_stub
@@ -107,16 +110,18 @@ def test_destroying_the_screens_frame_closes_an_open_settings_window(
     top_bar = find_all(frame, TopBar)[0]
     top_bar._settings_button._on_click()
 
-    settings_windows = [c for c in frame.winfo_children() if isinstance(c, SettingsWindow)]
+    settings_windows = [c for c in tk_root.winfo_children() if isinstance(c, SettingsWindow)]
     assert len(settings_windows) == 1
     settings_window = settings_windows[0]
 
     # The exact operation `Router.navigate()` performs on the
-    # previously-mounted screen's frame (story 1.11: this cascade is now a
-    # documented, deliberate outcome -- see `SettingsWindow`'s docstring).
+    # previously-mounted screen's frame (Story 1.11: `SettingsWindow` is
+    # parented to the persistent container, not to `frame`, so this no
+    # longer cascades into destroying it -- see `SettingsWindow`'s
+    # docstring).
     frame.destroy()
 
-    assert settings_window.winfo_exists() == 0
+    assert settings_window.winfo_exists() == 1
 
 
 def test_theme_toggle_icon_click_invokes_the_passed_in_toggle_theme_callable(
