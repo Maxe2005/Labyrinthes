@@ -31,7 +31,13 @@ class JsonSettingsRepository(SettingsRepository):
         path = setting_file_path(self._root, scope, key)
         if not path.is_file():
             raise SettingNotFoundError(f"No {scope.value} setting named {key!r}")
-        return read_setting_value(path)
+        try:
+            return read_setting_value(path)
+        except FileNotFoundError:
+            # TOCTOU: the file passed the `is_file()` check above but is
+            # gone by the time we open it. Indistinguishable from "never
+            # set" at this point, so reuse the same not-found error.
+            raise SettingNotFoundError(f"No {scope.value} setting named {key!r}") from None
 
     def set(self, scope: SettingsScope, key: str, value: SettingValue) -> None:
         path = setting_file_path(self._root, scope, key)

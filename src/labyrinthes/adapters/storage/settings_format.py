@@ -14,16 +14,22 @@ import json
 from pathlib import Path
 
 from labyrinthes.adapters.storage.atomic_write import atomic_open_for_write
+from labyrinthes.application.errors import SettingCorruptError
 from labyrinthes.application.settings_repository import SettingValue
 
 
 def read_setting_value(path: Path) -> SettingValue:
     """Read the single `SettingValue` stored at `path`.
 
-    A JSON array decodes back into a `tuple`, never a `list`.
+    A JSON array decodes back into a `tuple`, never a `list`. Malformed
+    (non-JSON) content raises `SettingCorruptError`, never a raw
+    `json.JSONDecodeError`.
     """
     with path.open("r", encoding="utf-8") as handle:
-        value = json.load(handle)
+        try:
+            value = json.load(handle)
+        except json.JSONDecodeError as exc:
+            raise SettingCorruptError(f"Malformed setting file: {path}") from exc
     if isinstance(value, list):
         return tuple(value)
     return value
