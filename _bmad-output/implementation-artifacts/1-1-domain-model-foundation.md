@@ -92,9 +92,9 @@ The cell-encoding bit mapping is **not** documented anywhere in the legacy code'
 ```python
 # trace_grille — draws a top wall for "1"/"3", a left wall for "2"/"3"
 if self.grille.lab[y][x] == "1" or self.grille.lab[y][x] == "3":
-    self.barre_horizontale(...)   # top wall
+    self.barre_horizontale(...)  # top wall
 if self.grille.lab[y][x] == "2" or self.grille.lab[y][x] == "3":
-    self.barre_verticale(...)     # left wall
+    self.barre_verticale(...)  # left wall
 ```
 
 So `"0"` = no walls, `"1"` = top only, `"2"` = left only, `"3"` = both — this is exactly AC 1's "computed properties derived from its digit" requirement.
@@ -106,8 +106,8 @@ def grille_pleine(self, x: int, y: int):
     assert x > 0 and y > 0
     g = []
     for i in range(y):
-        g.append(["3"] * x + ["2"])   # each real row + a right-padding cell ("2" = left wall only)
-    g.append(["1"] * x + ["0"])       # bottom-padding row ("1" = top wall only), corner "0"
+        g.append(["3"] * x + ["2"])  # each real row + a right-padding cell ("2" = left wall only)
+    g.append(["1"] * x + ["0"])  # bottom-padding row ("1" = top wall only), corner "0"
     return g
 ```
 
