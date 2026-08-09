@@ -20,12 +20,18 @@ def _maze() -> Maze:
 
 
 def test_mount_returns_a_frame_parented_under_the_given_parent(
-    tk_root, navigate_stub, toggle_theme_stub, fake_maze_repository
+    tk_root, navigate_stub, toggle_theme_stub, fake_maze_repository, fake_settings_repository
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
     frame = mount(
-        tk_root, None, navigate, Theme.LIGHT, toggle_theme, maze_repository=fake_maze_repository
+        tk_root,
+        None,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
     )
 
     assert isinstance(frame, tk.Frame)
@@ -33,24 +39,41 @@ def test_mount_returns_a_frame_parented_under_the_given_parent(
 
 
 def test_mount_accepts_a_real_maze_as_state_without_raising(
-    tk_root, navigate_stub, toggle_theme_stub, fake_maze_repository
+    tk_root, navigate_stub, toggle_theme_stub, fake_maze_repository, fake_settings_repository
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
     frame = mount(
-        tk_root, _maze(), navigate, Theme.LIGHT, toggle_theme, maze_repository=fake_maze_repository
+        tk_root,
+        _maze(),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
     )
 
     assert isinstance(frame, tk.Frame)
 
 
 def test_mount_renders_a_home_player_breadcrumb(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_maze_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_maze_repository,
+    fake_settings_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
     frame = mount(
-        tk_root, None, navigate, Theme.LIGHT, toggle_theme, maze_repository=fake_maze_repository
+        tk_root,
+        None,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
     )
 
     breadcrumb = find_all(frame, TopBar)[0]._breadcrumb
@@ -59,12 +82,23 @@ def test_mount_renders_a_home_player_breadcrumb(
 
 
 def test_breadcrumb_home_segment_is_clickable_and_navigates_home(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_maze_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_maze_repository,
+    fake_settings_repository,
 ):
     navigate, calls = navigate_stub
     toggle_theme, _ = toggle_theme_stub
     frame = mount(
-        tk_root, None, navigate, Theme.LIGHT, toggle_theme, maze_repository=fake_maze_repository
+        tk_root,
+        None,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
     )
 
     breadcrumb = find_all(frame, TopBar)[0]._breadcrumb
@@ -76,12 +110,23 @@ def test_breadcrumb_home_segment_is_clickable_and_navigates_home(
 
 
 def test_breadcrumb_trailing_player_segment_has_no_click_handler(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_maze_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_maze_repository,
+    fake_settings_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
     frame = mount(
-        tk_root, None, navigate, Theme.LIGHT, toggle_theme, maze_repository=fake_maze_repository
+        tk_root,
+        None,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
     )
 
     breadcrumb = find_all(frame, TopBar)[0]._breadcrumb
@@ -89,14 +134,25 @@ def test_breadcrumb_trailing_player_segment_has_no_click_handler(
 
 
 def test_breadcrumb_stays_two_segments_in_the_gameplay_placeholder_view(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_maze_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_maze_repository,
+    fake_settings_repository,
 ):
     # Boundaries & Constraints: no dynamic 3-segment label (e.g. "Classic
     # Maze 4") for the gameplay-placeholder view yet -- deferred to Story 2.4.
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
     frame = mount(
-        tk_root, _maze(), navigate, Theme.LIGHT, toggle_theme, maze_repository=fake_maze_repository
+        tk_root,
+        _maze(),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
     )
 
     breadcrumb = find_all(frame, TopBar)[0]._breadcrumb
@@ -104,12 +160,23 @@ def test_breadcrumb_stays_two_segments_in_the_gameplay_placeholder_view(
 
 
 def test_settings_icon_click_opens_a_non_modal_settings_window_leaving_player_mounted(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_maze_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_maze_repository,
+    fake_settings_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
     frame = mount(
-        tk_root, None, navigate, Theme.LIGHT, toggle_theme, maze_repository=fake_maze_repository
+        tk_root,
+        None,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
     )
 
     top_bar = find_all(frame, TopBar)[0]
@@ -125,12 +192,23 @@ def test_settings_icon_click_opens_a_non_modal_settings_window_leaving_player_mo
 
 
 def test_destroying_the_screens_frame_leaves_an_open_settings_window_open(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_maze_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_maze_repository,
+    fake_settings_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
     frame = mount(
-        tk_root, None, navigate, Theme.LIGHT, toggle_theme, maze_repository=fake_maze_repository
+        tk_root,
+        None,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
     )
 
     top_bar = find_all(frame, TopBar)[0]
@@ -151,12 +229,23 @@ def test_destroying_the_screens_frame_leaves_an_open_settings_window_open(
 
 
 def test_theme_toggle_icon_click_invokes_the_passed_in_toggle_theme_callable(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_maze_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_maze_repository,
+    fake_settings_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, calls = toggle_theme_stub
     frame = mount(
-        tk_root, None, navigate, Theme.LIGHT, toggle_theme, maze_repository=fake_maze_repository
+        tk_root,
+        None,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
     )
 
     top_bar = find_all(frame, TopBar)[0]
@@ -166,7 +255,12 @@ def test_theme_toggle_icon_click_invokes_the_passed_in_toggle_theme_callable(
 
 
 def test_state_is_none_mounts_the_classic_maze_gallery(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, seeded_maze_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    seeded_maze_repository,
+    fake_settings_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -177,6 +271,7 @@ def test_state_is_none_mounts_the_classic_maze_gallery(
         Theme.LIGHT,
         toggle_theme,
         maze_repository=seeded_maze_repository,
+        settings_repository=fake_settings_repository,
     )
 
     galleries = find_all(frame, ClassicMazeGallery)
@@ -184,7 +279,12 @@ def test_state_is_none_mounts_the_classic_maze_gallery(
 
 
 def test_state_not_none_mounts_the_gameplay_placeholder_not_the_gallery(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, seeded_maze_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    seeded_maze_repository,
+    fake_settings_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -195,12 +295,15 @@ def test_state_not_none_mounts_the_gameplay_placeholder_not_the_gallery(
         Theme.LIGHT,
         toggle_theme,
         maze_repository=seeded_maze_repository,
+        settings_repository=fake_settings_repository,
     )
 
     assert find_all(frame, ClassicMazeGallery) == []
 
 
-def test_state_not_none_never_reads_the_maze_repository(tk_root, navigate_stub, toggle_theme_stub):
+def test_state_not_none_never_reads_the_maze_repository(
+    tk_root, navigate_stub, toggle_theme_stub, fake_settings_repository
+):
     # "Re-navigate with state" row of the I/O matrix: the gameplay-placeholder
     # view receives its `Maze` directly through `state`, it never touches
     # `maze_repository` -- a repository whose every method raises proves no
@@ -228,13 +331,19 @@ def test_state_not_none_never_reads_the_maze_repository(tk_root, navigate_stub, 
         Theme.LIGHT,
         toggle_theme,
         maze_repository=ExplodingMazeRepository(),
+        settings_repository=fake_settings_repository,
     )
 
     assert isinstance(frame, tk.Frame)
 
 
 def test_confirming_a_pick_in_the_gallery_hands_the_maze_off_via_navigate(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, seeded_maze_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    seeded_maze_repository,
+    fake_settings_repository,
 ):
     navigate, calls = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -245,6 +354,7 @@ def test_confirming_a_pick_in_the_gallery_hands_the_maze_off_via_navigate(
         Theme.LIGHT,
         toggle_theme,
         maze_repository=seeded_maze_repository,
+        settings_repository=fake_settings_repository,
     )
 
     gallery = find_all(frame, ClassicMazeGallery)[0]

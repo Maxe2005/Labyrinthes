@@ -23,7 +23,10 @@ that Home/Builder don't need. Rather than widening the shared
 port they don't use, and touch `_bind_screen()`/every existing screen
 test), `mount_player` is wrapped in `functools.partial(mount_player,
 maze_repository=...)` *before* it reaches the untouched `_bind_screen()`
--- see the story's Design Notes.
+-- see the story's Design Notes. Story 2.2 widens that same partial with
+one more keyword-only port, `settings_repository` (already a `build_app()`
+parameter for `ThemeController`, just not yet threaded to Player) -- for
+reading the FR-4 random-maze size bounds.
 """
 
 from __future__ import annotations
@@ -128,7 +131,13 @@ def build_app(
         router.register(
             ScreenId.PLAYER,
             _bind_screen(
-                partial(mount_player, maze_repository=maze_repository), navigate, theme_controller
+                partial(
+                    mount_player,
+                    maze_repository=maze_repository,
+                    settings_repository=settings_repository,
+                ),
+                navigate,
+                theme_controller,
             ),
         )
         # Through the `navigate` closure, not `router.navigate()` directly,

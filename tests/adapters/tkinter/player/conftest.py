@@ -3,12 +3,17 @@
 `FakeMazeRepository` is an in-memory `MazeRepository` -- no filesystem I/O
 -- so `ClassicMazeGallery`/Player-screen tests never need a `tmp_path` just
 to exercise the pager/jump/restart/play behavior against a repository.
+
+`FakeSettingsRepository` (Story 2.2) is the equivalent in-memory
+`SettingsRepository` double, for tests exercising `GenerateRandomDialog`'s
+FR-4 size-bounds reads without a `tmp_path`-backed `JsonSettingsRepository`.
 """
 
 import pytest
 
-from labyrinthes.application.errors import MazeNotFoundError
+from labyrinthes.application.errors import MazeNotFoundError, SettingNotFoundError
 from labyrinthes.application.maze_repository import MazeRepository
+from labyrinthes.application.settings_repository import SettingsRepository, SettingsScope
 from labyrinthes.domain.grid import Grid
 from labyrinthes.domain.maze import Maze, MazeKind
 from labyrinthes.domain.maze_id import MazeId
@@ -66,3 +71,25 @@ def seeded_maze_repository() -> FakeMazeRepository:
     repository.save(classic_maze(width=5, height=5), "bravo")
     repository.save(classic_maze(width=6, height=4), "charlie")
     return repository
+
+
+class FakeSettingsRepository(SettingsRepository):
+    """In-memory `SettingsRepository` test double, keyed by `(scope, key)`."""
+
+    def __init__(self) -> None:
+        self._store: dict[tuple[SettingsScope, str], object] = {}
+
+    def get(self, scope: SettingsScope, key: str):
+        try:
+            return self._store[(scope, key)]
+        except KeyError:
+            raise SettingNotFoundError(f"No {scope.value} setting named {key!r}") from None
+
+    def set(self, scope: SettingsScope, key: str, value) -> None:
+        self._store[(scope, key)] = value
+
+
+@pytest.fixture
+def fake_settings_repository() -> FakeSettingsRepository:
+    """A bare `FakeSettingsRepository`, nothing seeded -- the FR-4 defaults apply."""
+    return FakeSettingsRepository()

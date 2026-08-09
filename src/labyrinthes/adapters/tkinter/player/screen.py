@@ -33,6 +33,7 @@ from labyrinthes.adapters.tkinter.common import (
 )
 from labyrinthes.adapters.tkinter.player.classic_gallery import ClassicMazeGallery
 from labyrinthes.application.maze_repository import MazeRepository
+from labyrinthes.application.settings_repository import SettingsRepository
 from labyrinthes.domain.maze import Maze
 
 __all__ = ["mount"]
@@ -46,14 +47,17 @@ def mount(
     toggle_theme: ToggleThemeFn,
     *,
     maze_repository: MazeRepository,
+    settings_repository: SettingsRepository,
 ) -> tk.Frame:
     """Build the Player screen `Frame`, parented under `parent`.
 
     Keeps the shared 5-positional-arg `ScreenMountFn` shape (`parent, state,
-    navigate, theme, toggle_theme`) untouched, plus one required,
-    keyword-only `maze_repository` -- `composition_root.build_app()` binds
-    it in via `functools.partial` before handing this to `_bind_screen()`,
-    so Home/Builder/`ScreenMountFn` stay untouched (see the story's Design
+    navigate, theme, toggle_theme`) untouched, plus two required,
+    keyword-only ports -- `maze_repository` (Story 2.1) and
+    `settings_repository` (Story 2.2, for the FR-4 random-maze size
+    bounds) -- `composition_root.build_app()` binds both in via
+    `functools.partial` before handing this to `_bind_screen()`, so
+    Home/Builder/`ScreenMountFn` stay untouched (see the story's Design
     Notes).
 
     `state is None` mounts the classic-maze selection gallery. `state is
@@ -87,7 +91,11 @@ def mount(
 
     if state is None:
         gallery = ClassicMazeGallery(
-            frame, theme=theme, maze_repository=maze_repository, navigate=navigate
+            frame,
+            theme=theme,
+            maze_repository=maze_repository,
+            settings_repository=settings_repository,
+            navigate=navigate,
         )
         gallery.pack(
             fill="both",
