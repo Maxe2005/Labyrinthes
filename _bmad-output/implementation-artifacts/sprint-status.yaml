@@ -65,7 +65,7 @@ development_status:
   1-9-light-dark-theme-toggle-wired-end-to-end: done
   1-10-accessibility-floor-keyboard-shortcut-consistency: done
   1-11-settings-dialog-survives-screen-navigation: review
-  1-12-persistence-hardening-atomic-writes-typed-errors: ready-for-dev
+  1-12-persistence-hardening-atomic-writes-typed-errors: review
   epic-1-retrospective: done
 
   epic-2: backlog
