@@ -10,10 +10,17 @@ from labyrinthes.domain.errors import DomainValidationError, LabyrinthesError
 from labyrinthes.domain.grid import Grid
 from labyrinthes.domain.level import Level
 from labyrinthes.domain.maze import Maze, MazeKind
+from labyrinthes.domain.maze_generation import generate_random_maze, validate_start_position
 from labyrinthes.domain.maze_id import MazeId
+from labyrinthes.domain.maze_size_bounds import (
+    DEFAULT_MAZE_SIZE_BOUNDS,
+    MazeSizeBounds,
+    validate_dimensions,
+)
 from labyrinthes.domain.position import Position
 
 __all__ = [
+    "DEFAULT_MAZE_SIZE_BOUNDS",
     "Cell",
     "Difficulty",
     "DomainValidationError",
@@ -24,5 +31,9 @@ __all__ = [
     "Maze",
     "MazeId",
     "MazeKind",
+    "MazeSizeBounds",
     "Position",
+    "generate_random_maze",
+    "validate_dimensions",
+    "validate_start_position",
 ]

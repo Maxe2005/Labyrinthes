@@ -7,12 +7,21 @@ story's Boundaries & Constraints). Reuses `common/`'s `IconButton`/
 `PillButton` for pager/restart/play controls rather than reimplementing
 per-screen buttons.
 
-Only reads from `MazeRepository` (an `application/` port) -- never
-`adapters/storage/` directly (AD-9).
+Only reads from `MazeRepository`/`SettingsRepository` (`application/`
+ports) -- never `adapters/storage/` directly (AD-9).
+
+Story 2.2 wires "Generate random" to a real `GenerateRandomDialog`
+(parented to this widget, not the app's persistent container -- see that
+module's docstring): opening it reads the FR-4 size bounds via
+`read_maze_size_bounds`, and confirming it calls `generate_random_maze`
+with a fresh `random.Random()` before handing the resulting `Maze` off
+through the exact same `navigate(ScreenId.PLAYER, maze)` path `_on_play`
+already uses.
 """
 
 from __future__ import annotations
 
+import random
 import tkinter as tk
 
 from labyrinthes.adapters.tkinter.common.icon_btn import IconButton
@@ -20,8 +29,13 @@ from labyrinthes.adapters.tkinter.common.keybindings import bind_shortcut, keybi
 from labyrinthes.adapters.tkinter.common.navigation import NavigateFn, ScreenId
 from labyrinthes.adapters.tkinter.common.pill_btn import PillButton
 from labyrinthes.adapters.tkinter.common.tokens import SPACING, TYPOGRAPHY, Theme, colors_for
+from labyrinthes.adapters.tkinter.player.generate_random_dialog import GenerateRandomDialog
 from labyrinthes.application.maze_repository import MazeRepository
+from labyrinthes.application.maze_size_bounds import read_maze_size_bounds
+from labyrinthes.application.settings_repository import SettingsRepository
 from labyrinthes.domain.maze import Maze, MazeKind
+from labyrinthes.domain.maze_generation import generate_random_maze
+from labyrinthes.domain.position import Position
 
 __all__ = ["ClassicMazeGallery"]
 
@@ -46,9 +60,9 @@ class ClassicMazeGallery(tk.Frame):
     controls.
 
     Both states show a "Generate random" primary `PillButton` (kbd "N")
-    wired to a documented no-op placeholder -- Story 2.2 wires real
-    generation, the same "placeholder for a later story to complete"
-    pattern Story 1.7 already established for whole screens.
+    that opens a `GenerateRandomDialog`; confirming it generates and
+    navigates to a fresh random `Maze` the same way `_on_play` hands off a
+    browsed classic one.
     """
 
     def __init__(
@@ -57,12 +71,14 @@ class ClassicMazeGallery(tk.Frame):
         *,
         theme: Theme,
         maze_repository: MazeRepository,
+        settings_repository: SettingsRepository,
         navigate: NavigateFn,
     ) -> None:
         colors = colors_for(theme)
         super().__init__(parent, background=colors.window)
         self._theme = theme
         self._maze_repository = maze_repository
+        self._settings_repository = settings_repository
         self._navigate = navigate
         self._names: list[str] = maze_repository.list_names(MazeKind.CLASSIC)
         self._index = 0
@@ -234,8 +250,21 @@ class ClassicMazeGallery(tk.Frame):
         bind_shortcut(self, generate_kb, self._on_generate_random)
 
     def _on_generate_random(self) -> None:
-        """No-op placeholder -- Story 2.2 wires real random-maze generation.
+        """Open a `GenerateRandomDialog`, pre-filled from the shared FR-4 size bounds.
 
-        Mirrors Story 1.7's "placeholder for a later story to complete"
-        pattern, applied to a single control instead of a whole screen.
+        Parented to `self` (this gallery), not the app's persistent
+        container unlike `SettingsWindow` -- nothing in the dialog's state
+        is worth surviving a navigate-away.
         """
+        bounds = read_maze_size_bounds(self._settings_repository)
+        GenerateRandomDialog(
+            self,
+            theme=self._theme,
+            bounds=bounds,
+            on_confirm=self._on_generation_confirmed,
+        )
+
+    def _on_generation_confirmed(self, width: int, height: int, entry: Position) -> None:
+        """Generate a random `Maze` and hand it off exactly like `_on_play` does."""
+        maze = generate_random_maze(width, height, entry, random.Random())
+        self._navigate(ScreenId.PLAYER, maze)
