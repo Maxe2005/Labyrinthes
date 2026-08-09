@@ -1,8 +1,9 @@
 from labyrinthes.adapters.storage.json_settings_repository import JsonSettingsRepository
 from labyrinthes.adapters.tkinter.common.tokens import Theme
 from labyrinthes.app.theme_controller import ThemeController
+from labyrinthes.application.errors import SettingCorruptError
 from labyrinthes.application.settings_keys import THEME
-from labyrinthes.application.settings_repository import SettingsScope
+from labyrinthes.application.settings_repository import SettingsRepository, SettingsScope
 
 
 def test_default_theme_is_light_when_nothing_persisted(tmp_path):
@@ -23,6 +24,26 @@ def test_default_theme_is_light_when_the_persisted_value_is_not_a_recognized_the
     repository.set(SettingsScope.SHARED, THEME, "purple")
 
     controller = ThemeController(repository)
+
+    assert controller.theme == Theme.LIGHT
+
+
+class _CorruptSettingsRepository(SettingsRepository):
+    """A `SettingsRepository` test double whose `get()` always raises
+    `SettingCorruptError`, simulating a corrupted `shared`/`theme` file."""
+
+    def get(self, scope, key):
+        raise SettingCorruptError("corrupted settings file")
+
+    def set(self, scope, key, value):
+        raise NotImplementedError
+
+
+def test_default_theme_is_light_when_the_persisted_settings_file_is_corrupted():
+    # `ThemeController` reads settings unconditionally on every app launch
+    # (`composition_root.build_app()`) -- a corrupted `shared`/`theme` file
+    # must degrade to the default rather than crash the app at startup.
+    controller = ThemeController(_CorruptSettingsRepository())
 
     assert controller.theme == Theme.LIGHT
 

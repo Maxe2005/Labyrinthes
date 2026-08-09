@@ -12,7 +12,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from labyrinthes.adapters.tkinter.common.tokens import Theme
-from labyrinthes.application.errors import SettingNotFoundError
+from labyrinthes.application.errors import SettingCorruptError, SettingNotFoundError
 from labyrinthes.application.settings_keys import THEME
 from labyrinthes.application.settings_repository import SettingsRepository, SettingsScope
 
@@ -25,12 +25,13 @@ class ThemeController:
     """Holds the current `Theme`, persisting every change through `SettingsRepository`.
 
     Loads the persisted `shared`/`THEME` value at construction, defaulting
-    to `Theme.LIGHT` if nothing has been stored yet (`SettingNotFoundError`)
-    or if the stored value isn't a recognized `Theme` (`ValueError`, e.g. a
-    hand-edited or otherwise corrupted settings file) -- neither is allowed
-    to propagate, since this constructor now runs unconditionally on every
-    real app launch (`composition_root.build_app()`), not just when a
-    theme has already been explicitly chosen. `toggle()` flips the theme,
+    to `Theme.LIGHT` if nothing has been stored yet (`SettingNotFoundError`),
+    if the stored value isn't a recognized `Theme` (`ValueError`, e.g. a
+    hand-edited settings file), or if the settings file itself is corrupted
+    (`SettingCorruptError`, e.g. malformed JSON) -- none of these are
+    allowed to propagate, since this constructor now runs unconditionally
+    on every real app launch (`composition_root.build_app()`), not just
+    when a theme has already been explicitly chosen. `toggle()` flips the theme,
     persists it immediately, then notifies every `subscribe()`-d listener
     with the new `Theme` -- mirroring `SettingsRepository.set()`'s own
     write-immediately contract (AD-7), never a load-everything/
@@ -46,7 +47,7 @@ class ThemeController:
         try:
             value = self._settings.get(SettingsScope.SHARED, THEME)
             return Theme(value)
-        except (SettingNotFoundError, ValueError):
+        except (SettingNotFoundError, SettingCorruptError, ValueError):
             return Theme.LIGHT
 
     @property
