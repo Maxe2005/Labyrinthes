@@ -2,7 +2,8 @@ import pytest
 
 from labyrinthes.adapters.storage.errors import InvalidSettingKeyError
 from labyrinthes.adapters.storage.json_settings_repository import JsonSettingsRepository
-from labyrinthes.application.errors import SettingNotFoundError
+from labyrinthes.adapters.storage.settings_paths import setting_file_path
+from labyrinthes.application.errors import SettingCorruptError, SettingNotFoundError
 from labyrinthes.application.settings_repository import SettingsScope
 
 
@@ -75,3 +76,45 @@ def test_re_set_an_existing_key_with_a_new_value_returns_the_new_value(tmp_path)
     repository.set(SettingsScope.BUILDER, "a", "v2")
 
     assert repository.get(SettingsScope.BUILDER, "a") == "v2"
+
+
+def test_get_on_a_malformed_settings_file_raises_setting_corrupt_error(tmp_path):
+    repository = JsonSettingsRepository(root=tmp_path)
+    path = setting_file_path(tmp_path, SettingsScope.BUILDER, "foo")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("not valid json{{{", encoding="utf-8")
+
+    with pytest.raises(SettingCorruptError):
+        repository.get(SettingsScope.BUILDER, "foo")
+
+
+def test_get_raises_setting_not_found_error_on_a_toctou_race(tmp_path, monkeypatch):
+    # The file passes the `is_file()` existence check, but has vanished (or
+    # been replaced by something unreadable) by the time `get()` actually
+    # opens it -- indistinguishable, from the caller's perspective, from a
+    # key that was never set.
+    repository = JsonSettingsRepository(root=tmp_path)
+    monkeypatch.setattr(
+        "labyrinthes.adapters.storage.json_settings_repository.Path.is_file", lambda self: True
+    )
+
+    with pytest.raises(SettingNotFoundError):
+        repository.get(SettingsScope.BUILDER, "foo")
+
+
+def test_get_raises_setting_not_found_error_when_the_file_is_replaced_by_a_directory(
+    tmp_path, monkeypatch
+):
+    # A stricter variant of the TOCTOU race above: the path is replaced by a
+    # directory (not removed) between the `is_file()` check and the read --
+    # `path.open("r")` then raises `IsADirectoryError`, a sibling of
+    # `FileNotFoundError`, not a subclass of it.
+    repository = JsonSettingsRepository(root=tmp_path)
+    path = setting_file_path(tmp_path, SettingsScope.BUILDER, "foo")
+    path.mkdir(parents=True)
+    monkeypatch.setattr(
+        "labyrinthes.adapters.storage.json_settings_repository.Path.is_file", lambda self: True
+    )
+
+    with pytest.raises(SettingNotFoundError):
+        repository.get(SettingsScope.BUILDER, "foo")

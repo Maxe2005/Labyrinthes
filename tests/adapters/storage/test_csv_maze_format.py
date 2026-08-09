@@ -1,4 +1,10 @@
+import csv
+
+import pytest
+
+from labyrinthes.adapters.storage import csv_maze_format
 from labyrinthes.adapters.storage.csv_maze_format import read_maze_csv, write_maze_csv
+from labyrinthes.application.errors import MazeCorruptError
 from labyrinthes.domain.cell import Cell
 from labyrinthes.domain.grid import Grid
 from labyrinthes.domain.maze import Maze, MazeKind
@@ -106,3 +112,78 @@ def test_reads_legacy_shaped_csv_without_maze_id_line(tmp_path):
     assert maze.grid.cells[5][11] == Cell("0")
     assert maze.grid.cells[2][0] == Cell("2")
     assert maze.grid.cells[4][10] == Cell("1")
+
+
+@pytest.mark.parametrize("content", ["", "0,0\n"])
+def test_a_truncated_file_raises_maze_corrupt_error(tmp_path, content):
+    path = tmp_path / "truncated.csv"
+    path.write_text(content, encoding="utf-8")
+
+    with pytest.raises(MazeCorruptError):
+        read_maze_csv(path, MazeKind.SKETCH)
+
+
+@pytest.mark.parametrize(
+    "header", ["0,0\nnot-a-number,2\n0,1,1,1\n", "not-a-number,0\n1,2\n0,1,1,1\n"]
+)
+def test_a_non_numeric_entry_or_exit_header_raises_maze_corrupt_error(tmp_path, header):
+    path = tmp_path / "bad-header.csv"
+    path.write_text(header, encoding="utf-8")
+
+    with pytest.raises(MazeCorruptError):
+        read_maze_csv(path, MazeKind.SKETCH)
+
+
+def test_a_missing_maze_id_line_for_an_id_eligible_kind_raises_maze_corrupt_error(tmp_path):
+    # Only the entry/exit header lines, nothing after -- but CLASSIC expects
+    # a MazeId line before the grid rows.
+    path = tmp_path / "missing-id.csv"
+    path.write_text("0,0\n1,1\n", encoding="utf-8")
+
+    with pytest.raises(MazeCorruptError):
+        read_maze_csv(path, MazeKind.CLASSIC)
+
+
+def test_a_write_interrupted_partway_leaves_the_previous_file_intact(tmp_path, monkeypatch):
+    path = tmp_path / "maze.csv"
+    first_maze = Maze(
+        grid=_grid(),
+        entry=Position(row=0, col=0),
+        exit=Position(row=1, col=2),
+        kind=MazeKind.SKETCH,
+        id=None,
+    )
+    write_maze_csv(path, first_maze)
+    original_content = path.read_text(encoding="utf-8")
+
+    real_writer = csv.writer
+
+    class _FlakyWriter:
+        """Wraps a real `csv.writer` (whose `writerow` is a read-only C
+        attribute, so it can't be monkeypatched directly) and raises on the
+        second `writerow` call onward."""
+
+        def __init__(self, *args, **kwargs):
+            self._real = real_writer(*args, **kwargs)
+            self._calls = 0
+
+        def writerow(self, row):
+            self._calls += 1
+            if self._calls > 1:
+                raise RuntimeError("boom")
+            self._real.writerow(row)
+
+    monkeypatch.setattr(csv_maze_format.csv, "writer", _FlakyWriter)
+    second_maze = Maze(
+        grid=Grid.filled(width=5, height=5),
+        entry=Position(row=1, col=1),
+        exit=Position(row=3, col=3),
+        kind=MazeKind.SKETCH,
+        id=None,
+    )
+
+    with pytest.raises(RuntimeError):
+        write_maze_csv(path, second_maze)
+
+    assert path.read_text(encoding="utf-8") == original_content
+    assert list(tmp_path.iterdir()) == [path]

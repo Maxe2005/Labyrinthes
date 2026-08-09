@@ -24,6 +24,8 @@ being scanned in `find_by_id`) -- never sniffed from the file's content.
 import csv
 from pathlib import Path
 
+from labyrinthes.adapters.storage.atomic_write import atomic_open_for_write
+from labyrinthes.application.errors import MazeCorruptError
 from labyrinthes.domain.cell import Cell
 from labyrinthes.domain.grid import Grid
 from labyrinthes.domain.maze import Maze, MazeKind
@@ -40,14 +42,17 @@ def read_maze_csv(path: Path, kind: MazeKind) -> Maze:
     never sniffed from the content itself.
     """
     lines = path.read_text(encoding="utf-8").splitlines()
-    entry_col, entry_row = (int(value) for value in lines[0].split(","))
-    exit_col, exit_row = (int(value) for value in lines[1].split(","))
+    try:
+        entry_col, entry_row = (int(value) for value in lines[0].split(","))
+        exit_col, exit_row = (int(value) for value in lines[1].split(","))
 
-    remaining = lines[2:]
-    maze_id: MazeId | None = None
-    if kind in _ID_ELIGIBLE_KINDS:
-        maze_id = MazeId(value=remaining[0])
-        remaining = remaining[1:]
+        remaining = lines[2:]
+        maze_id: MazeId | None = None
+        if kind in _ID_ELIGIBLE_KINDS:
+            maze_id = MazeId(value=remaining[0])
+            remaining = remaining[1:]
+    except (IndexError, ValueError) as exc:
+        raise MazeCorruptError(f"Malformed maze file header: {path}") from exc
 
     cells = tuple(tuple(Cell(value) for value in row.split(",")) for row in remaining)
 
@@ -63,12 +68,15 @@ def read_maze_csv(path: Path, kind: MazeKind) -> Maze:
 def write_maze_csv(path: Path, maze: Maze) -> None:
     """Write `maze` to `path`, matching `read_maze_csv`'s line shape exactly.
 
-    Creates `path`'s parent directory if it doesn't exist yet. Uses
-    `newline=""` plus `csv.writer(..., lineterminator="\\n")` so line endings
-    match the legacy writer's behavior regardless of platform.
+    Creates `path`'s parent directory if it doesn't exist yet. Writes via
+    `atomic_open_for_write` (temp-file-plus-rename), never in-place, so a
+    write interrupted partway never corrupts or truncates a previously
+    saved file. Uses `newline=""` plus `csv.writer(...,
+    lineterminator="\\n")` so line endings match the legacy writer's
+    behavior regardless of platform.
     """
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8", newline="") as handle:
+    with atomic_open_for_write(path, encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle, lineterminator="\n")
         writer.writerow([maze.entry.col, maze.entry.row])
         writer.writerow([maze.exit.col, maze.exit.row])

@@ -65,7 +65,7 @@ development_status:
   1-9-light-dark-theme-toggle-wired-end-to-end: done
   1-10-accessibility-floor-keyboard-shortcut-consistency: done
   1-11-settings-dialog-survives-screen-navigation: done
-  1-12-persistence-hardening-atomic-writes-typed-errors: ready-for-dev
+  1-12-persistence-hardening-atomic-writes-typed-errors: done
   epic-1-retrospective: done
 
   epic-2: backlog
@@ -119,7 +119,7 @@ action_items:
   - epic: 1
     action: "Add a persistence-hardening story: atomic writes (temp-file-plus-rename) + typed LabyrinthesError for malformed content in MazeRepository/SettingsRepository"
     owner: "Amelia (dev)"
-    status: open
+    status: done
   - epic: 1
     action: "When a deferred-work.md item is re-deferred a 2nd time by a later story's review, flag it explicitly for scheduling instead of deferring a 3rd time silently"
     owner: "Amelia (dev/process)"
