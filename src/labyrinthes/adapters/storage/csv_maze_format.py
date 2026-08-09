@@ -24,6 +24,7 @@ being scanned in `find_by_id`) -- never sniffed from the file's content.
 import csv
 from pathlib import Path
 
+from labyrinthes.adapters.storage.atomic_write import atomic_open_for_write
 from labyrinthes.domain.cell import Cell
 from labyrinthes.domain.grid import Grid
 from labyrinthes.domain.maze import Maze, MazeKind
@@ -63,12 +64,15 @@ def read_maze_csv(path: Path, kind: MazeKind) -> Maze:
 def write_maze_csv(path: Path, maze: Maze) -> None:
     """Write `maze` to `path`, matching `read_maze_csv`'s line shape exactly.
 
-    Creates `path`'s parent directory if it doesn't exist yet. Uses
-    `newline=""` plus `csv.writer(..., lineterminator="\\n")` so line endings
-    match the legacy writer's behavior regardless of platform.
+    Creates `path`'s parent directory if it doesn't exist yet. Writes via
+    `atomic_open_for_write` (temp-file-plus-rename), never in-place, so a
+    write interrupted partway never corrupts or truncates a previously
+    saved file. Uses `newline=""` plus `csv.writer(...,
+    lineterminator="\\n")` so line endings match the legacy writer's
+    behavior regardless of platform.
     """
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8", newline="") as handle:
+    with atomic_open_for_write(path, encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle, lineterminator="\n")
         writer.writerow([maze.entry.col, maze.entry.row])
         writer.writerow([maze.exit.col, maze.exit.row])
