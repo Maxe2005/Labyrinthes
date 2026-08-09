@@ -46,7 +46,7 @@
 # re-run this workflow once a dedicated epics/stories pass gives it real stories.
 
 generated: 2026-08-05
-last_updated: 2026-08-06
+last_updated: 2026-08-09
 project: Labyrinthes
 project_key: NOKEY
 tracking_system: file-system
@@ -64,7 +64,9 @@ development_status:
   1-8-home-breadcrumb-navigation-settings-access: done
   1-9-light-dark-theme-toggle-wired-end-to-end: done
   1-10-accessibility-floor-keyboard-shortcut-consistency: done
-  epic-1-retrospective: optional
+  1-11-settings-dialog-survives-screen-navigation: ready-for-dev
+  1-12-persistence-hardening-atomic-writes-typed-errors: ready-for-dev
+  epic-1-retrospective: done
 
   epic-2: backlog
   2-1-player-maze-selection-screen-classic-maze-browsing: backlog
@@ -108,3 +110,17 @@ development_status:
 
   epic-6: backlog
   epic-6-retrospective: optional
+
+action_items:
+  - epic: 1
+    action: "Fix Router.navigate() silently closing an open SettingsWindow on frame-teardown"
+    owner: "Amelia (dev)"
+    status: open
+  - epic: 1
+    action: "Add a persistence-hardening story: atomic writes (temp-file-plus-rename) + typed LabyrinthesError for malformed content in MazeRepository/SettingsRepository"
+    owner: "Amelia (dev)"
+    status: open
+  - epic: 1
+    action: "When a deferred-work.md item is re-deferred a 2nd time by a later story's review, flag it explicitly for scheduling instead of deferring a 3rd time silently"
+    owner: "Amelia (dev/process)"
+    status: open

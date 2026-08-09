@@ -427,6 +427,54 @@ So that no action in Home, Builder, or Player is mouse-only, and no shortcut lab
 **When** compared to the actual shortcut registered for that action in the canonical table
 **Then** they match exactly, so no label/tooltip can go stale (fixes the legacy `r` = "Settings"-label-but-"Restart"-behavior collision)
 
+### Story 1.11: Settings dialog survives screen navigation
+
+_Added by the Epic 1 retrospective (2026-08-09) — closes a gap independently deferred three times (Stories 1.8, 1.9, 1.10) without ever being fixed._
+
+As a user,
+I want the Settings dialog to never disappear as an accidental side effect of navigating away from the screen it was opened on,
+So that closing Settings is always something I chose, not something that happened to me.
+
+**Acceptance Criteria:**
+
+**Given** `SettingsWindow` is open over any screen (Home, Builder, or Player)
+**When** a navigation is triggered (a breadcrumb click, the theme toggle, or a keyboard shortcut that calls `Router.navigate()`)
+**Then** `SettingsWindow`'s lifecycle is no longer an accidental side effect of the previous screen's frame being torn down — its fate (staying open or closing) is a deliberate, explicit outcome, not an incidental consequence of Tk parent/child destruction
+
+**Given** the chosen deliberate behavior
+**When** `Router.navigate()` is invoked while `SettingsWindow` is open
+**Then** an automated test asserts the resulting `SettingsWindow` state matches that documented behavior exactly
+
+**Given** the fix
+**When** exercised from Home, Builder, and Player
+**Then** all three screens exhibit identical behavior — no per-screen divergence
+
+### Story 1.12: Persistence hardening — atomic writes & typed errors
+
+_Added by the Epic 1 retrospective (2026-08-09) — closes gaps deferred in Stories 1.4/1.5 and escalated by Story 1.9, where `ThemeController` became the first unconditional, every-launch consumer of `SettingsRepository.get()`._
+
+As the project's author,
+I want maze and settings writes to be crash-safe, and malformed persisted data to raise a typed error instead of crashing the app,
+So that an interrupted write or a corrupted file never destroys existing data or takes down the app at startup.
+
+**Acceptance Criteria:**
+
+**Given** a `Maze` or a setting being written
+**When** the write is interrupted (process crash or kill) partway through
+**Then** the previously saved file is never left corrupted or truncated — both `write_maze_csv` and `write_setting_value` write via a temp-file-plus-rename, never in-place truncation
+
+**Given** a maze CSV file that is truncated, malformed, or has a non-numeric header
+**When** `MazeRepository.load()` / `read_maze_csv` reads it
+**Then** a typed `LabyrinthesError` subclass is raised, never a raw `IndexError`/`ValueError`
+
+**Given** a settings file that is malformed, corrupted, or removed/replaced between the existence check and the read (a TOCTOU race)
+**When** `SettingsRepository.get()` / `JsonSettingsRepository.get()` / `read_setting_value` reads it
+**Then** a typed `LabyrinthesError` subclass is raised, never a raw `json.JSONDecodeError`/`FileNotFoundError`
+
+**Given** `ThemeController._load_theme()` (Story 1.9), which reads settings unconditionally on every app launch
+**When** the persisted `shared/theme` file is corrupted
+**Then** the app no longer crashes at startup — it falls back to the default theme, the same way it already handles an unrecognized-but-well-formed value
+
 ## Epic 2: Play a Maze (Game / Player)
 
 Classic maze selection, random maze generation and saving, Levels, Difficulty, HARD mode, movement modes, timer, per-action confirmation prompts, and appearance. Delivers UJ-2's core play loop end-to-end (short of Personal Records, added in Epic 5).
