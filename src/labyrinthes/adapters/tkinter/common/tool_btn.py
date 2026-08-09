@@ -11,7 +11,14 @@ import tkinter as tk
 from collections.abc import Callable
 
 from labyrinthes.adapters.tkinter.common.kbd_tag import KbdTag
-from labyrinthes.adapters.tkinter.common.tokens import SPACING, TYPOGRAPHY, Theme, colors_for
+from labyrinthes.adapters.tkinter.common.tokens import (
+    FOCUS_RING_THICKNESS,
+    RESTING_RING_THICKNESS,
+    SPACING,
+    TYPOGRAPHY,
+    Theme,
+    colors_for,
+)
 from labyrinthes.adapters.tkinter.common.tooltip import Tooltip
 
 __all__ = ["ToolButton", "ToolButtonGroup"]
@@ -37,11 +44,12 @@ class ToolButton(tk.Frame):
         command: Callable[[], None] | None = None,
         group: ToolButtonGroup | None = None,
     ) -> None:
-        super().__init__(parent, bd=0, highlightthickness=1)
+        super().__init__(parent, bd=0, takefocus=True, highlightthickness=RESTING_RING_THICKNESS)
         self._theme = theme
         self._command = command
         self._group = group
         self._active = False
+        self._focused = False
 
         self._label = tk.Label(
             self,
@@ -59,6 +67,11 @@ class ToolButton(tk.Frame):
         for widget in self._clickable_widgets():
             widget.configure(cursor="hand2")
             widget.bind("<Button-1>", self._on_click)
+
+        self.bind("<Return>", self._on_click)
+        self.bind("<space>", self._on_click)
+        self.bind("<FocusIn>", self._on_focus_in)
+        self.bind("<FocusOut>", self._on_focus_out)
 
         if tooltip is not None:
             Tooltip(self, tooltip, theme=theme)
@@ -106,6 +119,14 @@ class ToolButton(tk.Frame):
         if self._command is not None:
             self._command()
 
+    def _on_focus_in(self, _event: tk.Event | None = None) -> None:
+        self._focused = True
+        self._apply_style()
+
+    def _on_focus_out(self, _event: tk.Event | None = None) -> None:
+        self._focused = False
+        self._apply_style()
+
     def _apply_style(self) -> None:
         colors = colors_for(self._theme)
         if self._active:
@@ -116,7 +137,28 @@ class ToolButton(tk.Frame):
             background = colors.window
             border = colors.border
             text_color = colors.ink
-        self.configure(background=background, highlightbackground=border, highlightcolor=border)
+
+        # `border` (accent when active, resting `colors.border` otherwise)
+        # is the resting-ring color. Focus only changes *how thick* the
+        # ring is and, while focused, forces both highlight colors to
+        # `colors.accent` -- explicit thickness toggling (not just relying
+        # on Tk's automatic highlightcolor/highlightbackground swap) is
+        # what keeps an active-but-unfocused button (1px accent border)
+        # visibly distinct from an active-and-focused one (2px accent ring).
+        if self._focused:
+            highlightthickness = FOCUS_RING_THICKNESS
+            highlightbackground = colors.accent
+            highlightcolor = colors.accent
+        else:
+            highlightthickness = RESTING_RING_THICKNESS
+            highlightbackground = border
+            highlightcolor = border
+        self.configure(
+            background=background,
+            highlightthickness=highlightthickness,
+            highlightbackground=highlightbackground,
+            highlightcolor=highlightcolor,
+        )
         self._label.configure(background=background, foreground=text_color)
         if self._kbd is not None:
             self._kbd.configure(background=background)

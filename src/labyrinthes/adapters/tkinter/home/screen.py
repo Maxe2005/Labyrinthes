@@ -4,6 +4,12 @@ Never imports `builder`/`player` or `adapters/storage/` (AD-1, AD-9). Renders
 no `Breadcrumb` of its own -- navigation depth 0, matching the locked
 `key-home.html` mockup (see the spec's Design Notes) -- only the `TopBar`'s
 brand mark/wordmark plus two `PillButton` entry points into Builder/Player.
+
+Story 1.10 wires those two entry points to the canonical keybinding table
+(`keybindings.py`): each `PillButton`'s printed `kbd-tag` and its real
+`bind_shortcut()` registration both derive from the same `Keybinding`, and
+each navigate action is a single named function passed to both, so the
+`command=` click path and the "B"/"P" key-press path can never diverge.
 """
 
 from __future__ import annotations
@@ -19,6 +25,8 @@ from labyrinthes.adapters.tkinter.common import (
     Theme,
     ToggleThemeFn,
     TopBar,
+    bind_shortcut,
+    keybinding,
 )
 from labyrinthes.domain.maze import Maze
 
@@ -58,17 +66,34 @@ def mount(
     entry_points = tk.Frame(frame)
     entry_points.pack(pady=SPACING["5xl"])
 
+    def go_to_builder() -> None:
+        navigate(ScreenId.BUILDER, None)
+
+    def go_to_player() -> None:
+        navigate(ScreenId.PLAYER, None)
+
+    # Looked up once each so the printed button text, the printed kbd-tag,
+    # and the real binding all read from the exact same `Keybinding` entry
+    # -- not just the same *key*, but the same *label* too.
+    open_builder_kb = keybinding("open_builder")
+    open_player_kb = keybinding("open_player")
+
     PillButton(
         entry_points,
-        "Open Builder",
+        open_builder_kb.label,
         theme=theme,
-        command=lambda: navigate(ScreenId.BUILDER, None),
+        shortcut=open_builder_kb.display,
+        command=go_to_builder,
     ).pack(side="left", padx=SPACING["sm"])
     PillButton(
         entry_points,
-        "Open Player",
+        open_player_kb.label,
         theme=theme,
-        command=lambda: navigate(ScreenId.PLAYER, None),
+        shortcut=open_player_kb.display,
+        command=go_to_player,
     ).pack(side="left", padx=SPACING["sm"])
+
+    bind_shortcut(frame, open_builder_kb, go_to_builder)
+    bind_shortcut(frame, open_player_kb, go_to_player)
 
     return frame

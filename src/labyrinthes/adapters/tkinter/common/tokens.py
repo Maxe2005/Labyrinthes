@@ -21,7 +21,9 @@ from dataclasses import dataclass
 from enum import Enum
 
 __all__ = [
+    "FOCUS_RING_THICKNESS",
     "RADII",
+    "RESTING_RING_THICKNESS",
     "SPACING",
     "TYPOGRAPHY",
     "ColorTokens",
@@ -217,3 +219,11 @@ RADII: dict[str, int | str] = {
     "xl": 10,
     "full": "50%",
 }
+
+# Story 1.10's shared focus-ring sizing. Not sourced from `DESIGN.md` --
+# no locked spec value exists there for a keyboard-focus indicator -- so
+# these are this story's own decision: every focusable `common/` primitive
+# toggles its `highlightthickness` between these two values on `<FocusIn>`/
+# `<FocusOut>`, rather than each widget inventing its own thickness pair.
+RESTING_RING_THICKNESS = 1
+FOCUS_RING_THICKNESS = 2
