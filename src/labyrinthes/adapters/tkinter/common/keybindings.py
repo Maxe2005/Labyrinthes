@@ -73,6 +73,7 @@ class Keybinding:
 KEYBINDINGS: tuple[Keybinding, ...] = (
     Keybinding("open_builder", "Open Builder", "b"),
     Keybinding("open_player", "Open Player", "p"),
+    Keybinding("generate_random", "Generate random", "n"),
 )
 
 _BY_ACTION_ID: dict[str, Keybinding] = {kb.action_id: kb for kb in KEYBINDINGS}

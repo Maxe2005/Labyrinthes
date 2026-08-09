@@ -54,3 +54,16 @@ class MazeRepository(abc.ABC):
         returns `None` rather than raising.
         """
         raise NotImplementedError
+
+    @abc.abstractmethod
+    def list_names(self, kind: MazeKind) -> list[str]:
+        """The names of every persisted maze of `kind`, sorted lexicographically.
+
+        Lexicographic, not numeric-aware, sorting (e.g. `"10"` sorts before
+        `"2"`) — no naming convention for classic/saved-random mazes is
+        established yet (Epic 4's migration concern), so this makes no
+        assumption about one. Returns `[]` if `kind`'s folder doesn't exist
+        yet, rather than raising — an empty library is an expected state
+        (e.g. a fresh install with no classic mazes), not an error.
+        """
+        raise NotImplementedError

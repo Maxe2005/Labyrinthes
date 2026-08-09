@@ -15,13 +15,24 @@ listener that re-navigates the currently-mounted screen with that state
 whenever the theme changes -- `Tk` widgets have no reactive re-theming
 primitive, so a full re-navigate (already `Router.navigate()`'s only mode
 of operation) is the smallest correct way to apply a new theme's tokens.
+
+Story 2.1 adds one more piece of wiring, scoped to Player only: its
+`mount()` takes a required, keyword-only `maze_repository: MazeRepository`
+that Home/Builder don't need. Rather than widening the shared
+`ScreenMountFn` (which would force Home/Builder to accept-but-ignore a
+port they don't use, and touch `_bind_screen()`/every existing screen
+test), `mount_player` is wrapped in `functools.partial(mount_player,
+maze_repository=...)` *before* it reaches the untouched `_bind_screen()`
+-- see the story's Design Notes.
 """
 
 from __future__ import annotations
 
 import tkinter as tk
 from dataclasses import dataclass
+from functools import partial
 
+from labyrinthes.adapters.storage.csv_maze_repository import CsvMazeRepository
 from labyrinthes.adapters.storage.json_settings_repository import JsonSettingsRepository
 from labyrinthes.adapters.tkinter.builder.screen import mount as mount_builder
 from labyrinthes.adapters.tkinter.common.navigation import NavigateFn, ScreenMountFn
@@ -30,6 +41,7 @@ from labyrinthes.adapters.tkinter.home.screen import mount as mount_home
 from labyrinthes.adapters.tkinter.player.screen import mount as mount_player
 from labyrinthes.app.router import MountFn, Router, ScreenId
 from labyrinthes.app.theme_controller import ThemeController
+from labyrinthes.application.maze_repository import MazeRepository
 from labyrinthes.application.settings_repository import SettingsRepository
 from labyrinthes.domain.maze import Maze
 
@@ -64,13 +76,17 @@ def _bind_screen(
     return bound
 
 
-def build_app(settings_repository: SettingsRepository | None = None) -> App:
+def build_app(
+    settings_repository: SettingsRepository | None = None,
+    maze_repository: MazeRepository | None = None,
+) -> App:
     """Create the single `Tk()` root, register all three screens, and navigate to Home.
 
     `settings_repository` defaults to a real `JsonSettingsRepository()`
-    (the default, relative `./settings/` root) -- tests inject a
-    `tmp_path`-rooted or in-memory instance instead so they never touch
-    that real on-disk location.
+    (the default, relative `./settings/` root); `maze_repository` mirrors
+    that default, a real `CsvMazeRepository()`. Tests inject a
+    `tmp_path`-rooted or in-memory instance of either instead so they never
+    touch those real on-disk locations.
 
     If wiring fails partway through (e.g. Home's `mount()` raises), the
     just-created `root` is destroyed before the exception propagates rather
@@ -78,6 +94,8 @@ def build_app(settings_repository: SettingsRepository | None = None) -> App:
     """
     if settings_repository is None:
         settings_repository = JsonSettingsRepository()
+    if maze_repository is None:
+        maze_repository = CsvMazeRepository()
 
     root = tk.Tk()
     try:
@@ -107,7 +125,12 @@ def build_app(settings_repository: SettingsRepository | None = None) -> App:
 
         router.register(ScreenId.HOME, _bind_screen(mount_home, navigate, theme_controller))
         router.register(ScreenId.BUILDER, _bind_screen(mount_builder, navigate, theme_controller))
-        router.register(ScreenId.PLAYER, _bind_screen(mount_player, navigate, theme_controller))
+        router.register(
+            ScreenId.PLAYER,
+            _bind_screen(
+                partial(mount_player, maze_repository=maze_repository), navigate, theme_controller
+            ),
+        )
         # Through the `navigate` closure, not `router.navigate()` directly,
         # so `last_state` is tracked from the very first screen onward --
         # correctness here would otherwise depend on Home always being

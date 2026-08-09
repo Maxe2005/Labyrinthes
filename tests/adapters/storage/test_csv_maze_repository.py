@@ -153,3 +153,37 @@ def test_load_rejects_invalid_names(tmp_path, name):
 
     with pytest.raises(InvalidMazeNameError):
         repository.load(name, MazeKind.SKETCH)
+
+
+def test_list_names_returns_empty_list_when_kind_folder_does_not_exist_yet(tmp_path):
+    repository = CsvMazeRepository(root=tmp_path)
+
+    assert repository.list_names(MazeKind.CLASSIC) == []
+
+
+def test_list_names_returns_sorted_names(tmp_path):
+    repository = CsvMazeRepository(root=tmp_path)
+    for name in ["charlie", "alpha", "bravo"]:
+        repository.save(_maze(MazeKind.CLASSIC), name)
+
+    assert repository.list_names(MazeKind.CLASSIC) == ["alpha", "bravo", "charlie"]
+
+
+def test_list_names_only_returns_the_requested_kinds_folder(tmp_path):
+    repository = CsvMazeRepository(root=tmp_path)
+    repository.save(_maze(MazeKind.CLASSIC), "classic-one")
+    repository.save(_maze(MazeKind.SKETCH), "sketch-one")
+
+    assert repository.list_names(MazeKind.CLASSIC) == ["classic-one"]
+    assert repository.list_names(MazeKind.SKETCH) == ["sketch-one"]
+
+
+def test_list_names_ignores_a_same_named_directory(tmp_path):
+    # A stray `<name>.csv/` directory (never created by this repository
+    # itself, but not impossible via external tampering) must not be
+    # listed as a loadable maze name.
+    repository = CsvMazeRepository(root=tmp_path)
+    repository.save(_maze(MazeKind.CLASSIC), "real-one")
+    (tmp_path / "classic" / "not-a-file.csv").mkdir(parents=True)
+
+    assert repository.list_names(MazeKind.CLASSIC) == ["real-one"]

@@ -58,3 +58,11 @@ class CsvMazeRepository(MazeRepository):
                 if maze.id == maze_id:
                     return maze
         return None
+
+    def list_names(self, kind: MazeKind) -> list[str]:
+        directory = self._root / kind.value
+        if not directory.is_dir():
+            return []
+        return sorted(
+            path.stem for path in directory.glob(f"*{MAZE_FILE_SUFFIX}") if path.is_file()
+        )

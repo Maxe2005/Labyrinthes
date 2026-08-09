@@ -1,4 +1,4 @@
-"""Player screen (Story 1.7 placeholder; real content in Epic 3).
+"""Player screen: classic-maze selection browsing (Story 2.1).
 
 Imports nothing from `home/`/`builder/`/`adapters/storage/` (AD-1, AD-9).
 """
