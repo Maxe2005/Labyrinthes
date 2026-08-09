@@ -25,6 +25,7 @@ import csv
 from pathlib import Path
 
 from labyrinthes.adapters.storage.atomic_write import atomic_open_for_write
+from labyrinthes.application.errors import MazeCorruptError
 from labyrinthes.domain.cell import Cell
 from labyrinthes.domain.grid import Grid
 from labyrinthes.domain.maze import Maze, MazeKind
@@ -41,14 +42,17 @@ def read_maze_csv(path: Path, kind: MazeKind) -> Maze:
     never sniffed from the content itself.
     """
     lines = path.read_text(encoding="utf-8").splitlines()
-    entry_col, entry_row = (int(value) for value in lines[0].split(","))
-    exit_col, exit_row = (int(value) for value in lines[1].split(","))
+    try:
+        entry_col, entry_row = (int(value) for value in lines[0].split(","))
+        exit_col, exit_row = (int(value) for value in lines[1].split(","))
 
-    remaining = lines[2:]
-    maze_id: MazeId | None = None
-    if kind in _ID_ELIGIBLE_KINDS:
-        maze_id = MazeId(value=remaining[0])
-        remaining = remaining[1:]
+        remaining = lines[2:]
+        maze_id: MazeId | None = None
+        if kind in _ID_ELIGIBLE_KINDS:
+            maze_id = MazeId(value=remaining[0])
+            remaining = remaining[1:]
+    except (IndexError, ValueError) as exc:
+        raise MazeCorruptError(f"Malformed maze file header: {path}") from exc
 
     cells = tuple(tuple(Cell(value) for value in row.split(",")) for row in remaining)
 
