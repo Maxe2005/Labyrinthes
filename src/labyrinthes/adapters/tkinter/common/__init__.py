@@ -1,6 +1,7 @@
 """Shared design tokens and Tkinter widget primitives (Story 1.6), plus the
 shared navigation contract, breadcrumb, top bar, and Settings dialog
-(Story 1.8).
+(Story 1.8), plus the canonical keybinding table and shared accessibility
+focus-ring tokens (Story 1.10).
 
 Imported by `home/`/`builder/`/`player/` -- never duplicated per screen.
 Imports only stdlib/`tkinter`; never `adapters/storage/`, never one of the
@@ -12,6 +13,12 @@ from labyrinthes.adapters.tkinter.common.breadcrumb import Breadcrumb, Breadcrum
 from labyrinthes.adapters.tkinter.common.hud_chip import HudChip
 from labyrinthes.adapters.tkinter.common.icon_btn import IconButton
 from labyrinthes.adapters.tkinter.common.kbd_tag import KbdTag
+from labyrinthes.adapters.tkinter.common.keybindings import (
+    KEYBINDINGS,
+    Keybinding,
+    bind_shortcut,
+    keybinding,
+)
 from labyrinthes.adapters.tkinter.common.navigation import (
     NavigateFn,
     ScreenId,
@@ -21,7 +28,9 @@ from labyrinthes.adapters.tkinter.common.navigation import (
 from labyrinthes.adapters.tkinter.common.pill_btn import PillButton
 from labyrinthes.adapters.tkinter.common.settings_window import SettingsWindow
 from labyrinthes.adapters.tkinter.common.tokens import (
+    FOCUS_RING_THICKNESS,
     RADII,
+    RESTING_RING_THICKNESS,
     SPACING,
     TYPOGRAPHY,
     ColorTokens,
@@ -35,7 +44,10 @@ from labyrinthes.adapters.tkinter.common.tooltip import Tooltip
 from labyrinthes.adapters.tkinter.common.top_bar import TopBar
 
 __all__ = [
+    "FOCUS_RING_THICKNESS",
+    "KEYBINDINGS",
     "RADII",
+    "RESTING_RING_THICKNESS",
     "SPACING",
     "TYPOGRAPHY",
     "Breadcrumb",
@@ -45,6 +57,7 @@ __all__ = [
     "HudChip",
     "IconButton",
     "KbdTag",
+    "Keybinding",
     "NavigateFn",
     "PillButton",
     "ScreenId",
@@ -57,5 +70,7 @@ __all__ = [
     "Tooltip",
     "TopBar",
     "TypographyTokens",
+    "bind_shortcut",
     "colors_for",
+    "keybinding",
 ]

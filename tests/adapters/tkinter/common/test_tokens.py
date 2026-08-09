@@ -1,7 +1,9 @@
 import tkinter.font as tkfont
 
 from labyrinthes.adapters.tkinter.common.tokens import (
+    FOCUS_RING_THICKNESS,
     RADII,
+    RESTING_RING_THICKNESS,
     SPACING,
     TYPOGRAPHY,
     Theme,
@@ -119,3 +121,9 @@ def test_font_spec_family_keeps_full_css_fallback_tuple_as_data():
         "Arial",
         "sans-serif",
     )
+
+
+def test_focus_ring_thickness_is_thicker_than_resting_ring_thickness():
+    assert RESTING_RING_THICKNESS == 1
+    assert FOCUS_RING_THICKNESS == 2
+    assert FOCUS_RING_THICKNESS > RESTING_RING_THICKNESS

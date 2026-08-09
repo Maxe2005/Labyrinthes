@@ -12,7 +12,15 @@ import tkinter as tk
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from labyrinthes.adapters.tkinter.common.tokens import SPACING, TYPOGRAPHY, Theme, colors_for
+from labyrinthes.adapters.tkinter.common.tokens import (
+    FOCUS_RING_THICKNESS,
+    RESTING_RING_THICKNESS,
+    SPACING,
+    TYPOGRAPHY,
+    ColorTokens,
+    Theme,
+    colors_for,
+)
 
 __all__ = ["Breadcrumb", "BreadcrumbSegment"]
 
@@ -56,6 +64,12 @@ class Breadcrumb(tk.Frame):
         # exposed so tests can invoke a hover transition directly instead of
         # synthesizing a pointer event (`tk_root` is withdrawn in tests).
         self._hover_handlers: list[tuple[Callable[[], None], Callable[[], None]] | None] = []
+        # `(on_focus_in, on_focus_out)` per clickable segment, `None` for
+        # the trailing/current one -- same indexing convention as
+        # `_hover_handlers`, so tests can invoke a focus transition
+        # directly instead of relying on real Tab traversal (which never
+        # takes on a withdrawn `tk_root`).
+        self._focus_handlers: list[tuple[Callable[[], None], Callable[[], None]] | None] = []
 
         for index, segment in enumerate(segments):
             if index > 0:
@@ -79,20 +93,36 @@ class Breadcrumb(tk.Frame):
 
             handler: Callable[[], None] | None = None
             hover: tuple[Callable[[], None], Callable[[], None]] | None = None
+            focus: tuple[Callable[[], None], Callable[[], None]] | None = None
             if segment.on_click is not None:
                 handler = segment.on_click
-                label.configure(cursor="hand2")
+                label.configure(
+                    cursor="hand2",
+                    takefocus=True,
+                    highlightthickness=RESTING_RING_THICKNESS,
+                    # Resting ring matches the breadcrumb's own background
+                    # (`colors.window`), so it's invisible until focused.
+                    highlightbackground=colors.window,
+                    highlightcolor=colors.window,
+                )
                 label.bind("<Button-1>", self._click_handler(handler))
+                label.bind("<Return>", self._click_handler(handler))
+                label.bind("<space>", self._click_handler(handler))
 
-                on_enter = self._recolor(label, colors.accent)
-                on_leave = self._recolor(label, colors.ink_soft)
+                on_enter, on_leave, on_focus_in, on_focus_out = self._segment_interactions(
+                    label, colors
+                )
                 label.bind("<Enter>", self._click_handler(on_enter), add="+")
                 label.bind("<Leave>", self._click_handler(on_leave), add="+")
+                label.bind("<FocusIn>", self._click_handler(on_focus_in), add="+")
+                label.bind("<FocusOut>", self._click_handler(on_focus_out), add="+")
                 hover = (on_enter, on_leave)
+                focus = (on_focus_in, on_focus_out)
 
             self._labels.append(label)
             self._segment_handlers.append(handler)
             self._hover_handlers.append(hover)
+            self._focus_handlers.append(focus)
 
     @staticmethod
     def _click_handler(callback: Callable[[], None]) -> Callable[[tk.Event | None], None]:
@@ -102,8 +132,57 @@ class Breadcrumb(tk.Frame):
         return _on_click
 
     @staticmethod
-    def _recolor(label: tk.Label, color: str) -> Callable[[], None]:
-        def _apply() -> None:
-            label.configure(foreground=color)
+    def _segment_interactions(
+        label: tk.Label, colors: ColorTokens
+    ) -> tuple[Callable[[], None], Callable[[], None], Callable[[], None], Callable[[], None]]:
+        """Build one clickable segment's `(on_enter, on_leave, on_focus_in,
+        on_focus_out)` closures, sharing local hover/focus state.
 
-        return _apply
+        Hover and keyboard focus both recolor the same label text, and only
+        focus additionally shows a ring. Tracking both as shared state here
+        -- instead of each transition unconditionally overwriting the
+        other's effect -- is what keeps them from fighting: text stays
+        `colors.accent` as long as *either* is true, and losing one doesn't
+        clobber the other still being active (e.g. tabbing away while the
+        mouse is still hovering keeps the hover color instead of reverting
+        to resting; moving the mouse off while focus remains keeps the
+        focus color and ring).
+        """
+        state = {"hovered": False, "focused": False}
+
+        def _apply() -> None:
+            active = state["hovered"] or state["focused"]
+            label.configure(foreground=colors.accent if active else colors.ink_soft)
+            if state["focused"]:
+                label.configure(
+                    highlightthickness=FOCUS_RING_THICKNESS,
+                    highlightbackground=colors.accent,
+                    highlightcolor=colors.accent,
+                )
+            else:
+                # Resting ring matches the breadcrumb's own background, so
+                # it's invisible whenever keyboard focus isn't present --
+                # hover alone never shows a ring, only a text recolor.
+                label.configure(
+                    highlightthickness=RESTING_RING_THICKNESS,
+                    highlightbackground=colors.window,
+                    highlightcolor=colors.window,
+                )
+
+        def on_enter() -> None:
+            state["hovered"] = True
+            _apply()
+
+        def on_leave() -> None:
+            state["hovered"] = False
+            _apply()
+
+        def on_focus_in() -> None:
+            state["focused"] = True
+            _apply()
+
+        def on_focus_out() -> None:
+            state["focused"] = False
+            _apply()
+
+        return on_enter, on_leave, on_focus_in, on_focus_out
