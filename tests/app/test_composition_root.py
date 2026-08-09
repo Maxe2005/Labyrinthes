@@ -2,9 +2,11 @@ import tkinter as tk
 
 import pytest
 
+from labyrinthes.adapters.storage.csv_maze_repository import CsvMazeRepository
 from labyrinthes.adapters.storage.json_settings_repository import JsonSettingsRepository
 from labyrinthes.adapters.tkinter.common import SettingsWindow, TopBar
 from labyrinthes.adapters.tkinter.common.tokens import Theme
+from labyrinthes.adapters.tkinter.player.classic_gallery import ClassicMazeGallery
 from labyrinthes.app import composition_root
 from labyrinthes.app.composition_root import App, build_app
 from labyrinthes.app.router import Router, ScreenId
@@ -159,6 +161,49 @@ def test_theme_persisted_by_one_build_app_call_is_seen_by_a_second_build_app_cal
         assert captured_theme["theme"] == Theme.DARK
     finally:
         second_app.root.destroy()
+
+
+def test_player_registration_is_reachable_and_uses_the_injected_maze_repository(tmp_path):
+    # Player's `mount()` requires a keyword-only `maze_repository` that
+    # Home/Builder don't take (Story 2.1) -- this exercises the real
+    # `functools.partial` wiring end to end: navigating to Player must not
+    # raise `TypeError: mount() missing ... maze_repository`, and the
+    # `tmp_path`-rooted repository actually reaches the mounted screen (an
+    # empty classic library renders the gallery's empty state, not a crash).
+    app = build_app(
+        settings_repository=JsonSettingsRepository(root=tmp_path / "settings"),
+        maze_repository=CsvMazeRepository(root=tmp_path / "mazes"),
+    )
+    try:
+        app.root.withdraw()
+
+        app.router.navigate(ScreenId.PLAYER)
+
+        assert app.router.current_screen_id == ScreenId.PLAYER
+        # Not just "navigation didn't raise" -- the injected repository must
+        # actually have reached `ClassicMazeGallery`: an empty `tmp_path`
+        # library renders the gallery's empty state (no `_play_button`), not
+        # some other content a broken `functools.partial` binding could
+        # still coincidentally produce a `Frame` for.
+        galleries = _find_all(app.root, ClassicMazeGallery)
+        assert len(galleries) == 1
+        assert not hasattr(galleries[0], "_play_button")
+    finally:
+        app.root.destroy()
+
+
+def test_build_app_defaults_maze_repository_to_a_real_csv_maze_repository(tmp_path):
+    app = build_app(settings_repository=JsonSettingsRepository(root=tmp_path))
+    try:
+        app.root.withdraw()
+
+        # No explicit `maze_repository` passed -- must not raise navigating
+        # to Player, proving `build_app()` supplied its own default.
+        app.router.navigate(ScreenId.PLAYER)
+
+        assert app.router.current_screen_id == ScreenId.PLAYER
+    finally:
+        app.root.destroy()
 
 
 def test_settings_window_opened_on_home_survives_a_real_navigate_to_builder(tmp_path):
