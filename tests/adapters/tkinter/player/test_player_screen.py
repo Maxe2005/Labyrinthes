@@ -93,6 +93,28 @@ def test_settings_icon_click_opens_a_non_modal_settings_window_leaving_player_mo
     assert frame.winfo_exists()
 
 
+def test_destroying_the_screens_frame_closes_an_open_settings_window(
+    tk_root, navigate_stub, toggle_theme_stub, find_all
+):
+    navigate, _ = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(tk_root, None, navigate, Theme.LIGHT, toggle_theme)
+
+    top_bar = find_all(frame, TopBar)[0]
+    top_bar._settings_button._on_click()
+
+    settings_windows = [c for c in frame.winfo_children() if isinstance(c, SettingsWindow)]
+    assert len(settings_windows) == 1
+    settings_window = settings_windows[0]
+
+    # The exact operation `Router.navigate()` performs on the
+    # previously-mounted screen's frame (story 1.11: this cascade is now a
+    # documented, deliberate outcome -- see `SettingsWindow`'s docstring).
+    frame.destroy()
+
+    assert settings_window.winfo_exists() == 0
+
+
 def test_theme_toggle_icon_click_invokes_the_passed_in_toggle_theme_callable(
     tk_root, navigate_stub, toggle_theme_stub, find_all
 ):
