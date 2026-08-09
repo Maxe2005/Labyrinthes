@@ -1,5 +1,5 @@
 # generated: 2026-08-05
-# last_updated: 2026-08-06
+# last_updated: 2026-08-09
 # project: Labyrinthes
 # project_key: NOKEY
 # tracking_system: file-system
@@ -65,7 +65,7 @@ development_status:
   1-9-light-dark-theme-toggle-wired-end-to-end: done
   1-10-accessibility-floor-keyboard-shortcut-consistency: done
   1-11-settings-dialog-survives-screen-navigation: review
-  1-12-persistence-hardening-atomic-writes-typed-errors: review
+  1-12-persistence-hardening-atomic-writes-typed-errors: done
   epic-1-retrospective: done
 
   epic-2: backlog
