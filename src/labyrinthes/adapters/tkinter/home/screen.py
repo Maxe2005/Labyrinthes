@@ -49,10 +49,12 @@ def mount(
     frame = tk.Frame(parent)
 
     def open_settings() -> None:
-        # `frame` (not `parent`) as the `Toplevel`'s master: closing Home
-        # never has to hunt this window down separately, and it never
-        # touches the router -- the screen underneath stays mounted.
-        SettingsWindow(frame, theme=theme)
+        # `parent` (not `frame`) as the `Toplevel`'s master (Story 1.11):
+        # `parent` is the app's persistent container, never destroyed by
+        # `Router.navigate()`, so `SettingsWindow` survives navigating away
+        # from Home instead of being torn down as a cascade side effect of
+        # `frame.destroy()`. See `SettingsWindow`'s module docstring.
+        SettingsWindow(parent, theme=theme)
 
     top_bar = TopBar(
         frame,
