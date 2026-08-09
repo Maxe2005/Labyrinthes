@@ -1,0 +1,73 @@
+# Claude Code. Reference profile for the claude-settings-json hook dialect.
+#
+# Project-local override of the packaged bmad-loop profile (copied from
+# bmad_loop/data/profiles/claude.toml, 2026-08-09): only env_fault_patterns is
+# extended below, everything else is unchanged from upstream. See that
+# section's comment for why.
+name = "claude"
+binary = "claude"
+prompt_template = "{prompt}"
+bypass_args = ["--permission-mode", "bypassPermissions"]
+model_flag = "--model"
+usage_parser = "claude-jsonl"
+first_run_note = "run `claude` once in the project to accept workspace trust and hooks approval"
+skill_tree = ".claude/skills"
+# Gitignored configs a worktree checkout omits: project MCP servers (.mcp.json)
+# and Claude settings. .claude/settings.json is also the hook config_path — it is
+# seeded first, then the Stop hook is merged into it (see provision_worktree).
+seed_files = [
+  ".mcp.json",
+  ".claude/settings.json",
+  ".claude/settings.local.json",
+]
+
+# Transport-failure classification (#194): regexes matched line-by-line against
+# the ANSI-stripped tail of a non-completed (timeout/stalled/crashed) session's
+# pane log. A match reclassifies the session as an environment fault so the
+# orchestrator can PAUSE (and re-arm with a fresh budget) instead of charging a
+# dev attempt for a session that never reached the API. The pattern requires an
+# "API Error" line AND a connection-level cause on the SAME line, so ordinary
+# story test output that merely mentions "API Error" in prose does not trip it.
+#
+# Added locally (2026-08-09): a Claude Pro/Max plan session/usage-limit hit.
+# Unlike a transport error, this leaves the CLI parked on an interactive
+# "rate-limit-options" menu ("Stop and wait for limit to reset" / "Upgrade your
+# plan") that bmad-loop cannot answer — the session eventually times out/stalls
+# uncleanly. Without this pattern that reads as an ordinary crash/timeout and
+# burns a dev attempt or review cycle (possibly exhausting the story's budget
+# and deferring it outright); with it, the same kill is recognized as an
+# environment fault and pauses cleanly instead. Anchored on the literal wording
+# Claude Code prints ("You've hit your session limit", "Agent terminated early
+# due to an API error: You've hit your ... limit") — distinctive enough that it
+# won't false-positive on ordinary source/test output. Re-check this wording if
+# Anthropic changes the CLI's limit-reached copy.
+env_fault_patterns = [
+  "API Error.*(Unable to connect|Connection ?(error|refused|reset|timed ?out)|ConnectionRefused|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|EAI_AGAIN)",
+  "[Hh]it your (session|usage|rate) limit",
+  "terminated early due to an API error",
+]
+
+# Force Claude Code's classic (inline/scrollback) renderer. The fullscreen TUI
+# (research preview, alt-screen ?1049h like vim/htop) repaints in place, so the
+# tmux pane capture only ever holds the final frame and the Log tab shows a single
+# page. The classic renderer keeps output in native scrollback, so the capture
+# scrolls normally and the Log tab reconstructs the whole session. This env var
+# overrides any `tui` setting (user/project/local/seeded) per Claude Code docs.
+#
+# Disable background tasks (issue #109): Claude Code can bias a session toward
+# backgrounding Agent/bash work (run_in_background) despite the bmad-dev-auto
+# prompt ban on it. A session that ends its turn to await a background sub-agent
+# yields a result-less Stop — and if the CLI then exits, the in-process sub-agent
+# is stranded mid-implementation with the story stuck in-progress. The var forces
+# every subagent and bash call to run synchronously, which is the behavior the
+# skill contract already requires; bmad-loop has no background-completion
+# re-invocation, so nothing sanctioned is lost. To opt out, copy this profile
+# into .bmad-loop/profiles/ and drop the var.
+[env]
+CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN = "1"
+CLAUDE_CODE_DISABLE_BACKGROUND_TASKS = "1"
+
+[hooks]
+dialect = "claude-settings-json"
+config_path = ".claude/settings.json"
+events = { SessionStart = "SessionStart", Stop = "Stop", SessionEnd = "SessionEnd", PreCompact = "PreCompact" }
