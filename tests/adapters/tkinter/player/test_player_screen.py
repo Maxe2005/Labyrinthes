@@ -3,6 +3,7 @@ import tkinter as tk
 from labyrinthes.adapters.tkinter.common import SettingsWindow, Theme, TopBar
 from labyrinthes.adapters.tkinter.common.navigation import ScreenId
 from labyrinthes.adapters.tkinter.player.classic_gallery import ClassicMazeGallery
+from labyrinthes.adapters.tkinter.player.gameplay_placeholder import GameplayPlaceholder
 from labyrinthes.adapters.tkinter.player.screen import mount
 from labyrinthes.domain.grid import Grid
 from labyrinthes.domain.maze import Maze, MazeKind
@@ -299,6 +300,36 @@ def test_state_not_none_mounts_the_gameplay_placeholder_not_the_gallery(
     )
 
     assert find_all(frame, ClassicMazeGallery) == []
+
+
+def test_state_not_none_mounts_a_gameplay_placeholder_holding_that_maze(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    seeded_maze_repository,
+    fake_settings_repository,
+):
+    # Story 2.3: `screen.py` swapped the old free-function placeholder for
+    # `GameplayPlaceholder`, which holds the mounted `Maze` as `self._maze`
+    # (mutable, so a save can swap it in place -- see that module's
+    # docstring).
+    navigate, _ = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    maze = _maze()
+    frame = mount(
+        tk_root,
+        maze,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        maze_repository=seeded_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+
+    placeholders = find_all(frame, GameplayPlaceholder)
+    assert len(placeholders) == 1
+    assert placeholders[0]._maze == maze
 
 
 def test_state_not_none_never_reads_the_maze_repository(

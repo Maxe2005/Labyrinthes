@@ -65,6 +65,10 @@ class PillButton(tk.Frame):
 
         self._apply_style()
 
+    def set_text(self, text: str) -> None:
+        """Replace the pill's label text in place (e.g. "Save" -> "Overwrite")."""
+        self._label.configure(text=text)
+
     def _clickable_widgets(self) -> tuple[tk.Widget, ...]:
         widgets: tuple[tk.Widget, ...] = (self, self._label)
         if self._kbd is not None:

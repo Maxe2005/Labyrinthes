@@ -10,9 +10,10 @@ Maze 4") yet, deferred to Story 2.4 (see the story's Boundaries &
 Constraints).
 
 `mount()` dispatches purely on `state`: `state is None` mounts
-`ClassicMazeGallery` (browsing); `state is not None` mounts a plain text
-summary of that `Maze` -- real gameplay rendering (walls, ball, HUD) is
-Story 2.4's job.
+`ClassicMazeGallery` (browsing); `state is not None` mounts a
+`GameplayPlaceholder` -- still just a plain text summary of that `Maze`,
+plus a Save action when it's `GENERATED` (Story 2.3) -- real gameplay
+rendering (walls, ball, HUD) is Story 2.4's job.
 """
 
 from __future__ import annotations
@@ -21,7 +22,6 @@ import tkinter as tk
 
 from labyrinthes.adapters.tkinter.common import (
     SPACING,
-    TYPOGRAPHY,
     BreadcrumbSegment,
     NavigateFn,
     ScreenId,
@@ -29,9 +29,9 @@ from labyrinthes.adapters.tkinter.common import (
     Theme,
     ToggleThemeFn,
     TopBar,
-    colors_for,
 )
 from labyrinthes.adapters.tkinter.player.classic_gallery import ClassicMazeGallery
+from labyrinthes.adapters.tkinter.player.gameplay_placeholder import GameplayPlaceholder
 from labyrinthes.application.maze_repository import MazeRepository
 from labyrinthes.application.settings_repository import SettingsRepository
 from labyrinthes.domain.maze import Maze
@@ -104,29 +104,12 @@ def mount(
             pady=SPACING["section-gap"],
         )
     else:
-        _mount_gameplay_placeholder(frame, state, theme)
+        placeholder = GameplayPlaceholder(frame, state, theme, maze_repository=maze_repository)
+        placeholder.pack(
+            fill="both",
+            expand=True,
+            padx=SPACING["page-margin"],
+            pady=SPACING["section-gap"],
+        )
 
     return frame
-
-
-def _mount_gameplay_placeholder(frame: tk.Frame, maze: Maze, theme: Theme) -> None:
-    """Plain text summary of `maze` -- no wall/HUD rendering (Story 2.4's job).
-
-    Deliberately minimal: this story only needs to prove the
-    selection-gallery-to-gameplay hand-off actually delivers the picked
-    `Maze` to Player's `mount()`, not render it.
-    """
-    colors = colors_for(theme)
-    summary = (
-        f"Gameplay placeholder — {maze.grid.width}×{maze.grid.height} maze, "
-        f"kind={maze.kind.value}, entry={maze.entry!r}, exit={maze.exit!r}"
-    )
-    tk.Label(
-        frame,
-        text=summary,
-        font=TYPOGRAPHY.body.to_tk_font(),
-        background=colors.window,
-        foreground=colors.ink,
-        wraplength=600,
-        justify="left",
-    ).pack(padx=SPACING["page-margin"], pady=SPACING["section-gap"])

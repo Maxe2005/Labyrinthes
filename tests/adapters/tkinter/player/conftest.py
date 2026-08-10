@@ -7,7 +7,13 @@ to exercise the pager/jump/restart/play behavior against a repository.
 `FakeSettingsRepository` (Story 2.2) is the equivalent in-memory
 `SettingsRepository` double, for tests exercising `GenerateRandomDialog`'s
 FR-4 size-bounds reads without a `tmp_path`-backed `JsonSettingsRepository`.
+
+`saved_random_maze()` (Story 2.3) is `classic_maze()`'s `SAVED_RANDOM`
+counterpart, for seeding `ClassicMazeGallery`'s combined-listing tests.
 """
+
+import dataclasses
+import uuid
 
 import pytest
 
@@ -19,6 +25,8 @@ from labyrinthes.domain.maze import Maze, MazeKind
 from labyrinthes.domain.maze_id import MazeId
 from labyrinthes.domain.position import Position
 
+_ID_ELIGIBLE_KINDS = frozenset({MazeKind.CLASSIC, MazeKind.SAVED_RANDOM})
+
 
 class FakeMazeRepository(MazeRepository):
     """In-memory `MazeRepository` test double, keyed by `(kind, name)`."""
@@ -27,6 +35,10 @@ class FakeMazeRepository(MazeRepository):
         self._store: dict[tuple[MazeKind, str], Maze] = {}
 
     def save(self, maze: Maze, name: str) -> Maze:
+        # Mirrors `CsvMazeRepository.save()`'s own id-minting contract (Story
+        # 1.4) so tests can assert on a freshly minted id, not just on kind.
+        if maze.kind in _ID_ELIGIBLE_KINDS and maze.id is None:
+            maze = dataclasses.replace(maze, id=MazeId(value=uuid.uuid4().hex))
         self._store[(maze.kind, name)] = maze
         return maze
 
@@ -57,6 +69,17 @@ def classic_maze(width: int, height: int) -> Maze:
     )
 
 
+def saved_random_maze(width: int, height: int) -> Maze:
+    """A `SAVED_RANDOM` `Maze` of the given size, entry top-left, exit bottom-right."""
+    return Maze(
+        grid=Grid.filled(width=width, height=height),
+        entry=Position(row=0, col=0),
+        exit=Position(row=height - 1, col=width - 1),
+        kind=MazeKind.SAVED_RANDOM,
+        id=None,
+    )
+
+
 @pytest.fixture
 def fake_maze_repository() -> FakeMazeRepository:
     """A bare `FakeMazeRepository`, nothing seeded -- the empty-state case."""
@@ -70,6 +93,18 @@ def seeded_maze_repository() -> FakeMazeRepository:
     repository.save(classic_maze(width=4, height=3), "alpha")
     repository.save(classic_maze(width=5, height=5), "bravo")
     repository.save(classic_maze(width=6, height=4), "charlie")
+    return repository
+
+
+@pytest.fixture
+def seeded_maze_repository_with_saved_random() -> FakeMazeRepository:
+    """`seeded_maze_repository`'s 3 classics, plus 2 saved-random mazes: delta, echo."""
+    repository = FakeMazeRepository()
+    repository.save(classic_maze(width=4, height=3), "alpha")
+    repository.save(classic_maze(width=5, height=5), "bravo")
+    repository.save(classic_maze(width=6, height=4), "charlie")
+    repository.save(saved_random_maze(width=7, height=6), "delta")
+    repository.save(saved_random_maze(width=8, height=7), "echo")
     return repository
 
 

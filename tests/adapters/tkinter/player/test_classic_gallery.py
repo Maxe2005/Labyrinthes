@@ -6,6 +6,7 @@ from labyrinthes.adapters.tkinter.player.generate_random_dialog import GenerateR
 from labyrinthes.app.router import ScreenId
 from labyrinthes.domain.maze import Maze, MazeKind
 from labyrinthes.domain.position import Position
+from tests.adapters.tkinter.player.conftest import saved_random_maze
 
 
 def _gallery(tk_root, repository, navigate, settings_repository):
@@ -137,7 +138,7 @@ def test_empty_state_shows_an_inline_message(
     labels = [
         child.cget("text") for child in gallery.winfo_children() if isinstance(child, tk.Label)
     ]
-    assert any("No classic mazes were found" in text for text in labels)
+    assert any("No classic or saved mazes were found" in text for text in labels)
 
 
 def test_populated_state_also_shows_a_generate_random_button(
@@ -230,6 +231,130 @@ def test_confirming_generation_navigates_to_player_with_a_generated_maze(
     assert maze.grid.height == 8
     assert maze.entry == Position(row=0, col=0)
     assert maze.exit != maze.entry
+
+
+def test_no_saved_random_mazes_leaves_classic_only_numbering_unchanged(
+    tk_root, seeded_maze_repository, navigate_stub, fake_settings_repository
+):
+    # No saved-random mazes seeded -- the combined `self._entries` list is
+    # classic-only, so the position label stays byte-for-byte the pre-Story
+    # 2.3 text (Design Notes: contiguous classics-first ordering).
+    navigate, _ = navigate_stub
+    gallery = _gallery(tk_root, seeded_maze_repository, navigate, fake_settings_repository)
+
+    assert gallery._position_label.cget("text") == "Classic Maze 1 of 3"
+
+
+def test_saved_random_mazes_are_listed_after_classics_in_the_same_pager(
+    tk_root, seeded_maze_repository_with_saved_random, navigate_stub, fake_settings_repository
+):
+    navigate, _ = navigate_stub
+    gallery = _gallery(
+        tk_root, seeded_maze_repository_with_saved_random, navigate, fake_settings_repository
+    )
+
+    assert gallery._entries == [
+        (MazeKind.CLASSIC, "alpha"),
+        (MazeKind.CLASSIC, "bravo"),
+        (MazeKind.CLASSIC, "charlie"),
+        (MazeKind.SAVED_RANDOM, "delta"),
+        (MazeKind.SAVED_RANDOM, "echo"),
+    ]
+
+
+def test_position_label_for_a_saved_random_entry_uses_the_overall_combined_index(
+    tk_root, seeded_maze_repository_with_saved_random, navigate_stub, fake_settings_repository
+):
+    navigate, _ = navigate_stub
+    gallery = _gallery(
+        tk_root, seeded_maze_repository_with_saved_random, navigate, fake_settings_repository
+    )
+
+    for _ in range(3):  # 3 classics -> index 3 is the first saved-random entry ("delta")
+        gallery._on_next()
+
+    assert gallery._index == 3
+    assert gallery._position_label.cget("text") == "Saved Random Maze 4 of 5"
+    assert gallery._jump_entry.get() == "4"
+
+
+def test_next_walks_from_the_last_classic_into_the_first_saved_random_entry(
+    tk_root, seeded_maze_repository_with_saved_random, navigate_stub, fake_settings_repository
+):
+    navigate, _ = navigate_stub
+    gallery = _gallery(
+        tk_root, seeded_maze_repository_with_saved_random, navigate, fake_settings_repository
+    )
+    gallery._jump_entry.delete(0, "end")
+    gallery._jump_entry.insert(0, "3")
+    gallery._on_jump()
+    assert gallery._position_label.cget("text") == "Classic Maze 3 of 5"
+
+    gallery._on_next()
+
+    assert gallery._position_label.cget("text") == "Saved Random Maze 4 of 5"
+
+
+def test_jump_to_a_saved_random_entry_by_its_overall_number(
+    tk_root, seeded_maze_repository_with_saved_random, navigate_stub, fake_settings_repository
+):
+    navigate, _ = navigate_stub
+    gallery = _gallery(
+        tk_root, seeded_maze_repository_with_saved_random, navigate, fake_settings_repository
+    )
+    gallery._jump_entry.delete(0, "end")
+    gallery._jump_entry.insert(0, "5")
+
+    gallery._on_jump()
+
+    assert gallery._index == 4
+    assert gallery._position_label.cget("text") == "Saved Random Maze 5 of 5"
+
+
+def test_playing_a_browsed_saved_random_entry_loads_it_by_its_own_kind(
+    tk_root, seeded_maze_repository_with_saved_random, navigate_stub, fake_settings_repository
+):
+    navigate, calls = navigate_stub
+    gallery = _gallery(
+        tk_root, seeded_maze_repository_with_saved_random, navigate, fake_settings_repository
+    )
+    gallery._jump_entry.delete(0, "end")
+    gallery._jump_entry.insert(0, "4")
+    gallery._on_jump()
+
+    gallery._on_play()
+
+    assert len(calls) == 1
+    screen_id, maze = calls[0]
+    assert screen_id == ScreenId.PLAYER
+    assert maze == seeded_maze_repository_with_saved_random.load("delta", MazeKind.SAVED_RANDOM)
+
+
+def test_only_saved_random_mazes_shows_the_populated_state_not_the_empty_state(
+    tk_root, fake_maze_repository, navigate_stub, fake_settings_repository
+):
+    fake_maze_repository.save(saved_random_maze(width=5, height=5), "solo")
+    navigate, _ = navigate_stub
+
+    gallery = _gallery(tk_root, fake_maze_repository, navigate, fake_settings_repository)
+
+    assert gallery._entries == [(MazeKind.SAVED_RANDOM, "solo")]
+    assert gallery._position_label.cget("text") == "Saved Random Maze 1 of 1"
+    assert gallery._play_button.winfo_exists()
+
+
+def test_neither_classics_nor_saved_random_mazes_shows_the_empty_state(
+    tk_root, fake_maze_repository, navigate_stub, fake_settings_repository
+):
+    navigate, _ = navigate_stub
+
+    gallery = _gallery(tk_root, fake_maze_repository, navigate, fake_settings_repository)
+
+    assert not hasattr(gallery, "_play_button")
+    labels = [
+        child.cget("text") for child in gallery.winfo_children() if isinstance(child, tk.Label)
+    ]
+    assert any("No classic or saved mazes were found" in text for text in labels)
 
 
 def test_confirming_generation_via_the_dialogs_own_confirm_callback_navigates(
