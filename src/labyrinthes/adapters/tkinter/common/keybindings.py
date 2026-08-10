@@ -75,6 +75,10 @@ KEYBINDINGS: tuple[Keybinding, ...] = (
     Keybinding("open_player", "Open Player", "p"),
     Keybinding("generate_random", "Generate random", "n"),
     Keybinding("save_maze", "Save", "s"),
+    Keybinding("move_up", "Move up", "Up"),
+    Keybinding("move_down", "Move down", "Down"),
+    Keybinding("move_left", "Move left", "Left"),
+    Keybinding("move_right", "Move right", "Right"),
 )
 
 _BY_ACTION_ID: dict[str, Keybinding] = {kb.action_id: kb for kb in KEYBINDINGS}
@@ -118,7 +122,16 @@ def bind_shortcut(
     # `f"<KeyPress-{kb.key.lower()}>"` independently, is what keeps that
     # claim actually true instead of two copies of the same derivation
     # that could drift apart.
-    sequences = (kb.event, f"<KeyPress-{kb.key.upper()}>")
+    sequences = (kb.event,)
+    # The uppercase case-variant only makes sense for a single alphabetic
+    # keysym (e.g. "b" -> "B", for Shift/CapsLock): a multi-char keysym
+    # like "Up" has no such variant, and `f"<KeyPress-{kb.key.upper()}>"`
+    # (i.e. "<KeyPress-UP>") is not a valid Tk keysym at all --
+    # `widget.bind_all(...)` raises `TclError: bad event type or keysym
+    # "UP"` for it (confirmed against a live Tk instance). Guarding this
+    # is what lets movement keybindings register at all.
+    if len(kb.key) == 1 and kb.key.isalpha():
+        sequences += (f"<KeyPress-{kb.key.upper()}>",)
     token = object()
     for sequence in sequences:
         widget.bind_all(sequence, handler)

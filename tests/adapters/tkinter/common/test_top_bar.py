@@ -30,6 +30,24 @@ def test_top_bar_with_segments_renders_a_breadcrumb_with_those_segments(tk_root)
     assert [label.cget("text") for label in top_bar._breadcrumb._labels] == ["Home", "Builder"]
 
 
+def test_set_breadcrumb_label_updates_the_given_segment(tk_root):
+    segments = [
+        BreadcrumbSegment("Home", on_click=lambda: None),
+        BreadcrumbSegment("Random Maze"),
+    ]
+    top_bar = TopBar(tk_root, theme=Theme.LIGHT, breadcrumb_segments=segments)
+
+    top_bar.set_breadcrumb_label(1, "Saved Random Maze")
+
+    assert top_bar._breadcrumb._labels[1].cget("text") == "Saved Random Maze"
+
+
+def test_set_breadcrumb_label_is_a_no_op_when_there_is_no_breadcrumb(tk_root):
+    top_bar = TopBar(tk_root, theme=Theme.LIGHT, breadcrumb_segments=None)
+
+    top_bar.set_breadcrumb_label(0, "Anything")  # must not raise
+
+
 def test_settings_icon_buttons_command_fires_on_click(tk_root):
     calls = []
     top_bar = TopBar(tk_root, theme=Theme.LIGHT, on_settings=lambda: calls.append(1))

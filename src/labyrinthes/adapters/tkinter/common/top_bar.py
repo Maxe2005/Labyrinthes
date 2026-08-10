@@ -81,3 +81,14 @@ class TopBar(tk.Frame):
             command=on_settings,
         )
         self._settings_button.pack(side="right", padx=SPACING["lg"], pady=SPACING["sm"])
+
+    def set_breadcrumb_label(self, index: int, label: str) -> None:
+        """Update the breadcrumb's segment `index` text in place.
+
+        A no-op if this bar has no breadcrumb (`breadcrumb_segments=None`
+        at construction) -- lets a caller update a screen's trailing label
+        after something it's showing changes, without needing to know
+        whether a breadcrumb exists at all.
+        """
+        if self._breadcrumb is not None:
+            self._breadcrumb.set_label(index, label)
