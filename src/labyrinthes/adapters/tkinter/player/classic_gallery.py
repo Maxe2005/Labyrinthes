@@ -1,11 +1,12 @@
-"""`ClassicMazeGallery` -- classic-maze browsing widget for Player's selection screen (Story 2.1).
+"""`ClassicMazeGallery` -- classic + saved-random browsing widget for Player's selection screen.
 
-Browses one classic maze at a time (position-based label, e.g. "Classic
-Maze 4 of 12") rather than the locked mockup's 4-card thumbnail grid --
-no wall-bar rendering component exists yet to draw thumbnails from (see the
-story's Boundaries & Constraints). Reuses `common/`'s `IconButton`/
-`PillButton` for pager/restart/play controls rather than reimplementing
-per-screen buttons.
+Story 2.1, extended by Story 2.3.
+
+Browses one maze at a time (position-based label, e.g. "Classic Maze 4 of
+12") rather than the locked mockup's 4-card thumbnail grid -- no wall-bar
+rendering component exists yet to draw thumbnails from (see the story's
+Boundaries & Constraints). Reuses `common/`'s `IconButton`/`PillButton` for
+pager/restart/play controls rather than reimplementing per-screen buttons.
 
 Only reads from `MazeRepository`/`SettingsRepository` (`application/`
 ports) -- never `adapters/storage/` directly (AD-9).
@@ -17,6 +18,19 @@ module's docstring): opening it reads the FR-4 size bounds via
 with a fresh `random.Random()` before handing the resulting `Maze` off
 through the exact same `navigate(ScreenId.PLAYER, maze)` path `_on_play`
 already uses.
+
+Story 2.3 extends the browsed set beyond `MazeKind.CLASSIC`: `self._entries`
+is one flat `list[tuple[MazeKind, str]]`, classic names first (so a restart
+with no saved-random mazes leaves every classic-only test's "Classic Maze N
+of M" position label byte-for-byte unchanged), then
+`MazeKind.SAVED_RANDOM` names appended after -- one shared 1-based index
+drives the position label, the jump-entry, and Previous/Next/Restart across
+*both* kinds combined, not per-kind (see the story's Design Notes: this
+keeps the jump-entry's typed number always matching the label's own
+number). This is what makes a maze saved from the gameplay placeholder
+(Story 2.3's `GameplayPlaceholder`) resurface here after an app restart --
+the exact dead end the legacy player's "write but never read back" random
+save reproduced.
 """
 
 from __future__ import annotations
@@ -40,29 +54,31 @@ from labyrinthes.domain.position import Position
 __all__ = ["ClassicMazeGallery"]
 
 _EMPTY_STATE_MESSAGE = (
-    "No classic mazes were found. Build one in the Builder, or play a random maze now."
+    "No classic or saved mazes were found. Build one in the Builder, or play a random maze now."
 )
 
 
 class ClassicMazeGallery(tk.Frame):
-    """Browse-one-classic-maze-at-a-time picker, plus a generate-random entry point.
+    """Browse-one-maze-at-a-time picker (classic, then saved-random), plus generate-random.
 
-    Populated state (`maze_repository.list_names(MazeKind.CLASSIC)` non-empty):
-    a position label ("Classic Maze {i+1} of {n}"), Previous/Next
-    `IconButton`s clamped at the bounds (no wraparound, no-op past either
-    end), a Restart `IconButton` jumping back to index 0, a jump-to-number
-    `Entry` bound to `<Return>` (reverts its text on an invalid/out-of-range
-    number, leaving the browsed index unchanged), and a primary "Play"
-    `PillButton` that loads the browsed name and calls
+    Populated state (`self._entries` non-empty -- classics plus any
+    `SAVED_RANDOM` mazes): a position label ("Classic Maze {i+1} of {n}" or
+    "Saved Random Maze {i+1} of {n}" depending on which kind the browsed
+    entry is, with {i+1}/{n} always the *overall* combined position),
+    Previous/Next `IconButton`s clamped at the bounds (no wraparound, no-op
+    past either end), a Restart `IconButton` jumping back to index 0, a
+    jump-to-number `Entry` bound to `<Return>` (reverts its text on an
+    invalid/out-of-range number, leaving the browsed index unchanged), and a
+    primary "Play" `PillButton` that loads the browsed entry and calls
     `navigate(ScreenId.PLAYER, maze)`.
 
-    Empty state (no classics saved yet): an inline message, no pager/Play
-    controls.
+    Empty state (neither classics nor saved-random mazes exist yet): an
+    inline message, no pager/Play controls.
 
     Both states show a "Generate random" primary `PillButton` (kbd "N")
     that opens a `GenerateRandomDialog`; confirming it generates and
     navigates to a fresh random `Maze` the same way `_on_play` hands off a
-    browsed classic one.
+    browsed entry.
     """
 
     def __init__(
@@ -80,10 +96,19 @@ class ClassicMazeGallery(tk.Frame):
         self._maze_repository = maze_repository
         self._settings_repository = settings_repository
         self._navigate = navigate
-        self._names: list[str] = maze_repository.list_names(MazeKind.CLASSIC)
+        # Classics first (so a restart with no saved-random mazes leaves
+        # every classic-only test's numbering byte-for-byte unchanged), then
+        # saved-random -- one flat, kind-aware list driving one shared
+        # 1-based index (see the module docstring's Story 2.3 note).
+        self._entries: list[tuple[MazeKind, str]] = [
+            (MazeKind.CLASSIC, name) for name in maze_repository.list_names(MazeKind.CLASSIC)
+        ] + [
+            (MazeKind.SAVED_RANDOM, name)
+            for name in maze_repository.list_names(MazeKind.SAVED_RANDOM)
+        ]
         self._index = 0
 
-        if self._names:
+        if self._entries:
             self._build_populated()
         else:
             self._build_empty_state()
@@ -114,7 +139,7 @@ class ClassicMazeGallery(tk.Frame):
             pager,
             glyph="◀",
             theme=self._theme,
-            tooltip="Previous classic maze.",
+            tooltip="Previous maze.",
             command=self._on_previous,
         )
         self._previous_button.pack(side="left", padx=(0, SPACING["xs"]))
@@ -123,7 +148,7 @@ class ClassicMazeGallery(tk.Frame):
             pager,
             glyph="⟲",
             theme=self._theme,
-            tooltip="Restart at the first classic maze.",
+            tooltip="Restart at the first maze.",
             command=self._on_restart,
         )
         self._restart_button.pack(side="left", padx=(0, SPACING["xs"]))
@@ -141,7 +166,7 @@ class ClassicMazeGallery(tk.Frame):
         self._jump_entry.bind("<KeyPress-N>", lambda _event: "break")
 
         self._next_button = IconButton(
-            pager, glyph="▶", theme=self._theme, tooltip="Next classic maze.", command=self._on_next
+            pager, glyph="▶", theme=self._theme, tooltip="Next maze.", command=self._on_next
         )
         self._next_button.pack(side="left")
 
@@ -160,15 +185,17 @@ class ClassicMazeGallery(tk.Frame):
         self._play_button.pack(anchor="w")
 
     def _position_text(self) -> str:
-        return f"Classic Maze {self._index + 1} of {len(self._names)}"
+        kind, _name = self._entries[self._index]
+        label = "Classic Maze" if kind is MazeKind.CLASSIC else "Saved Random Maze"
+        return f"{label} {self._index + 1} of {len(self._entries)}"
 
     def _size_text(self) -> str:
         maze = self._current_maze()
         return f"{maze.grid.width}×{maze.grid.height}"
 
     def _current_maze(self) -> Maze:
-        name = self._names[self._index]
-        return self._maze_repository.load(name, MazeKind.CLASSIC)
+        kind, name = self._entries[self._index]
+        return self._maze_repository.load(name, kind)
 
     def _refresh_display(self) -> None:
         self._position_label.configure(text=self._position_text())
@@ -186,7 +213,7 @@ class ClassicMazeGallery(tk.Frame):
     def _on_next(self) -> None:
         # Clamped at the upper bound -- a no-op past the last index, never
         # wraps (see the story's I/O matrix).
-        if self._index < len(self._names) - 1:
+        if self._index < len(self._entries) - 1:
             self._index += 1
             self._refresh_display()
 
@@ -197,11 +224,12 @@ class ClassicMazeGallery(tk.Frame):
     def _on_jump(self, _event: tk.Event | None = None) -> None:
         """Jump to the 1-based number in the entry, or revert it if invalid.
 
-        A valid jump is a plain integer within `[1, len(self._names)]`.
-        Anything else (non-numeric text, out-of-range) leaves the browsed
-        index untouched and reverts the entry's displayed text back to it
-        -- no exception raised, no state change (see the story's I/O
-        matrix).
+        A valid jump is a plain integer within `[1, len(self._entries)]`
+        (the overall combined position, spanning classic then saved-random
+        entries -- see the module docstring's Story 2.3 note). Anything
+        else (non-numeric text, out-of-range) leaves the browsed index
+        untouched and reverts the entry's displayed text back to it -- no
+        exception raised, no state change (see the story's I/O matrix).
         """
         text = self._jump_entry.get()
         try:
@@ -209,7 +237,7 @@ class ClassicMazeGallery(tk.Frame):
         except ValueError:
             number = None
 
-        if number is not None and 1 <= number <= len(self._names):
+        if number is not None and 1 <= number <= len(self._entries):
             self._index = number - 1
             self._refresh_display()
         else:
