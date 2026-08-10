@@ -17,6 +17,23 @@ def test_renders_one_label_per_segment_in_order(tk_root):
     assert [label.cget("text") for label in breadcrumb._labels] == ["Home", "Builder"]
 
 
+def test_set_label_updates_the_segments_text_in_place(tk_root):
+    segments = [
+        BreadcrumbSegment("Home", on_click=lambda: None),
+        BreadcrumbSegment("Player", on_click=lambda: None),
+        BreadcrumbSegment("Random Maze"),
+    ]
+    breadcrumb = Breadcrumb(tk_root, segments, theme=Theme.LIGHT)
+
+    breadcrumb.set_label(2, "Saved Random Maze")
+
+    assert [label.cget("text") for label in breadcrumb._labels] == [
+        "Home",
+        "Player",
+        "Saved Random Maze",
+    ]
+
+
 def test_clickable_segment_rests_in_ink_soft_with_hand_cursor(tk_root):
     # `.crumb .seg` rests in `ink-soft`; `accent` is a hover-only color per
     # the locked mockups (`.crumb .seg:hover`), never the resting state.

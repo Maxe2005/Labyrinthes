@@ -1,21 +1,23 @@
 import tkinter as tk
 
+import pytest
+
 from labyrinthes.adapters.tkinter.common import SettingsWindow, Theme, TopBar
 from labyrinthes.adapters.tkinter.common.navigation import ScreenId
 from labyrinthes.adapters.tkinter.player.classic_gallery import ClassicMazeGallery
-from labyrinthes.adapters.tkinter.player.gameplay_placeholder import GameplayPlaceholder
+from labyrinthes.adapters.tkinter.player.gameplay_screen import GameplayScreen
 from labyrinthes.adapters.tkinter.player.screen import mount
 from labyrinthes.domain.grid import Grid
 from labyrinthes.domain.maze import Maze, MazeKind
 from labyrinthes.domain.position import Position
 
 
-def _maze() -> Maze:
+def _maze(kind: MazeKind = MazeKind.CLASSIC) -> Maze:
     return Maze(
         grid=Grid.filled(width=4, height=3),
         entry=Position(row=0, col=0),
         exit=Position(row=2, col=3),
-        kind=MazeKind.CLASSIC,
+        kind=kind,
         id=None,
     )
 
@@ -134,7 +136,46 @@ def test_breadcrumb_trailing_player_segment_has_no_click_handler(
     assert breadcrumb._segment_handlers[1] is None
 
 
-def test_breadcrumb_stays_two_segments_in_the_gameplay_placeholder_view(
+@pytest.mark.parametrize(
+    ("kind", "expected_label"),
+    [
+        (MazeKind.CLASSIC, "Classic Maze"),
+        (MazeKind.SAVED_RANDOM, "Saved Random Maze"),
+        (MazeKind.GENERATED, "Random Maze"),
+        (MazeKind.SKETCH, "Sketch"),
+    ],
+)
+def test_breadcrumb_grows_to_three_segments_in_the_gameplay_view_with_a_kind_derived_label(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_maze_repository,
+    fake_settings_repository,
+    kind,
+    expected_label,
+):
+    navigate, _ = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(
+        tk_root,
+        _maze(kind),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+
+    breadcrumb = find_all(frame, TopBar)[0]._breadcrumb
+    assert [label.cget("text") for label in breadcrumb._labels] == [
+        "Home",
+        "Player",
+        expected_label,
+    ]
+
+
+def test_breadcrumb_trailing_label_updates_after_saving_a_generated_maze(
     tk_root,
     navigate_stub,
     toggle_theme_stub,
@@ -142,8 +183,64 @@ def test_breadcrumb_stays_two_segments_in_the_gameplay_placeholder_view(
     fake_maze_repository,
     fake_settings_repository,
 ):
-    # Boundaries & Constraints: no dynamic 3-segment label (e.g. "Classic
-    # Maze 4") for the gameplay-placeholder view yet -- deferred to Story 2.4.
+    # Regression: saving a `GENERATED` maze transitions its `kind` to
+    # `SAVED_RANDOM` mid-session -- the breadcrumb's trailing label (built
+    # once, from the *original* kind) must follow, not keep showing
+    # "Random Maze" forever.
+    navigate, _ = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(
+        tk_root,
+        _maze(MazeKind.GENERATED),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    breadcrumb = find_all(frame, TopBar)[0]._breadcrumb
+    assert breadcrumb._labels[2].cget("text") == "Random Maze"
+    gameplay = find_all(frame, GameplayScreen)[0]
+
+    gameplay._on_save_confirmed("forest")
+
+    assert breadcrumb._labels[2].cget("text") == "Saved Random Maze"
+
+
+def test_breadcrumb_player_segment_is_clickable_and_navigates_back_to_the_gallery(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_maze_repository,
+    fake_settings_repository,
+):
+    navigate, calls = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(
+        tk_root,
+        _maze(),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+
+    breadcrumb = find_all(frame, TopBar)[0]._breadcrumb
+    breadcrumb._segment_handlers[1]()
+
+    assert calls == [(ScreenId.PLAYER, None)]
+
+
+def test_breadcrumb_trailing_kind_label_segment_has_no_click_handler_in_the_gameplay_view(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_maze_repository,
+    fake_settings_repository,
+):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
     frame = mount(
@@ -157,7 +254,7 @@ def test_breadcrumb_stays_two_segments_in_the_gameplay_placeholder_view(
     )
 
     breadcrumb = find_all(frame, TopBar)[0]._breadcrumb
-    assert [label.cget("text") for label in breadcrumb._labels] == ["Home", "Player"]
+    assert breadcrumb._segment_handlers[2] is None
 
 
 def test_settings_icon_click_opens_a_non_modal_settings_window_leaving_player_mounted(
@@ -279,7 +376,7 @@ def test_state_is_none_mounts_the_classic_maze_gallery(
     assert len(galleries) == 1
 
 
-def test_state_not_none_mounts_the_gameplay_placeholder_not_the_gallery(
+def test_state_not_none_mounts_the_gameplay_screen_not_the_gallery(
     tk_root,
     navigate_stub,
     toggle_theme_stub,
@@ -302,7 +399,7 @@ def test_state_not_none_mounts_the_gameplay_placeholder_not_the_gallery(
     assert find_all(frame, ClassicMazeGallery) == []
 
 
-def test_state_not_none_mounts_a_gameplay_placeholder_holding_that_maze(
+def test_state_not_none_mounts_a_gameplay_screen_holding_that_maze(
     tk_root,
     navigate_stub,
     toggle_theme_stub,
@@ -310,8 +407,8 @@ def test_state_not_none_mounts_a_gameplay_placeholder_holding_that_maze(
     seeded_maze_repository,
     fake_settings_repository,
 ):
-    # Story 2.3: `screen.py` swapped the old free-function placeholder for
-    # `GameplayPlaceholder`, which holds the mounted `Maze` as `self._maze`
+    # Story 2.4: `screen.py` swapped `GameplayPlaceholder` for
+    # `GameplayScreen`, which holds the mounted `Maze` as `self._maze`
     # (mutable, so a save can swap it in place -- see that module's
     # docstring).
     navigate, _ = navigate_stub
@@ -327,16 +424,16 @@ def test_state_not_none_mounts_a_gameplay_placeholder_holding_that_maze(
         settings_repository=fake_settings_repository,
     )
 
-    placeholders = find_all(frame, GameplayPlaceholder)
-    assert len(placeholders) == 1
-    assert placeholders[0]._maze == maze
+    screens = find_all(frame, GameplayScreen)
+    assert len(screens) == 1
+    assert screens[0]._maze == maze
 
 
 def test_state_not_none_never_reads_the_maze_repository(
     tk_root, navigate_stub, toggle_theme_stub, fake_settings_repository
 ):
-    # "Re-navigate with state" row of the I/O matrix: the gameplay-placeholder
-    # view receives its `Maze` directly through `state`, it never touches
+    # "Re-navigate with state" row of the I/O matrix: the gameplay view
+    # receives its `Maze` directly through `state`, it never touches
     # `maze_repository` -- a repository whose every method raises proves no
     # read happens.
     class ExplodingMazeRepository:

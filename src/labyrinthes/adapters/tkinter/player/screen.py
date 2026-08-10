@@ -2,18 +2,27 @@
 
 Never imports `home`/`builder` or `adapters/storage/` directly (AD-1, AD-9)
 -- maze access goes through the `MazeRepository` port (`application/`).
-Carries a "Home / Player" breadcrumb: the Home segment is always clickable,
-the trailing "Player" segment (this screen itself) never is. That
-breadcrumb stays exactly 2 segments in both the selection and
-gameplay-placeholder views -- no dynamic 3-segment label (e.g. "Classic
-Maze 4") yet, deferred to Story 2.4 (see the story's Boundaries &
-Constraints).
+Carries a "Home / Player" breadcrumb when browsing (`state is None`): the
+Home segment is always clickable, the trailing "Player" segment (this
+screen itself) never is.
+
+When gameplay is mounted (`state is not None`, Story 2.4), the breadcrumb
+grows to 3 segments: "Home" (clickable), "Player" (now also clickable --
+back to the gallery, via `navigate(ScreenId.PLAYER, None)`), and a
+trailing kind-derived label ("Classic Maze"/"Saved Random Maze"/"Random
+Maze"/"Sketch") that is never clickable. The label is derived from
+`maze.kind`, not from the gallery's own browsed position/ordinal -- see
+the story's Design Notes for why (`navigate(ScreenId.PLAYER, maze)` only
+ever carries a bare `Maze`, no name/ordinal, and this view must never
+read `maze_repository`). `GameplayScreen`'s `on_kind_changed` callback
+keeps that trailing label in sync if the mounted maze's own `kind`
+changes mid-session (saving a `GENERATED` maze into `SAVED_RANDOM`)
+without a full re-navigate.
 
 `mount()` dispatches purely on `state`: `state is None` mounts
-`ClassicMazeGallery` (browsing); `state is not None` mounts a
-`GameplayPlaceholder` -- still just a plain text summary of that `Maze`,
-plus a Save action when it's `GENERATED` (Story 2.3) -- real gameplay
-rendering (walls, ball, HUD) is Story 2.4's job.
+`ClassicMazeGallery` (browsing); `state is not None` mounts
+`GameplayScreen` -- real wall/HUD/ball rendering, movement, and win
+detection (Story 2.4).
 """
 
 from __future__ import annotations
@@ -31,12 +40,19 @@ from labyrinthes.adapters.tkinter.common import (
     TopBar,
 )
 from labyrinthes.adapters.tkinter.player.classic_gallery import ClassicMazeGallery
-from labyrinthes.adapters.tkinter.player.gameplay_placeholder import GameplayPlaceholder
+from labyrinthes.adapters.tkinter.player.gameplay_screen import GameplayScreen
 from labyrinthes.application.maze_repository import MazeRepository
 from labyrinthes.application.settings_repository import SettingsRepository
-from labyrinthes.domain.maze import Maze
+from labyrinthes.domain.maze import Maze, MazeKind
 
 __all__ = ["mount"]
+
+_KIND_LABELS: dict[MazeKind, str] = {
+    MazeKind.CLASSIC: "Classic Maze",
+    MazeKind.SAVED_RANDOM: "Saved Random Maze",
+    MazeKind.GENERATED: "Random Maze",
+    MazeKind.SKETCH: "Sketch",
+}
 
 
 def mount(
@@ -61,10 +77,9 @@ def mount(
     Notes).
 
     `state is None` mounts the classic-maze selection gallery. `state is
-    not None` mounts a gameplay-placeholder summary of that `Maze` --
-    picking a maze in the gallery calls `navigate(ScreenId.PLAYER, maze)`,
-    which re-runs this very `mount()` with `state=maze`, taking this
-    branch.
+    not None` mounts `GameplayScreen` for that `Maze` -- picking a maze in
+    the gallery calls `navigate(ScreenId.PLAYER, maze)`, which re-runs this
+    very `mount()` with `state=maze`, taking this branch.
     """
     frame = tk.Frame(parent)
 
@@ -76,10 +91,17 @@ def mount(
         # of `frame.destroy()`. See `SettingsWindow`'s module docstring.
         SettingsWindow(parent, theme=theme)
 
-    breadcrumb_segments = [
-        BreadcrumbSegment("Home", on_click=lambda: navigate(ScreenId.HOME, None)),
-        BreadcrumbSegment("Player"),
-    ]
+    if state is None:
+        breadcrumb_segments = [
+            BreadcrumbSegment("Home", on_click=lambda: navigate(ScreenId.HOME, None)),
+            BreadcrumbSegment("Player"),
+        ]
+    else:
+        breadcrumb_segments = [
+            BreadcrumbSegment("Home", on_click=lambda: navigate(ScreenId.HOME, None)),
+            BreadcrumbSegment("Player", on_click=lambda: navigate(ScreenId.PLAYER, None)),
+            BreadcrumbSegment(_KIND_LABELS[state.kind]),
+        ]
     top_bar = TopBar(
         frame,
         theme=theme,
@@ -104,8 +126,18 @@ def mount(
             pady=SPACING["section-gap"],
         )
     else:
-        placeholder = GameplayPlaceholder(frame, state, theme, maze_repository=maze_repository)
-        placeholder.pack(
+        gameplay = GameplayScreen(
+            frame,
+            state,
+            theme,
+            maze_repository=maze_repository,
+            # Saving a `GENERATED` maze transitions its `kind` to
+            # `SAVED_RANDOM` mid-session -- without this, the trailing
+            # breadcrumb segment (built once above, from the *original*
+            # `state.kind`) would keep showing "Random Maze" forever.
+            on_kind_changed=lambda kind: top_bar.set_breadcrumb_label(2, _KIND_LABELS[kind]),
+        )
+        gameplay.pack(
             fill="both",
             expand=True,
             padx=SPACING["page-margin"],

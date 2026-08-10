@@ -1,6 +1,6 @@
 """`SaveMazeDialog` -- name-entry dialog for saving a generated maze (Story 2.3).
 
-A `tk.Toplevel` parented to `GameplayPlaceholder`, modeled on
+A `tk.Toplevel` parented to `GameplayScreen`, modeled on
 `generate_random_dialog.py`: nothing here is worth surviving a
 navigate-away, so it is never parented to the app's persistent container
 (unlike `SettingsWindow` -- see that module's docstring for the contrast).
@@ -32,7 +32,11 @@ keystrokes in the name field are locally consumed (`"break"`) before
 `ClassicMazeGallery`'s jump entry already applies to "n"/"N" -- since a
 maze *name* is far likelier to contain "s" than a numeric field is to
 contain "n", and without it a second `SaveMazeDialog` would stack on top
-of this one mid-typing.
+of this one mid-typing. Story 2.4 adds the same guard for the arrow keys
+(`Up`/`Down`/`Left`/`Right`, the real Tk keysyms -- not lowercase): the
+global `move_*` shortcuts are now also registered via `bind_all()`
+(`GameplayScreen`), so without this, editing the cursor position while
+typing a save name would also move the ball behind this dialog.
 """
 
 from __future__ import annotations
@@ -115,6 +119,15 @@ class SaveMazeDialog(tk.Toplevel):
         # `SaveMazeDialog` stacked on this one.
         self._name_entry.bind("<KeyPress-s>", lambda _event: "break")
         self._name_entry.bind("<KeyPress-S>", lambda _event: "break")
+        # Story 2.4's now-global movement shortcuts are *not* guarded the
+        # same "break" way here: an instance-level "break" stops Tk's
+        # bindtag scan before the "Entry" class binding ever runs, which is
+        # what performs cursor movement/self-insert -- confirmed live, a
+        # "break" guard on Up/Down/Left/Right would silently disable the
+        # entry's own cursor navigation, not just suppress the shortcut.
+        # `GameplayScreen._on_move` guards itself instead (see its
+        # docstring), by checking focus before moving the ball -- this
+        # dialog's `_name_entry` needs no changes for that to work.
         self._name_entry.focus_set()
 
         self._message_label = tk.Label(
@@ -189,10 +202,10 @@ class SaveMazeDialog(tk.Toplevel):
 
         # Destroy *before* invoking `on_confirm` -- `on_confirm` typically
         # triggers the owning widget's own re-render (e.g.
-        # `GameplayPlaceholder._build()`, which destroys all its children),
-        # and this dialog is one of those children. Closing this dialog's
-        # own window first, via its own controlled path, means that
-        # rebuild's cleanup loop no longer needs to tear down an
+        # `GameplayScreen._build_save_zone()`, which destroys its own
+        # children), and this dialog is one of those children. Closing
+        # this dialog's own window first, via its own controlled path,
+        # means that rebuild's cleanup loop no longer needs to tear down an
         # already-executing handler's window as an incidental side effect.
         self.destroy()
         self._on_confirm(name)

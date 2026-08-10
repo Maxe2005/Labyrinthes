@@ -17,12 +17,14 @@ from labyrinthes.domain.maze_size_bounds import (
     MazeSizeBounds,
     validate_dimensions,
 )
+from labyrinthes.domain.movement import Direction, attempt_move
 from labyrinthes.domain.position import Position
 
 __all__ = [
     "DEFAULT_MAZE_SIZE_BOUNDS",
     "Cell",
     "Difficulty",
+    "Direction",
     "DomainValidationError",
     "Duration",
     "Grid",
@@ -33,6 +35,7 @@ __all__ = [
     "MazeKind",
     "MazeSizeBounds",
     "Position",
+    "attempt_move",
     "generate_random_maze",
     "validate_dimensions",
     "validate_start_position",

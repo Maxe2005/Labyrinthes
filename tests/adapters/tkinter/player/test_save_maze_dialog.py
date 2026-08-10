@@ -164,6 +164,17 @@ def test_name_entry_locally_consumes_s_before_the_global_save_maze_shortcut(tk_r
     assert dialog._name_entry.bind("<KeyPress-S>") != ""
 
 
+# Story 2.4's `move_up`/`move_down`/`move_left`/`move_right` global
+# shortcuts are deliberately *not* guarded with a per-key "break" binding
+# here the way `save_maze`'s "s"/"S" guard above is: an instance-level
+# "break" on the entry would stop Tk's bindtag scan before the `Entry`
+# *class* binding (cursor movement/self-insert) ever runs, silently
+# disabling the field's own arrow-key cursor navigation -- confirmed live.
+# `GameplayScreen._on_move` guards itself instead by checking
+# `self.focus_get()`; see `test_move_is_a_no_op_while_a_text_entry_holds_focus`
+# in `test_gameplay_screen.py`.
+
+
 def test_whitespace_only_name_is_rejected_as_required(tk_root):
     on_confirm, calls = _confirm_stub()
     dialog = _dialog(tk_root, on_confirm)
@@ -224,7 +235,7 @@ def test_cursor_only_key_release_while_armed_does_not_reset_arming(tk_root):
 
 def test_dialog_destroys_itself_before_on_confirm_is_invoked(tk_root):
     # Regression: `on_confirm` typically triggers the owning widget's own
-    # re-render (`GameplayPlaceholder._build()`, which destroys all its
+    # re-render (`GameplayScreen._build_save_zone()`, which destroys its
     # children including this dialog) -- so this dialog must already be
     # gone via its own `destroy()` by the time `on_confirm` runs, not rely
     # on the parent's rebuild to tear it down as a side effect.

@@ -112,6 +112,42 @@ def test_a_fresh_registration_for_the_same_key_survives_an_older_widgets_destroy
     assert calls == ["new"]
 
 
+def test_movement_action_ids_are_registered_in_the_table():
+    action_ids = {kb.action_id for kb in KEYBINDINGS}
+    assert {"move_up", "move_down", "move_left", "move_right"} <= action_ids
+
+
+def test_movement_keybindings_use_the_real_tk_arrow_keysyms():
+    assert keybinding("move_up").key == "Up"
+    assert keybinding("move_down").key == "Down"
+    assert keybinding("move_left").key == "Left"
+    assert keybinding("move_right").key == "Right"
+    assert keybinding("move_up").event == "<KeyPress-Up>"
+
+
+def test_bind_shortcut_does_not_register_an_uppercase_variant_for_a_multi_char_keysym(tk_root):
+    # Regression: an unguarded `f"<KeyPress-{kb.key.upper()}>"` on a
+    # multi-char keysym like "Up" produces "<KeyPress-UP>", which is not a
+    # valid Tk keysym -- `bind_all()` would raise `TclError: bad event
+    # type or keysym "UP"`. `bind_shortcut` must not attempt it at all.
+    kb = keybinding("move_up")
+
+    bind_shortcut(tk_root, kb, lambda: None)  # must not raise
+
+    assert tk_root.bind_all("<KeyPress-Up>") != ""
+    assert tk_root.bind_all("<KeyPress-UP>") == ""
+
+
+def test_bind_shortcut_for_a_multi_char_keysym_still_invokes_its_callback(tk_root):
+    calls = []
+    kb = keybinding("move_left")
+
+    handler = bind_shortcut(tk_root, kb, lambda: calls.append(1))
+    handler()
+
+    assert calls == [1]
+
+
 def test_destroying_the_newer_widget_still_unregisters_the_shortcut(tk_root):
     kb = keybinding("open_builder")
     old_widget = tk.Frame(tk_root)

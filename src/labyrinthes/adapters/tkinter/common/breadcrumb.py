@@ -124,6 +124,17 @@ class Breadcrumb(tk.Frame):
             self._hover_handlers.append(hover)
             self._focus_handlers.append(focus)
 
+    def set_label(self, index: int, label: str) -> None:
+        """Update segment `index`'s displayed text in place.
+
+        Leaves that segment's click/hover/focus wiring untouched -- only
+        the `tk.Label`'s own `text` changes. For a screen whose trailing
+        segment's label can go stale after construction (e.g. Player's
+        kind-derived label, which the maze's own `kind` can outlive once a
+        `GENERATED` maze is saved into `SAVED_RANDOM` mid-session).
+        """
+        self._labels[index].configure(text=label)
+
     @staticmethod
     def _click_handler(callback: Callable[[], None]) -> Callable[[tk.Event | None], None]:
         def _on_click(_event: tk.Event | None = None) -> None:
