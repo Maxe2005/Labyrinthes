@@ -14,7 +14,7 @@ from labyrinthes.application.settings_repository import SettingsScope
 from labyrinthes.domain.cell import Cell
 from labyrinthes.domain.grid import Grid
 from labyrinthes.domain.level import Level
-from labyrinthes.domain.level_visibility import Wall
+from labyrinthes.domain.level_visibility import Wall, visible_walls
 from labyrinthes.domain.maze import Maze, MazeKind
 from labyrinthes.domain.movement import Direction
 from labyrinthes.domain.movement_mode import MovementMode
@@ -73,6 +73,26 @@ def _corridor_maze(width=4) -> Maze:
         grid=grid,
         entry=Position(row=0, col=0),
         exit=Position(row=0, col=width - 1),
+        kind=MazeKind.CLASSIC,
+        id=None,
+    )
+
+
+def _stopping_maze() -> Maze:
+    """Corridor along row 0 that ends against an interior wall: (0,1) going
+    right is blocked by the left wall of (0,2), which is not a border."""
+    grid = Grid(
+        cells=(
+            (Cell("0"), Cell("0"), Cell("3"), Cell("0"), Cell("0"), Cell("2")),
+            (Cell("3"), Cell("3"), Cell("3"), Cell("3"), Cell("3"), Cell("2")),
+            (Cell("3"), Cell("3"), Cell("3"), Cell("3"), Cell("3"), Cell("2")),
+            (Cell("1"), Cell("1"), Cell("1"), Cell("1"), Cell("1"), Cell("0")),
+        )
+    )
+    return Maze(
+        grid=grid,
+        entry=Position(row=0, col=0),
+        exit=Position(row=0, col=4),
         kind=MazeKind.CLASSIC,
         id=None,
     )
@@ -1088,6 +1108,93 @@ def test_level_two_partition_advance_redraws_the_structure(
     _settle(screen)
     assert screen._session.visibility.visited == frozenset({0, 1})
     assert len(screen._maze_canvas.find_withtag("wall")) > walls_at_partition_zero
+
+
+def test_level_two_threshold_reset_hides_all_partitions_but_the_current(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    _use_discrete(fake_settings_repository)
+    # 6x2 corridor: 3 partitions (2x2), threshold = round(3/2) = 2, so the
+    # third partition entered resets the visited set down to itself.
+    maze = _corridor_maze(width=6)
+    screen = GameplayScreen(
+        tk_root,
+        maze,
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    screen._cycle_level(1)  # ONE -> TWO
+    assert screen._session.visibility.visited == frozenset({0})
+
+    screen._on_move(Direction.RIGHT)  # -> (0, 1), partition 0
+    _settle(screen)
+    screen._on_move(Direction.RIGHT)  # -> (0, 2), partition 1 entered
+    _settle(screen)
+    assert screen._session.visibility.visited == frozenset({0, 1})
+
+    walls_before_reset = len(screen._maze_canvas.find_withtag("wall"))
+    screen._on_move(Direction.RIGHT)  # -> (0, 3), partition 1
+    _settle(screen)
+    assert screen._session.visibility.visited == frozenset({0, 1})
+
+    screen._on_move(Direction.RIGHT)  # -> (0, 4), partition 2 entered: reset
+    _settle(screen)
+
+    assert screen._session.visibility.visited == frozenset({2})
+    assert len(screen._maze_canvas.find_withtag("wall")) < walls_before_reset
+
+
+def test_level_three_redraws_only_the_current_partition(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    _use_discrete(fake_settings_repository)
+    maze = _corridor_maze(width=5)
+    screen = GameplayScreen(
+        tk_root,
+        maze,
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    screen._cycle_level(2)  # ONE -> THREE
+
+    screen._on_move(Direction.RIGHT)  # -> (0, 1), partition 0
+    _settle(screen)
+
+    screen._on_move(Direction.RIGHT)  # -> (0, 2), partition 1: only it shown
+    _settle(screen)
+
+    assert screen._session.visibility.current_partition == 1
+    assert screen._session.visibility.visited == frozenset({1})
+    assert len(screen._maze_canvas.find_withtag("wall")) == len(
+        visible_walls(screen._session.visibility, maze.grid)
+    )
+
+
+def test_level_four_smooth_boundary_stop_redraws_the_discovered_wall(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    maze = _stopping_maze()
+    screen = GameplayScreen(
+        tk_root,
+        maze,
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    screen._cycle_level(3)  # ONE -> FOUR
+    assert screen._session.mode is MovementMode.SMOOTH
+
+    screen._on_move(Direction.RIGHT)  # smooth leg (0,0) -> stops at (0,1)
+    _settle(screen)
+
+    assert screen._session.position == Position(row=0, col=1)
+    assert screen._session.moving_direction is None
+    assert screen._session.visibility.discovered_walls == frozenset(
+        {Wall(row=0, col=2, side="left")}
+    )
+    assert len(screen._maze_canvas.find_withtag("wall")) == 1
 
 
 def test_level_change_is_a_no_op_after_solve(

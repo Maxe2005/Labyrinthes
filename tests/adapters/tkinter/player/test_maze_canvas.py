@@ -1,3 +1,5 @@
+import pytest
+
 from labyrinthes.adapters.tkinter.common.tokens import Theme, colors_for
 from labyrinthes.adapters.tkinter.player.maze_canvas import MazeCanvas
 from labyrinthes.domain.difficulty import Difficulty
@@ -315,3 +317,35 @@ def test_redraw_structure_reopens_the_exit_side_with_a_corridor_bar(tk_root):
     reopen = [item for item in contour_items if canvas.itemcget(item, "fill") == colors.corridor]
     assert len(reopen) == 1
     assert canvas.coords(reopen[0]) == [80, 200, 120, 200]
+
+
+@pytest.mark.parametrize(
+    ("exit", "expected_reopen_coords"),
+    [
+        # 5x5 maze, cell_size = 40; each bar spans one exit cell along its edge.
+        (Position(row=4, col=2), [[80, 200, 120, 200]]),  # bottom edge
+        (Position(row=0, col=2), [[80, 0, 120, 0]]),  # top edge
+        (Position(row=2, col=4), [[200, 80, 200, 120]]),  # right edge
+        (Position(row=2, col=0), [[0, 80, 0, 120]]),  # left edge
+        (Position(row=0, col=0), [[0, 0, 40, 0], [0, 0, 0, 40]]),  # top-left corner
+        (Position(row=4, col=4), [[160, 200, 200, 200], [200, 160, 200, 200]]),  # bottom-right
+    ],
+)
+def test_redraw_structure_reopens_every_exit_edge_with_corridor_bars(
+    tk_root, exit, expected_reopen_coords
+):
+    maze = Maze(
+        grid=Grid.filled(width=5, height=5),
+        entry=Position(row=0, col=0),
+        exit=exit,
+        kind=MazeKind.CLASSIC,
+        id=None,
+    )
+    canvas = MazeCanvas(tk_root, maze, maze.entry, theme=Theme.LIGHT)
+    colors = colors_for(Theme.LIGHT)
+
+    canvas.redraw_structure(initial_level_visibility(maze, Level.TWO, Difficulty.ONE, maze.entry))
+
+    contour_items = canvas.find_withtag("contour")
+    reopen = [item for item in contour_items if canvas.itemcget(item, "fill") == colors.corridor]
+    assert sorted(canvas.coords(item) for item in reopen) == sorted(expected_reopen_coords)
