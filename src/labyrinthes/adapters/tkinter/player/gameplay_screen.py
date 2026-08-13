@@ -1,21 +1,27 @@
-"""`GameplayScreen` -- rendering, HUD, movement, win detection (Story 2.4).
+"""`GameplayScreen` -- rendering, HUD, movement modes, win detection (Story 2.4/2.5).
 
-Replaces `GameplayPlaceholder` (Story 2.3): a `MazeCanvas` renders the
-mounted `Maze`'s walls/entry/exit/ball once, an HUD row of `HudChip`s
-shows Level/Difficulty/Time/Pos, arrow keys drive a pure
-`domain.movement.attempt_move` + `application.player_session`
+A `MazeCanvas` renders the mounted `Maze`'s walls/entry/exit/ball once, an
+HUD row of `HudChip`s shows Level/Difficulty/Time/Pos, arrow keys drive a
+pure `domain.movement.attempt_move` + `application.player_session`
 orchestration loop, and reaching `maze.exit` shows an inline win banner.
-Story 2.3's Save flow (shown only for `MazeKind.GENERATED`) is preserved,
-now scoped to its own save-zone `Frame` so saving never rebuilds the
-HUD/canvas/banner (see `_build_save_zone()`).
+
+Story 2.5 adds configurable movement modes and speed. The screen reads the
+`game`-scoped `MOVEMENT_MODE`/`MOVEMENT_SPEED` settings at mount, applies
+them to the session, and exposes a left-hand "Movement" sidebar (a mode
+toggle bound to the `m` shortcut, active when Smooth, and a Ball-speed
+button cycling Slow/Normal/Fast). Both modes run through the same
+leg/animation engine (`request_move`/`advance_step` + a per-sub-step
+`.after()` loop rescheduled at `cell_crossing_duration(speed) //
+STEPS_PER_CELL` ms, recomputed per reschedule so a live speed change takes
+effect immediately). Win detection now fires from the animation tick's
+leg-completion branch, not from the keypress handler, so both modes resolve
+a win at leg completion.
 
 Movement mechanics/session orchestration are pure functions imported from
 `domain`/`application` -- this module only wires input events to them,
-renders the result, and owns the `.after()` elapsed-time tick loop. The
-tick job is cancelled both on `<Destroy>` (so a torn-down screen never
-fires a stale callback) and the moment the session is solved (so the
-Time chip visibly freezes instead of ticking once more up to a second
-late).
+renders the result, and owns the `.after()` loops (the elapsed-time tick and
+the per-sub-step animation tick). Both tick jobs are cancelled on `<Destroy>`
+and on solve so a torn-down or solved screen never fires a stale callback.
 """
 
 from __future__ import annotations
@@ -36,15 +42,41 @@ from labyrinthes.adapters.tkinter.common.tokens import (
     Theme,
     colors_for,
 )
+from labyrinthes.adapters.tkinter.common.tool_btn import ToolButton
 from labyrinthes.adapters.tkinter.player.maze_canvas import MazeCanvas
 from labyrinthes.adapters.tkinter.player.save_maze_dialog import SaveMazeDialog
 from labyrinthes.application.maze_repository import MazeRepository
-from labyrinthes.application.player_session import move as session_move
-from labyrinthes.application.player_session import start_session
-from labyrinthes.application.player_session import tick as session_tick
+from labyrinthes.application.movement_settings import (
+    read_movement_mode,
+    read_movement_speed,
+    write_movement_mode,
+    write_movement_speed,
+)
+from labyrinthes.application.player_session import (
+    STEPS_PER_CELL,
+    start_session,
+)
+from labyrinthes.application.player_session import (
+    advance_step as session_advance_step,
+)
+from labyrinthes.application.player_session import (
+    request_move as session_request_move,
+)
+from labyrinthes.application.player_session import (
+    set_mode as session_set_mode,
+)
+from labyrinthes.application.player_session import (
+    set_speed as session_set_speed,
+)
+from labyrinthes.application.player_session import (
+    tick as session_tick,
+)
+from labyrinthes.application.settings_repository import SettingsRepository
 from labyrinthes.domain.duration import Duration
 from labyrinthes.domain.maze import Maze, MazeKind
 from labyrinthes.domain.movement import Direction
+from labyrinthes.domain.movement_mode import MovementMode
+from labyrinthes.domain.movement_speed import MovementSpeed, cell_crossing_duration
 from labyrinthes.domain.position import Position
 
 __all__ = ["GameplayScreen"]
@@ -61,14 +93,21 @@ _DIRECTION_ACTION_IDS: tuple[tuple[str, Direction], ...] = (
     ("move_right", Direction.RIGHT),
 )
 
+_SPEED_CYCLE: tuple[MovementSpeed, ...] = tuple(MovementSpeed)
+
 
 def _pos_text(position: Position) -> str:
     """The Pos chip's `"(row, col)"` format -- matches `test_hud_chip.py`'s own example."""
     return f"({position.row}, {position.col})"
 
 
+def _speed_label(speed: MovementSpeed) -> str:
+    """The Ball-speed button's display label, e.g. `Slow`/`Normal`/`Fast`."""
+    return speed.name.capitalize()
+
+
 class GameplayScreen(tk.Frame):
-    """Renders `maze`, wires arrow-key movement, and tracks/marks a win."""
+    """Renders `maze`, wires arrow-key movement + movement modes, and marks a win."""
 
     def __init__(
         self,
@@ -77,23 +116,28 @@ class GameplayScreen(tk.Frame):
         theme: Theme,
         *,
         maze_repository: MazeRepository,
+        settings_repository: SettingsRepository,
         on_kind_changed: Callable[[MazeKind], None] | None = None,
     ) -> None:
         colors = colors_for(theme)
         super().__init__(parent, background=colors.window)
         self._theme = theme
         self._maze_repository = maze_repository
+        self._settings_repository = settings_repository
         self._maze = maze  # tracks kind/id across a save -- see `_build_save_zone()`
-        # Lets `screen.py` keep its breadcrumb's kind-derived trailing
-        # label in sync with `self._maze.kind` across a save, without this
-        # screen needing to know anything about breadcrumbs itself.
         self._on_kind_changed = on_kind_changed
         self._session = start_session(maze)
+        # Apply the `game`-scoped settings-loaded mode/speed at mount. This
+        # screen is rebuilt on re-navigate, so settings loaded here are fresh.
+        self._session = session_set_mode(self._session, read_movement_mode(settings_repository))
+        self._session = session_set_speed(self._session, read_movement_speed(settings_repository))
         self._start_time = time.monotonic()
         self._tick_job: str | None = None
+        self._animation_job: str | None = None
         self._win_banner: tk.Frame | None = None
 
         self._build_hud(colors)
+        self._build_sidebar(colors)
         self._build_maze_frame(colors, theme)
         self._save_zone = tk.Frame(self, background=colors.window)
         self._save_zone.pack(anchor="w", pady=(SPACING["lg"], 0))
@@ -102,13 +146,15 @@ class GameplayScreen(tk.Frame):
         for action_id, direction in _DIRECTION_ACTION_IDS:
             kb = keybinding(action_id)
             bind_shortcut(self, kb, functools.partial(self._on_move, direction))
+        mode_kb = keybinding("toggle_movement_mode")
+        bind_shortcut(self, mode_kb, self._toggle_mode)
 
         # `add="+"`: `bind_shortcut()` above already registered its own
-        # `<Destroy>` cleanup on `self` (once per movement keybinding, each
-        # via `add="+"`) -- a plain `self.bind("<Destroy>", ...)` with no
-        # `add` argument *replaces* every previously bound handler for that
+        # `<Destroy>` cleanup on `self` (once per keybinding, each via
+        # `add="+"`) -- a plain `self.bind("<Destroy>", ...)` with no `add`
+        # argument *replaces* every previously bound handler for that
         # sequence, which would silently wipe those out and leak the
-        # `bind_all()` movement shortcuts past this screen's own teardown.
+        # `bind_all()` shortcuts past this screen's own teardown.
         self.bind("<Destroy>", self._on_destroy, add="+")
         self._tick_job = self.after(_TICK_INTERVAL_MS, self._on_tick)
 
@@ -135,6 +181,41 @@ class GameplayScreen(tk.Frame):
             hud_row, "Pos", _pos_text(self._session.position), theme=self._theme
         )
         self._pos_chip.pack(side="left")
+
+    def _build_sidebar(self, colors: ColorTokens) -> None:
+        self._sidebar = tk.Frame(self, background=colors.window)
+        self._sidebar.pack(side="left", fill="y", padx=(0, SPACING["lg"]))
+
+        tk.Label(
+            self._sidebar,
+            text="Movement",
+            font=TYPOGRAPHY.body.to_tk_font(),
+            background=colors.window,
+            foreground=colors.ink,
+        ).pack(anchor="w", pady=(0, SPACING["sm"]))
+
+        mode_kb = keybinding("toggle_movement_mode")
+        self._mode_button = ToolButton(
+            self._sidebar,
+            "Smooth",
+            theme=self._theme,
+            shortcut=mode_kb.display,
+            command=self._toggle_mode,
+        )
+        self._mode_button.pack(anchor="w", pady=(0, SPACING["sm"]))
+
+        self._speed_button = ToolButton(
+            self._sidebar,
+            _speed_label(self._session.speed),
+            theme=self._theme,
+            command=self._cycle_speed,
+        )
+        self._speed_button.pack(anchor="w")
+
+        self._sync_mode_button()
+
+    def _sync_mode_button(self) -> None:
+        self._mode_button.set_active(self._session.mode is MovementMode.SMOOTH)
 
     def _build_maze_frame(self, colors: ColorTokens, theme: Theme) -> None:
         self._maze_frame = tk.Frame(
@@ -172,37 +253,58 @@ class GameplayScreen(tk.Frame):
         self._save_button.pack(anchor="w")
         bind_shortcut(self._save_button, save_kb, self._on_save_clicked)
 
-    # -- movement ------------------------------------------------------
+    # -- focus guard -------------------------------------------------------
+
+    def _toplevel_has_focus(self) -> bool:
+        # Movement/mode shortcuts are bound via `bind_all()` (Story 1.10),
+        # which fires regardless of which widget holds focus -- including any
+        # widget inside `SaveMazeDialog` (a separate `Toplevel`;
+        # `focus_get()` is application-wide, not scoped to this screen's own
+        # toplevel). Guarding by widget *class* (e.g. `isinstance(...,
+        # tk.Entry)`) only covers the name field itself -- tabbing from there
+        # to the dialog's own Save/Cancel `PillButton`s (both
+        # `takefocus=True`) would escape that guard and move the ball / toggle
+        # the mode behind the still-open dialog. Guarding by *toplevel*
+        # instead covers every widget any current or future dialog might
+        # contain. Guarding here, rather than with a per-widget `"break"`
+        # key binding, is deliberate: an instance-level `"break"` stops Tk's
+        # bindtag scan before a widget's own *class* binding (e.g. an
+        # `Entry`'s cursor movement/self-insert) ever runs, which would
+        # silently disable that behavior (confirmed live).
+        focused = self.focus_get()
+        return focused is None or focused.winfo_toplevel() is self.winfo_toplevel()
+
+    # -- movement ----------------------------------------------------------
 
     def _on_move(self, direction: Direction) -> None:
-        # Movement shortcuts are bound via `bind_all()` (Story 1.10), which
-        # fires regardless of which widget holds focus -- including any
-        # widget inside `SaveMazeDialog` (a separate `Toplevel`;
-        # `focus_get()` is application-wide, not scoped to this screen's
-        # own toplevel). Guarding by widget *class* (e.g. `isinstance(...,
-        # tk.Entry)`) only covers the name field itself -- tabbing from
-        # there to the dialog's own Save/Cancel `PillButton`s (both
-        # `takefocus=True`) would escape that guard and move the ball
-        # behind the still-open dialog. Guarding by *toplevel* instead
-        # covers every widget any current or future dialog might contain,
-        # not just `Entry`. Guarding here, rather than with a per-widget
-        # `"break"` key binding, is deliberate: an instance-level `"break"`
-        # stops Tk's bindtag scan before a widget's own *class* binding
-        # (e.g. an `Entry`'s cursor movement/self-insert) ever runs, which
-        # would silently disable that behavior, not just suppress this
-        # shortcut (confirmed live).
-        focused = self.focus_get()
-        if focused is not None and focused.winfo_toplevel() is not self.winfo_toplevel():
+        if not self._toplevel_has_focus():
             return
 
-        previous = self._session
-        self._session = session_move(self._session, direction)
+        previous_moving = self._session.moving_direction
+        self._session = session_request_move(self._session, direction)
 
-        if self._session.position != previous.position:
+        if self._session.moving_direction is not None and previous_moving is None:
+            self._animation_job = self.after(self._per_step_ms(), self._on_animation_tick)
+
+    def _on_animation_tick(self) -> None:
+        previous_position = self._session.position
+        self._session = session_advance_step(self._session)
+
+        direction = self._session.moving_direction
+        if direction is not None:
+            fraction = self._session.step / STEPS_PER_CELL
+            self._maze_canvas.set_ball_offset(
+                self._session.position,
+                direction.row_delta * fraction,
+                direction.col_delta * fraction,
+            )
+        else:
             self._maze_canvas.set_ball_position(self._session.position)
+
+        if self._session.position != previous_position:
             self._pos_chip.set_value(_pos_text(self._session.position))
 
-        if not previous.solved and self._session.solved:
+        if self._session.solved:
             # Refresh elapsed from the wall clock before showing the win
             # banner -- `self._session.elapsed` otherwise only reflects the
             # last full-second `_on_tick()` boundary, up to ~1s stale.
@@ -213,9 +315,51 @@ class GameplayScreen(tk.Frame):
             self._session = dataclasses.replace(
                 self._session, elapsed=Duration(milliseconds=elapsed_ms)
             )
+            self._cancel_tick_job()
+            self._cancel_animation_job()
             self._on_solved()
+            return
 
-    # -- elapsed-time ticking ------------------------------------------
+        self._reschedule_animation()
+
+    def _per_step_ms(self) -> int:
+        # Recompute the per-step delay from the *current* speed so a live
+        # `set_speed` change takes effect immediately on the next reschedule.
+        return cell_crossing_duration(self._session.speed).milliseconds // STEPS_PER_CELL
+
+    def _reschedule_animation(self) -> None:
+        if self._session.moving_direction is None:
+            return
+        self._animation_job = self.after(self._per_step_ms(), self._on_animation_tick)
+
+    def _cancel_animation_job(self) -> None:
+        if self._animation_job is not None:
+            self.after_cancel(self._animation_job)
+            self._animation_job = None
+
+    # -- movement mode & speed ---------------------------------------------
+
+    def _toggle_mode(self) -> None:
+        if not self._toplevel_has_focus():
+            return
+        new_mode = (
+            MovementMode.DISCRETE
+            if self._session.mode is MovementMode.SMOOTH
+            else MovementMode.SMOOTH
+        )
+        self._session = session_set_mode(self._session, new_mode)
+        write_movement_mode(self._settings_repository, new_mode)
+        self._sync_mode_button()
+
+    def _cycle_speed(self) -> None:
+        if not self._toplevel_has_focus():
+            return
+        new_speed = _SPEED_CYCLE[(_SPEED_CYCLE.index(self._session.speed) + 1) % len(_SPEED_CYCLE)]
+        self._session = session_set_speed(self._session, new_speed)
+        write_movement_speed(self._settings_repository, new_speed)
+        self._speed_button.set_text(_speed_label(new_speed))
+
+    # -- elapsed-time ticking ----------------------------------------------
 
     def _on_tick(self) -> None:
         elapsed_ms = int((time.monotonic() - self._start_time) * 1000)
@@ -230,6 +374,7 @@ class GameplayScreen(tk.Frame):
 
     def _on_destroy(self, _event: tk.Event | None = None) -> None:
         self._cancel_tick_job()
+        self._cancel_animation_job()
 
     # -- win banner ------------------------------------------------------
 
@@ -241,8 +386,9 @@ class GameplayScreen(tk.Frame):
         # keeps the Time chip's freeze visibly immediate).
         self._cancel_tick_job()
         # Reflect the same freshly-refreshed `self._session.elapsed` (see
-        # `_on_move`) the win banner is about to show, so the frozen Time
-        # chip and the banner's "Solved in MM:SS." text never disagree.
+        # `_on_animation_tick`) the win banner is about to show, so the
+        # frozen Time chip and the banner's "Solved in MM:SS." text never
+        # disagree.
         self._time_chip.set_value(self._session.elapsed.to_clock_string())
         self._show_win_banner()
 
@@ -280,7 +426,7 @@ class GameplayScreen(tk.Frame):
 
     def _on_continue_clicked(self) -> None:
         # Only dismisses the banner -- `solved` stays `True`, and
-        # `player_session.move`/`tick` are already no-ops once solved (see
+        # `player_session` functions are already no-ops once solved (see
         # the story's Design Notes), so nothing else needs resetting here.
         if self._win_banner is not None:
             self._win_banner.destroy()

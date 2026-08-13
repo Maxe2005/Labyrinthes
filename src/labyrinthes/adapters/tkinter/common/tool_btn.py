@@ -91,6 +91,10 @@ class ToolButton(tk.Frame):
     def active(self) -> bool:
         return self._active
 
+    def set_text(self, text: str) -> None:
+        """Replace the button's label text in place (e.g. a speed tier label)."""
+        self._label.configure(text=text)
+
     def set_active(self, active: bool) -> None:
         """Set this button's active state.
 

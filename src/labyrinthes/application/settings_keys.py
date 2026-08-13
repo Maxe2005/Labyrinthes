@@ -1,11 +1,10 @@
-"""`shared`-scope setting key names.
+"""Setting key names, one module every consumer imports.
 
-The one module every consumer imports instead of hardcoding key strings —
-declaring names here once is what keeps Builder/Game/Home from drifting
-into duplicate or typo'd key strings for the same setting.
-
-Only key *names* live here — FR-4's actual default bound values are not
-this story's concern.
+Declaring names here once is what keeps Builder/Game/Home from drifting
+into duplicate or typo'd key strings for the same setting. `shared`-scope
+keys are read by both Builder and Game; `game`-scope keys belong to the
+Player (game) application only. Only key *names* live here -- default values
+are the individual readers'/writers' concern.
 """
 
 MAZE_MIN_COLUMNS = "maze_min_columns"
@@ -13,3 +12,5 @@ MAZE_MAX_COLUMNS = "maze_max_columns"
 MAZE_MIN_ROWS = "maze_min_rows"
 MAZE_MAX_ROWS = "maze_max_rows"
 THEME = "theme"
+MOVEMENT_MODE = "movement_mode"
+MOVEMENT_SPEED = "movement_speed"

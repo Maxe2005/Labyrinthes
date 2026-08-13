@@ -125,6 +125,19 @@ def test_movement_keybindings_use_the_real_tk_arrow_keysyms():
     assert keybinding("move_up").event == "<KeyPress-Up>"
 
 
+def test_toggle_movement_mode_is_registered_on_the_m_keysym():
+    assert keybinding("toggle_movement_mode").action_id == "toggle_movement_mode"
+    assert keybinding("toggle_movement_mode").label == "Toggle movement mode"
+    assert keybinding("toggle_movement_mode").key == "m"
+    assert keybinding("toggle_movement_mode").display == "M"
+    assert keybinding("toggle_movement_mode").event == "<KeyPress-m>"
+
+
+def test_toggle_movement_mode_key_does_not_collide_with_any_other_key():
+    keys = [kb.key.lower() for kb in KEYBINDINGS]
+    assert keys.count("m") == 1
+
+
 def test_bind_shortcut_does_not_register_an_uppercase_variant_for_a_multi_char_keysym(tk_root):
     # Regression: an unguarded `f"<KeyPress-{kb.key.upper()}>"` on a
     # multi-char keysym like "Up" produces "<KeyPress-UP>", which is not a

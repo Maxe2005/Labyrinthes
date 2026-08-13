@@ -18,6 +18,8 @@ from labyrinthes.domain.maze_size_bounds import (
     validate_dimensions,
 )
 from labyrinthes.domain.movement import Direction, attempt_move
+from labyrinthes.domain.movement_mode import MovementMode
+from labyrinthes.domain.movement_speed import MovementSpeed, cell_crossing_duration
 from labyrinthes.domain.position import Position
 
 __all__ = [
@@ -34,8 +36,11 @@ __all__ = [
     "MazeId",
     "MazeKind",
     "MazeSizeBounds",
+    "MovementMode",
+    "MovementSpeed",
     "Position",
     "attempt_move",
+    "cell_crossing_duration",
     "generate_random_maze",
     "validate_dimensions",
     "validate_start_position",

@@ -125,6 +125,49 @@ def test_set_ball_position_does_not_create_a_second_ball_item(tk_root):
     assert len(canvas.find_withtag("ball")) == 1
 
 
+def test_set_ball_offset_interpolates_between_cell_centers(tk_root):
+    maze = _maze(width=3, height=3)
+    canvas = MazeCanvas(tk_root, maze, maze.entry, theme=Theme.LIGHT)
+    cell_size = _expected_cell_size(3, 3)
+    radius = cell_size * 0.42 / 2
+
+    # A half-cell offset toward the east of (0, 0)'s center.
+    canvas.set_ball_offset(Position(row=0, col=0), row_delta=0.0, col_delta=0.5)
+
+    cx = 0 * cell_size + cell_size / 2 + 0.5 * cell_size
+    cy = 0 * cell_size + cell_size / 2
+    ball_coords = canvas.coords(canvas.find_withtag("ball")[0])
+    assert ball_coords == [cx - radius, cy - radius, cx + radius, cy + radius]
+
+
+def test_set_ball_offset_supports_negative_row_and_col_deltas(tk_root):
+    maze = _maze(width=3, height=3)
+    canvas = MazeCanvas(tk_root, maze, maze.entry, theme=Theme.LIGHT)
+    cell_size = _expected_cell_size(3, 3)
+    radius = cell_size * 0.42 / 2
+
+    canvas.set_ball_offset(Position(row=1, col=1), row_delta=-1.0, col_delta=-1.0)
+
+    cx = 1 * cell_size + cell_size / 2 - 1.0 * cell_size
+    cy = 1 * cell_size + cell_size / 2 - 1.0 * cell_size
+    ball_coords = canvas.coords(canvas.find_withtag("ball")[0])
+    assert ball_coords == [cx - radius, cy - radius, cx + radius, cy + radius]
+
+
+def test_set_ball_position_is_equivalent_to_a_zero_offset(tk_root):
+    maze = _maze(width=3, height=3)
+    canvas = MazeCanvas(tk_root, maze, maze.entry, theme=Theme.LIGHT)
+    target = Position(row=1, col=1)
+
+    canvas.set_ball_position(target)
+    via_position = canvas.coords(canvas.find_withtag("ball")[0])
+
+    canvas.set_ball_offset(target, row_delta=0.0, col_delta=0.0)
+    via_offset = canvas.coords(canvas.find_withtag("ball")[0])
+
+    assert via_offset == via_position
+
+
 def test_canvas_size_matches_the_computed_cell_size_times_playable_dimensions(tk_root):
     maze = _maze(width=5, height=4)
     cell_size = _expected_cell_size(5, 4)

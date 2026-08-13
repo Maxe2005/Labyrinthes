@@ -136,3 +136,14 @@ def test_active_and_focused_tool_button_renders_a_thicker_ring_than_active_unfoc
     assert active_unfocused_thickness == RESTING_RING_THICKNESS
     assert active_focused_thickness == FOCUS_RING_THICKNESS
     assert active_focused_thickness != active_unfocused_thickness
+
+
+def test_set_text_replaces_the_label_in_place_without_disturbing_active_state(tk_root):
+    button = ToolButton(tk_root, "Normal", theme=Theme.LIGHT)
+    button.set_active(True)
+    assert button._label.cget("text") == "Normal"
+
+    button.set_text("Fast")
+
+    assert button._label.cget("text") == "Fast"
+    assert button.active is True
