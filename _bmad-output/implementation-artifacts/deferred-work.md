@@ -1,5 +1,16 @@
 # Deferred Work
 
+## Deferred from: code review of spec-2-6-levels-progressive-visibility-1-4-max (2026-08-13)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-6-levels-progressive-visibility-1-4-max.md`
+  summary: Level-4 reveal threshold is degenerate at real maze sizes — `round(total_interior_walls/(d+1))` at D1 requires ~half of a 10×10 grid's ~180 interior walls to be discovered before AC-4's "all discovered walls hide again" fires, so walls effectively accumulate until solve. Spec-pinned placeholder formula; explicitly the Story-2.7 seam (which also wires the Difficulty control that parameterizes it).
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-6-levels-progressive-visibility-1-4-max.md`
+  summary: `reveal_threshold` uses Python's banker's `round()` (`round(0.5)==0`, `round(2.5)==2`) whereas the legacy `arrondi` was half-up; for a maze with 1 interior wall at D1 the threshold is 0, so every discovery immediately resets to just that wall (equivalent rendering, but diverges from legacy semantics at fractional boundaries). Spec-pinned `round(...)`; Story-2.7 finalizes the function.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-6-levels-progressive-visibility-1-4-max.md`
+  summary: `MazeCanvas.redraw_structure` deletes and recreates `"wall"`/`"contour"` items, which stack them above the constructor-drawn entry/exit markers and ball in canvas z-order (constructor order was walls → markers → ball). No geometric overlap today (ball radius is a fraction of a cell and walls sit on cell borders), so visually benign; latent if wall thickness or marker sizing ever changes.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-6-levels-progressive-visibility-1-4-max.md`
+  summary: Wall-segment decoding is duplicated across four independent walkers — `level_visibility._all_walls`, `total_interior_walls`, `visible_walls`, and `MazeCanvas._draw_walls` — each walking the raw grid with subtly different semantics (full grid vs partition-boundary clipping). Drift risk; a single "walls of this grid" primitive would remove it.
+
 ## Deferred from: code review of spec-2-5-movement-modes-smooth-vs-discrete-configurable-speed (2026-08-13)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-5-movement-modes-smooth-vs-discrete-configurable-speed.md`

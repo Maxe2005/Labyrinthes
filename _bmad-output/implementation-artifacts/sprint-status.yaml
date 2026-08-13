@@ -74,7 +74,7 @@ development_status:
   2-3-random-maze-saving-reappears-after-restart: done
   2-4-gameplay-screen-foundation-rendering-hud-baseline-movement-win-detection: done
   2-5-movement-modes-smooth-vs-discrete-configurable-speed: done
-  2-6-levels-progressive-visibility-1-4-max: review
+  2-6-levels-progressive-visibility-1-4-max: done
   2-7-difficulty-unified-threshold-formula: backlog
   2-8-hard-mode-invisible-ball-fog-overlay-status-light: backlog
   2-9-timer-optional-time-limit-timeout-message: backlog

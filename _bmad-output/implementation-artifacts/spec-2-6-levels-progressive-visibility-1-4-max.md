@@ -2,9 +2,9 @@
 title: 'Story 2.6: Levels — progressive visibility (1–4, Max)'
 type: 'feature'
 created: '2026-08-13'
-status: 'review'
+status: 'done'
 baseline_commit: '01c043a'
-review_loop_iteration: 0
+review_loop_iteration: 1
 followup_review_recommended: false
 context: ['_bmad-output/implementation-artifacts/epic-2-context.md']
 baseline_revision: '01c043a'
@@ -12,7 +12,7 @@ baseline_revision: '01c043a'
 
 # Story 2.6: Levels — progressive visibility (1–4, Max)
 
-Status: review
+Status: done
 
 ## Story
 
@@ -132,10 +132,24 @@ The Level is **session-scoped, not persisted** — each new maze mount starts at
 - [x] Given Level 4 active → walls invisible until collision; past a discovered-wall threshold they hide again
 - [x] Given Level Max active → all walls permanently invisible
 
+### Review Findings
+
+- [x] [Review][Patch] Screen-level Level-2 threshold-reset redraw test missing [tests/adapters/tkinter/player/test_gameplay_screen.py] — spec test plan (line 113) promises "Level 2's partition redraw on entry and threshold reset"; only partition-entry is covered (`test_level_two_partition_advance_redraws_the_structure`). The reset-on-threshold branch (level_visibility.py:293-294) is implemented but only exercised at domain level. Also gaps the I/O matrix rows for Level 3 and Level-4 Smooth-boundary-stop at screen level. — fixed: added `test_level_two_threshold_reset_hides_all_partitions_but_the_current`, `test_level_three_redraws_only_the_current_partition`, `test_level_four_smooth_boundary_stop_redraws_the_discovered_wall`
+- [x] [Review][Patch] `set_level` mid-leg in-flight-leg preservation untested [tests/application/test_player_session.py] — I/O matrix row "Level change mid-leg" ("the in-flight leg's geometry is untouched") has no test; all `set_level`/`_cycle_level` tests run at rest, so a regression dropping `moving_direction`/`leg_target`/`step` on a mid-motion level change would freeze the ball with no test failing. Mirror `test_set_mode_replaces_the_mode_without_touching_an_in_flight_leg`. — fixed: added `test_set_level_preserves_an_in_flight_leg`
+- [x] [Review][Patch] `set_level` preservation of elapsed/mode/speed unasserted [tests/application/test_player_session.py:446] — spec test plan (line 111) requires "preserves position/elapsed/mode/speed, no-op once solved"; the test asserts only position/solved/level/visibility. Behavior is correct (`set_level` uses `replace`, keeping elapsed/mode/speed); assertions needed. — fixed: added `test_set_level_preserves_elapsed_mode_and_speed`
+- [x] [Review][Patch] Contour exit-reopen bars tested only for the bottom edge [tests/adapters/tkinter/player/test_maze_canvas.py:298] — the top/left/right reopen branches (maze_canvas.py:155-182) are implemented but untested; a regression reopening the wrong side for a top/left/right-exiting maze would visually wall the exit off while `len(contour) > 0` assertions still pass. Parametrize over all four edges plus a corner. — fixed: added `test_redraw_structure_reopens_every_exit_edge_with_corridor_bars`
+- [x] [Review][Patch] Level-2 `current_partition` goes stale on re-entry into a visited partition [src/labyrinthes/domain/level_visibility.py:287] — `advance_visibility` Level-TWO re-entry branch returns `visibility` unchanged, leaving `current_partition` behind the ball. Benign today (Level-2 rendering reads `visited`, not `current_partition`) but violates the field's documented meaning ("the ball's current partition"); a latent trap for any future consumer. — fixed: re-entry now `replace(visibility, current_partition=current)` unless already the current partition (no-op preserved); tests `test_level_two_reentering_a_visited_partition_updates_current_partition` + `test_level_two_staying_within_the_current_partition_is_a_no_op`
+- [x] [Review][Patch] `Wall`/`Partition` lack runtime validation [src/labyrinthes/domain/level_visibility.py:62,72] — `side: Literal["top","left"]` is type-hint only; a `side="bottom"` typo silently renders nothing, defeats `is_border_wall`, and inflates `total_interior_walls`, unlike the defensive `__post_init__` used elsewhere in `domain/`. Add a `__post_init__` guard. — fixed: `__post_init__` on `Wall` (side) and `Partition` (non-degenerate rectangle); tests `test_wall_rejects_an_invalid_side`/`test_partition_rejects_a_degenerate_rectangle`
+- [x] [Review][Defer] Level-4 reveal threshold is degenerate at real maze sizes [src/labyrinthes/domain/level_visibility.py:324] — `round(total_interior_walls/(d+1))` at D1 means ~half of a 10×10 grid's ~180 interior walls must be discovered before AC-4's "hide again" fires; in practice walls accumulate until solve. Spec-pinned placeholder formula, explicitly the Story-2.7 seam — deferred, pre-existing
+- [x] [Review][Defer] `reveal_threshold` uses Python's banker's `round()` vs legacy half-up `arrondi` [src/labyrinthes/domain/level_visibility.py:194] — `round(0.5)==0`, `round(2.5)==2`; for a maze with 1 interior wall at D1 the threshold is 0, so every discovery immediately resets to just that wall (equivalent rendering, but diverges from legacy semantics at fractional boundaries). Spec-pinned `round(...)`; Story-2.7 finalizes the function — deferred, pre-existing
+- [x] [Review][Defer] `redraw_structure` recreates walls above markers/ball in canvas z-order [src/labyrinthes/adapters/tkinter/player/maze_canvas.py:131] — deleted-and-recreated `"wall"`/`"contour"` items stack above the constructor-drawn markers/ball (constructor order was walls → markers → ball). No geometric overlap today (ball radius ≪ cell half), so visually benign; latent if wall/marker sizing ever changes — deferred, pre-existing
+- [x] [Review][Defer] Wall-decoding walkers duplicated across four sites [src/labyrinthes/domain/level_visibility.py] — `_all_walls`, `total_interior_walls`, `visible_walls`, and `MazeCanvas._draw_walls` each walk the grid decoding walls with subtly different semantics; drift risk. A single "walls of this grid" primitive would remove it — deferred, pre-existing
+
 ## Spec Change Log
 
 - 2026-08-13 — Created spec from epics.md Story 2.6 ACs (lines 600-628), epic-2-context.md (Levels/Difficulty mechanics + game-scoped settings list), PRD FR-12/FR-13 + addendum "Level detail", legacy `Labyrinthes_copy.py` (`decoupage_du_lab`, `creation_partitions_lab`, `Position_joueur_sur_back_lab_partition`, `trace_grille`/`trace_contours_lab`, `fleches`/`test_nb_murs_niv_4`, `Niveaux`), Story 2.5's spec/review learnings, and the current `rewrite` codebase.
 - 2026-08-13 — Implemented Story 2.6 on `story-2-6-levels-progressive-visibility-1-4-max` (baseline `01c043a`). Full suite green (577 passed); `ruff check` clean on the touched files (6 pre-existing E501/F401 issues fixed), `ruff format` clean. Story status moved `in-progress` -> `review` for code review.
+- 2026-08-13 — Code review complete (Blind Hunter, Verification Gap, Acceptance Auditor; Edge Case Hunter returned empty and was marked failed). 6 patch findings fixed, 4 deferred (written to `deferred-work.md`), 10 dismissed. Full suite now 593 passed; `ruff check`/`ruff format` clean on `src`+`tests`. Story status moved `review` -> `done`.
 
 ## Review Triage Log
 
