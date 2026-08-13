@@ -1,5 +1,5 @@
 # generated: 2026-08-05
-# last_updated: 2026-08-09
+# last_updated: 2026-08-13
 # project: Labyrinthes
 # project_key: NOKEY
 # tracking_system: file-system
@@ -46,7 +46,7 @@
 # re-run this workflow once a dedicated epics/stories pass gives it real stories.
 
 generated: 2026-08-05
-last_updated: 2026-08-09
+last_updated: 2026-08-13
 project: Labyrinthes
 project_key: NOKEY
 tracking_system: file-system
@@ -73,7 +73,7 @@ development_status:
   2-2-random-maze-generation-with-validation: done
   2-3-random-maze-saving-reappears-after-restart: done
   2-4-gameplay-screen-foundation-rendering-hud-baseline-movement-win-detection: done
-  2-5-movement-modes-smooth-vs-discrete-configurable-speed: ready-for-dev
+  2-5-movement-modes-smooth-vs-discrete-configurable-speed: review
   2-6-levels-progressive-visibility-1-4-max: backlog
   2-7-difficulty-unified-threshold-formula: backlog
   2-8-hard-mode-invisible-ball-fog-overlay-status-light: backlog

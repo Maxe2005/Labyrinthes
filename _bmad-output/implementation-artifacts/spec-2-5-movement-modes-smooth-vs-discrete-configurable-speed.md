@@ -2,7 +2,8 @@
 title: 'Story 2.5: Movement modes — Smooth vs Discrete, configurable speed'
 type: 'feature'
 created: '2026-08-13'
-status: 'ready-for-dev'
+status: 'review'
+baseline_commit: '6315719bd799beb8fafb5249c8a23978c432d299'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: ['_bmad-output/implementation-artifacts/epic-2-context.md']
@@ -87,24 +88,24 @@ baseline_revision: '0aecc4d'
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `src/labyrinthes/domain/movement_mode.py` -- add `MovementMode` -- pure enum
-- [ ] `src/labyrinthes/domain/movement_speed.py` -- add `MovementSpeed` + `cell_crossing_duration()` -- pure enum/function
-- [ ] `src/labyrinthes/domain/__init__.py` -- export the two new types/functions
-- [ ] `tests/domain/test_movement_mode.py` + `tests/domain/test_movement_speed.py` -- unit tests
-- [ ] `src/labyrinthes/application/player_session.py` -- rework to `request_move`/`advance_step`/`set_mode`/`set_speed` + new session fields + `STEPS_PER_CELL` -- pure orchestration
-- [ ] `tests/application/test_player_session.py` -- port + new Discrete/Smooth/settings-application rows
-- [ ] `src/labyrinthes/application/movement_settings.py` -- read/write with per-field fallback -- port-pattern mirror of `maze_size_bounds`
-- [ ] `src/labyrinthes/application/settings_keys.py` -- add `MOVEMENT_MODE`/`MOVEMENT_SPEED`
-- [ ] `tests/application/test_movement_settings.py` -- fallback/round-trip coverage
-- [ ] `src/labyrinthes/adapters/tkinter/common/tool_btn.py` -- add `set_text()`
-- [ ] `tests/adapters/tkinter/common/test_tool_btn.py` -- test `set_text()`
-- [ ] `src/labyrinthes/adapters/tkinter/common/keybindings.py` -- add `toggle_movement_mode`/`"m"`
-- [ ] `tests/adapters/tkinter/common/test_keybindings.py` -- extend for the new entry
-- [ ] `src/labyrinthes/adapters/tkinter/player/maze_canvas.py` -- add `set_ball_offset`, make `set_ball_position` a wrapper
-- [ ] `tests/adapters/tkinter/player/test_maze_canvas.py` -- test `set_ball_offset`
-- [ ] `src/labyrinthes/adapters/tkinter/player/gameplay_screen.py` -- settings kwarg, sidebar "Movement" group, `request_move`+animation loop, win-at-leg-completion, focus-guard reuse
-- [ ] `tests/adapters/tkinter/player/test_gameplay_screen.py` -- update 31 call sites, add `_settle()`, sidebar/focus/tick-cancellation rows
-- [ ] `src/labyrinthes/adapters/tkinter/player/screen.py` -- thread `settings_repository` into `GameplayScreen`
+- [x] `src/labyrinthes/domain/movement_mode.py` -- add `MovementMode` -- pure enum
+- [x] `src/labyrinthes/domain/movement_speed.py` -- add `MovementSpeed` + `cell_crossing_duration()` -- pure enum/function
+- [x] `src/labyrinthes/domain/__init__.py` -- export the two new types/functions
+- [x] `tests/domain/test_movement_mode.py` + `tests/domain/test_movement_speed.py` -- unit tests
+- [x] `src/labyrinthes/application/player_session.py` -- rework to `request_move`/`advance_step`/`set_mode`/`set_speed` + new session fields + `STEPS_PER_CELL` -- pure orchestration
+- [x] `tests/application/test_player_session.py` -- port + new Discrete/Smooth/settings-application rows
+- [x] `src/labyrinthes/application/movement_settings.py` -- read/write with per-field fallback -- port-pattern mirror of `maze_size_bounds`
+- [x] `src/labyrinthes/application/settings_keys.py` -- add `MOVEMENT_MODE`/`MOVEMENT_SPEED`
+- [x] `tests/application/test_movement_settings.py` -- fallback/round-trip coverage
+- [x] `src/labyrinthes/adapters/tkinter/common/tool_btn.py` -- add `set_text()`
+- [x] `tests/adapters/tkinter/common/test_tool_btn.py` -- test `set_text()`
+- [x] `src/labyrinthes/adapters/tkinter/common/keybindings.py` -- add `toggle_movement_mode`/`"m"`
+- [x] `tests/adapters/tkinter/common/test_keybindings.py` -- extend for the new entry
+- [x] `src/labyrinthes/adapters/tkinter/player/maze_canvas.py` -- add `set_ball_offset`, make `set_ball_position` a wrapper
+- [x] `tests/adapters/tkinter/player/test_maze_canvas.py` -- test `set_ball_offset`
+- [x] `src/labyrinthes/adapters/tkinter/player/gameplay_screen.py` -- settings kwarg, sidebar "Movement" group, `request_move`+animation loop, win-at-leg-completion, focus-guard reuse
+- [x] `tests/adapters/tkinter/player/test_gameplay_screen.py` -- update 31 call sites, add `_settle()`, sidebar/focus/tick-cancellation rows
+- [x] `src/labyrinthes/adapters/tkinter/player/screen.py` -- thread `settings_repository` into `GameplayScreen`
 
 **Acceptance Criteria:**
 - Given Discrete mode, when an arrow key is pressed, then the ball moves exactly one cell per press (one-cell leg, one press = one cell -- the Story 2.4 behavior preserved, now animated)
@@ -113,6 +114,8 @@ baseline_revision: '0aecc4d'
 - Given the mode is switched mid-session, when the next input arrives, then the new mode's behavior applies immediately
 
 ## Spec Change Log
+
+- 2026-08-13 -- Implemented Story 2.5 on `story-2-5-movement-modes-smooth-vs-discrete-configurable-speed` (baseline `6315719bd`). Full suite green (527 passed); `ruff check`/`ruff format` clean on `src/`/`tests/`. Story status moved `in-progress` -> `review` for code review.
 
 ## Review Triage Log
 
@@ -158,8 +161,15 @@ Prior investigation + design for this story exists as the committed record `bmad
 ### Completion Notes List
 
 - Created spec from epics.md Story 2.5 ACs (lines 576-599), epic-2-context.md, PRD FR-15 / EXPERIENCE.md interaction primitives, legacy `Labyrinthes_copy.py` movement code, Story 2.4's spec/review learnings, and the current `rewrite` codebase.
+- Implemented the full story: new `MovementMode`/`MovementSpeed` domain types; `player_session.py` reworked into the leg/animation model (`request_move`/`advance_step`/`set_mode`/`set_speed`, `STEPS_PER_CELL = 5`); `game`-scoped `movement_settings.py` read/write with per-field fallback; `set_ball_offset` on `MazeCanvas`; `ToolButton.set_text`; `toggle_movement_mode` keybinding on `m`; `GameplayScreen` rewritten with the "Movement" sidebar group, `.after()` animation loop (rescheduled at `cell_crossing_duration(speed).milliseconds // STEPS_PER_CELL` per tick, recomputed each reschedule), win-at-leg-completion, and the shared toplevel focus guard; `screen.py` threads `settings_repository`.
+- Verified: `pytest` full suite green (527 passed), `ruff check`/`ruff format` clean on `src/`/`tests/` (pre-existing lint noise only in gitignored third-party `.agents/skills/`).
 
 ### File List
 
 - This spec: `_bmad-output/implementation-artifacts/spec-2-5-movement-modes-smooth-vs-discrete-configurable-speed.md`
-- Story-2.5 backlog entry in `_bmad-output/implementation-artifacts/sprint-status.yaml` (2-5: backlog -> ready-for-dev; epic-2 status left unchanged -- 2-1 through 2-4 are already done)
+- Story-2.5 backlog entry in `_bmad-output/implementation-artifacts/sprint-status.yaml` (2-5: in-progress -> review)
+- `src/labyrinthes/domain/movement_mode.py` (NEW), `src/labyrinthes/domain/movement_speed.py` (NEW), `src/labyrinthes/domain/__init__.py`
+- `src/labyrinthes/application/player_session.py`, `src/labyrinthes/application/movement_settings.py` (NEW), `src/labyrinthes/application/settings_keys.py`
+- `src/labyrinthes/adapters/tkinter/common/tool_btn.py`, `src/labyrinthes/adapters/tkinter/common/keybindings.py`
+- `src/labyrinthes/adapters/tkinter/player/maze_canvas.py`, `src/labyrinthes/adapters/tkinter/player/gameplay_screen.py`, `src/labyrinthes/adapters/tkinter/player/screen.py`
+- Tests: `tests/domain/test_movement_mode.py` (NEW), `tests/domain/test_movement_speed.py` (NEW), `tests/application/test_player_session.py`, `tests/application/test_movement_settings.py` (NEW), `tests/adapters/tkinter/common/test_tool_btn.py`, `tests/adapters/tkinter/common/test_keybindings.py`, `tests/adapters/tkinter/player/test_maze_canvas.py`, `tests/adapters/tkinter/player/test_gameplay_screen.py`

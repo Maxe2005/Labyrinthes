@@ -147,8 +147,19 @@ class MazeCanvas(tk.Canvas):
 
     # -- movement --------------------------------------------------------
 
-    def set_ball_position(self, position: Position) -> None:
-        """Move the ball item to `position`'s cell center, without redrawing anything else."""
-        cx, cy = self._cell_center(position)
+    def set_ball_offset(self, position: Position, row_delta: float, col_delta: float) -> None:
+        """Reposition the ball to an interpolated point near `position`.
+
+        `row_delta`/`col_delta` are fractions of one cell (in units of
+        `self._cell_size`) from `position`'s center -- `0`/`0` is exactly
+        the cell center. Lets `GameplayScreen` render the in-flight position
+        of a partially-completed leg each animation tick.
+        """
+        cx = (position.col + col_delta) * self._cell_size + self._cell_size / 2
+        cy = (position.row + row_delta) * self._cell_size + self._cell_size / 2
         radius = self._radius(_BALL_SCALE)
         self.coords(self._ball_id, cx - radius, cy - radius, cx + radius, cy + radius)
+
+    def set_ball_position(self, position: Position) -> None:
+        """Move the ball item to `position`'s cell center, without redrawing anything else."""
+        self.set_ball_offset(position, 0, 0)
