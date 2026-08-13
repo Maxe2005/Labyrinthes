@@ -460,6 +460,45 @@ def test_set_level_reinitializes_visibility_from_the_current_position():
     assert session.visibility.contour_shown is True
 
 
+def test_set_level_preserves_elapsed_mode_and_speed():
+    maze = _partition_maze()
+    session = _discrete(maze)
+    session = set_speed(session, MovementSpeed.FAST)
+    session = tick(session, Duration(milliseconds=5000))
+    session = request_move(session, Direction.RIGHT)
+    session = _settle(session)
+    assert session.elapsed == Duration(milliseconds=5000)
+    assert session.mode is MovementMode.DISCRETE
+    assert session.speed is MovementSpeed.FAST
+
+    session = set_level(session, Level.FOUR)
+
+    assert session.elapsed == Duration(milliseconds=5000)
+    assert session.mode is MovementMode.DISCRETE
+    assert session.speed is MovementSpeed.FAST
+
+
+def test_set_level_preserves_an_in_flight_leg():
+    maze = _partition_maze()
+    session = _discrete(maze)
+    session = request_move(session, Direction.RIGHT)
+    assert session.moving_direction is Direction.RIGHT
+    assert session.leg_target == Position(row=0, col=1)
+    assert session.step == 0
+
+    session = set_level(session, Level.FOUR)
+
+    assert session.moving_direction is Direction.RIGHT
+    assert session.leg_target == Position(row=0, col=1)
+    assert session.step == 0
+    assert session.pending_direction is None
+
+    session = _settle(session)
+    assert session.position == Position(row=0, col=1)
+    assert session.moving_direction is None
+    assert session.level is Level.FOUR
+
+
 def test_set_level_is_a_no_op_once_solved():
     maze = _open_maze(width=2)
     session = _discrete(maze)
