@@ -8,6 +8,7 @@ from labyrinthes.adapters.tkinter.common.tokens import Theme
 from labyrinthes.adapters.tkinter.player.gameplay_screen import GameplayScreen
 from labyrinthes.adapters.tkinter.player.maze_canvas import MazeCanvas
 from labyrinthes.adapters.tkinter.player.save_maze_dialog import SaveMazeDialog
+from labyrinthes.application.player_session import STEPS_PER_CELL
 from labyrinthes.application.settings_keys import MOVEMENT_MODE, MOVEMENT_SPEED
 from labyrinthes.application.settings_repository import SettingsScope
 from labyrinthes.domain.cell import Cell
@@ -15,7 +16,7 @@ from labyrinthes.domain.grid import Grid
 from labyrinthes.domain.maze import Maze, MazeKind
 from labyrinthes.domain.movement import Direction
 from labyrinthes.domain.movement_mode import MovementMode
-from labyrinthes.domain.movement_speed import MovementSpeed
+from labyrinthes.domain.movement_speed import MovementSpeed, cell_crossing_duration
 from labyrinthes.domain.position import Position
 
 # -- fixtures ------------------------------------------------------------
@@ -494,6 +495,32 @@ def test_speed_button_cycles_through_the_tiers_and_relabels(
 
     assert screen._session.speed is MovementSpeed.NORMAL
     assert screen._speed_button._label.cget("text") == "Normal"
+
+
+def test_animation_per_step_delay_reflects_the_current_speed_and_recomputes_on_a_live_change(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    screen = GameplayScreen(
+        tk_root,
+        _open_maze(width=3),
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    recorded: list[int] = []
+    screen.after = lambda delay, callback, *args: recorded.append(delay) or "job"
+
+    screen._on_move(Direction.RIGHT)
+
+    normal_per_step = cell_crossing_duration(MovementSpeed.NORMAL).milliseconds // STEPS_PER_CELL
+    assert recorded == [normal_per_step]
+
+    screen._cycle_speed()
+
+    fast_per_step = cell_crossing_duration(MovementSpeed.FAST).milliseconds // STEPS_PER_CELL
+    screen._reschedule_animation()
+
+    assert recorded == [normal_per_step, fast_per_step]
 
 
 def test_mode_toggle_is_a_no_op_while_focus_is_in_another_toplevel(

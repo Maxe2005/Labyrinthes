@@ -100,6 +100,26 @@ def _deadend_maze() -> Maze:
     )
 
 
+def _redirect_win_maze() -> Maze:
+    # Same geometry as `_redirect_maze` (right then banked DOWN onto (1,1)),
+    # but the exit sits on the redirect target so the win fires at the commit
+    # of the redirected leg, not the initial straight leg.
+    grid = Grid(
+        cells=(
+            (Cell("0"), Cell("1"), Cell("2")),
+            (Cell("0"), Cell("0"), Cell("2")),
+            (Cell("1"), Cell("1"), Cell("0")),
+        )
+    )
+    return Maze(
+        grid=grid,
+        entry=Position(row=0, col=0),
+        exit=Position(row=1, col=1),
+        kind=MazeKind.CLASSIC,
+        id=None,
+    )
+
+
 def _discrete(maze: Maze):
     return set_mode(start_session(maze), MovementMode.DISCRETE)
 
@@ -272,6 +292,34 @@ def test_smooth_stops_when_the_heading_hits_a_wall():
     assert session.pending_direction is None
 
 
+def test_smooth_stops_in_a_corner_when_both_the_banked_turn_and_straight_are_blocked():
+    maze = _deadend_maze()
+    session = request_move(start_session(maze), Direction.RIGHT)
+    session = request_move(session, Direction.DOWN)
+
+    session = _advance_n(session, STEPS_PER_CELL)
+
+    assert session.position == Position(row=0, col=1)
+    assert session.moving_direction is None
+    assert session.leg_target is None
+    assert session.pending_direction is None
+
+
+def test_smooth_win_is_detected_when_a_banked_redirect_commits_onto_the_exit():
+    maze = _redirect_win_maze()
+    session = request_move(start_session(maze), Direction.RIGHT)
+    session = request_move(session, Direction.DOWN)
+
+    session = _advance_n(session, STEPS_PER_CELL)
+    assert session.position == Position(row=0, col=1)
+    assert session.solved is False
+    assert session.moving_direction is Direction.DOWN
+
+    session = _advance_n(session, STEPS_PER_CELL)
+    assert session.position == maze.exit
+    assert session.solved is True
+
+
 # -- mode / speed ------------------------------------------------------
 
 
@@ -284,6 +332,19 @@ def test_set_mode_replaces_the_mode_without_touching_an_in_flight_leg():
     assert session.mode is MovementMode.DISCRETE
     assert session.moving_direction is Direction.RIGHT
     assert session.leg_target == Position(row=0, col=1)
+
+
+def test_discrete_leg_switched_to_smooth_mid_flight_continues_straight_at_commit():
+    maze = _open_maze(width=3)
+    session = _discrete(maze)
+    session = request_move(session, Direction.RIGHT)
+    session = set_mode(session, MovementMode.SMOOTH)
+
+    session = _advance_n(session, STEPS_PER_CELL)
+
+    assert session.position == Position(row=0, col=1)
+    assert session.moving_direction is Direction.RIGHT
+    assert session.leg_target == Position(row=0, col=2)
 
 
 def test_set_speed_replaces_the_speed():
