@@ -63,6 +63,7 @@ Strict, story-driven convention (full detail in `CLAUDE.md` "Git workflow"):
 - One **epic branch** from `rewrite` (named after the epic in `_bmad-output/planning-artifacts/epics.md`); one **story branch** from that epic (named after its sprint-status key). Never commit directly to an epic branch.
 - Atomic commits, Conventional Commits **in English**, with the story number in the subject line (e.g. `feat(domain): add Cell value object with wall-bit decoding (story 1.1)`).
 - Story → epic via `git merge --no-ff`; epic → `rewrite` only via pull request.
+- **Epic branches accumulate stories**: the epic branch lives until *all* its stories are done (every status `done` in `sprint-status.yaml`), and only then is it merged into `rewrite` via a pull request. A finished story is merged story → epic, then left there; **never** merge an epic into `rewrite` just because one of its stories is done — an epic with unfinished stories stays off `rewrite`.
 - `bmad-loop` automates story dev/review/merge in gitignored worktrees; its merge commits (`Merge bmad-loop/<run>/<story> …`) are orchestration history — leave them as-is.
 
 ## BMad planning artifacts
