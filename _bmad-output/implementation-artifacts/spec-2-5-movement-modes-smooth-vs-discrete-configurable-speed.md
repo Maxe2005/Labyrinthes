@@ -2,7 +2,7 @@
 title: 'Story 2.5: Movement modes — Smooth vs Discrete, configurable speed'
 type: 'feature'
 created: '2026-08-13'
-status: 'review'
+status: 'done'
 baseline_commit: '6315719bd799beb8fafb5249c8a23978c432d299'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -38,7 +38,7 @@ baseline_revision: '0aecc4d'
 | Arrow key, Smooth, mid-leg | A different direction pressed while moving | The direction is banked as `pending_direction`; at the next cell boundary the ball turns into it if open (redirect mid-move, no stop), otherwise it continues straight, and the banked turn is *retried* at the following boundary (legacy un-cleared `next_dir` semantics) | No error |
 | Arrow key, Smooth, wall blocks current heading | `request_move` (or boundary resolution) finds the heading blocked | The ball stops at the last open cell; the leg ends (no error, no overshoot) | No error |
 | Speed changed mid-session | `set_speed`/sidebar cycles Slow→Normal→Fast | `session.speed` updates; the animation reschedule recomputes the per-step delay from the new `cell_crossing_duration(speed)`, so the change applies to both modes' next ticks immediately; persisted `game`-scoped | No error |
-| Mode switched mid-session | `set_mode` toggles SMOOTH↔DISCRETE while a leg is in flight | The in-flight leg completes under the engine that started it; the *next* input applies the new mode's behavior immediately (AC4) | No error |
+| Mode switched mid-session | `set_mode` toggles SMOOTH↔DISCRETE while a leg is in flight | The in-flight leg's geometry is untouched; its boundary resolution (`advance_step`) dispatches on the *current* `session.mode` at commit — so toggling to DISCRETE stops a Smooth leg at the next boundary, toggling to SMOOTH lets a Discrete leg continue straight. The *next* keypress applies the new mode's behavior immediately (AC4) | No error |
 | Reach the exit | A leg completes with `leg_target == maze.exit` | Win banner appears (leg-completion branch); session `solved=True`; Time chip/pos freeze; animation and elapsed tick loops cancelled | No error |
 | Reaching the exit mid-leg (Smooth, crossing onto exit cell) | `leg_target == maze.exit` at commit | Solve detected at leg completion, not at the earlier keypress -- the ball visibly reaches the exit cell before the banner shows | No error |
 | Movement/mode input while focus is in another toplevel | Arrow key or `m` pressed while `SaveMazeDialog`'s field/button has focus | No-op -- the ball doesn't move and the mode doesn't toggle behind the dialog | No error |
@@ -116,8 +116,24 @@ baseline_revision: '0aecc4d'
 ## Spec Change Log
 
 - 2026-08-13 -- Implemented Story 2.5 on `story-2-5-movement-modes-smooth-vs-discrete-configurable-speed` (baseline `6315719bd`). Full suite green (527 passed); `ruff check`/`ruff format` clean on `src/`/`tests/`. Story status moved `in-progress` -> `review` for code review.
+- 2026-08-13 -- Code review complete. Resolved 1 decision-needed (mid-leg mode switch: **code wins** — boundary resolution runs under the current `session.mode`; I/O matrix + Design Note updated to match). Applied all 5 patches: added `_per_step_ms()` helper (dedup of the cadence formula), + a cadence/live-speed GUI test, + 3 domain tests (win via banked redirect, mid-leg Discrete→Smooth, corner dead-end both-blocked). 6 deferred, 7 dismissed. Full suite green (531 passed); `ruff` clean. Story status moved `review` -> `done`.
 
 ## Review Triage Log
+
+### Review Findings (code review 2026-08-13)
+
+- [x] [Review][Decision] Mid-leg mode switch: in-flight leg doesn't complete under its starting engine — `advance_step` (player_session.py:160-171) dispatches on the *current* `session.mode` at leg commit, so a Smooth leg toggled to DISCRETE mid-flight is interrupted at the next boundary instead of continuing straight under the engine that started it. Spec was internally contradictory: Code Map line 62 ("the next request_move/advance_step behaves per the new mode") vs I/O matrix + Design Note ("the in-flight leg completes under the engine that started it"). **Resolved in review (decision): code wins** — boundary resolution runs under the current `session.mode` at commit; I/O matrix row and Design Note updated to match. No code change; BH2 (mid-leg Discrete→Smooth test) remains as a patch.
+- [x] [Review][Patch] Animation cadence (central AC3) never tested [src/labyrinthes/adapters/tkinter/player/gameplay_screen.py:287,331] — the per-sub-step `.after()` delay (`cell_crossing_duration(speed).milliseconds // STEPS_PER_CELL`) and the live-speed recompute in `_reschedule_animation` are never asserted; `_settle()` bypasses `.after()` entirely, so a broken or speed-unresponsive cadence would pass the whole suite. **Fixed:** extracted `_per_step_ms()` helper + added `test_animation_per_step_delay_reflects_the_current_speed_and_recomputes_on_a_live_change`.
+- [x] [Review][Patch] No test for a win reached via a Smooth banked redirect [tests/application/test_player_session.py] — **Fixed:** added `test_smooth_win_is_detected_when_a_banked_redirect_commits_onto_the_exit` (+ `_redirect_win_maze`).
+- [x] [Review][Patch] No test for a mid-leg Discrete→Smooth mode switch (coupled to the Decision above) [tests/application/test_player_session.py] — **Fixed:** added `test_discrete_leg_switched_to_smooth_mid_flight_continues_straight_at_commit`.
+- [x] [Review][Patch] per_step_ms formula duplicated between `_on_move` and `_reschedule_animation` — extract a single helper [src/labyrinthes/adapters/tkinter/player/gameplay_screen.py:287,331] — **Fixed:** added `_per_step_ms()` used by both.
+- [x] [Review][Patch] No test for a Smooth corner where both the banked turn and straight-ahead are blocked [tests/application/test_player_session.py] — **Fixed:** added `test_smooth_stops_in_a_corner_when_both_the_banked_turn_and_straight_are_blocked`.
+- [x] [Review][Defer] "Movement" group not implemented as a ToolButtonGroup (Code Map deviation) [src/labyrinthes/adapters/tkinter/player/gameplay_screen.py:185] — deferred, functionally fine given a single boolean toggle; manual active-state sync works.
+- [x] [Review][Defer] Post-solve sidebar buttons (`_toggle_mode`/`_cycle_speed`) still relabel/write settings while the session is frozen (set_* are no-ops once solved) [src/labyrinthes/adapters/tkinter/player/gameplay_screen.py:341,353] — deferred, cosmetic on a finished run; persisting the preference for the next session is arguably desirable.
+- [x] [Review][Defer] `_read_member` "Never raises" only catches 4 exception types (other `settings.get` errors would propagate) [src/labyrinthes/application/movement_settings.py:28] — deferred, parity with existing `maze_size_bounds._read_bound` pattern.
+- [x] [Review][Defer] `_SPEED_CYCLE = tuple(MovementSpeed)` depends on enum declaration order [src/labyrinthes/adapters/tkinter/player/gameplay_screen.py:96] — deferred, enum order is stable.
+- [x] [Review][Defer] No screen-level test for movement input after solve [tests/adapters/tkinter/player/test_gameplay_screen.py] — deferred, behavior covered by domain solved-guard tests.
+- [x] [Review][Defer] No corrupt-settings-at-mount integration test for the player screen [tests/adapters/tkinter/player/] — deferred, never-raise guarantee covered by test_movement_settings unit tests.
 
 ## Design Notes
 
@@ -131,7 +147,7 @@ baseline_revision: '0aecc4d'
 
 **"Banked turn" retry semantics ported from legacy.** Legacy `fonction_dep` checks `next_dir` only at cell boundaries and does *not* clear it when the banked direction is blocked (`Labyrinthes_copy.py` lines 1074-1084) -- the direction is retried at the following boundary. `advance_step` reproduces this: `pending_direction` survives a blocked boundary, letting a player mash a turn slightly early and have it take effect at the next junction.
 
-**Mid-leg mode switch: finish the in-flight leg, then apply the new mode.** AC4 ("switching modes mid-session applies immediately to the next input") is satisfied by making `request_move`/`advance_step` dispatch on the *current* `session.mode`: the leg already in flight when the toggle lands completes under its starting engine (it can't retroactively change), and the very next keypress after the toggle runs under the new mode. `set_mode`/`set_speed` are pure field replacements with no engine logic of their own.
+**Mid-leg mode switch: boundary resolution runs under the *current* mode (Code Map reading).** AC4 ("switching modes mid-session applies immediately to the next input") is satisfied by making `request_move`/`advance_step` dispatch on the *current* `session.mode`. The in-flight leg's geometry (`moving_direction`/`leg_target`) is untouched by the toggle; what changes is how its boundary is resolved once it commits — `advance_step` checks `session.mode` at commit, so toggling to DISCRETE mid-leg stops a Smooth leg at the next boundary (no straight continuation), while toggling to SMOOTH mid-leg lets a Discrete leg continue straight under the Smooth resolution. `set_mode`/`set_speed` are pure field replacements with no engine logic of their own. (Resolved in review: the earlier Design Note wording "completes under the engine that started it" was dropped as inconsistent with the code and the Code Map; this is the intended behavior.)
 
 **Sidebar placement is this story's own decision.** The mockup's gameplay screen shows a left "Session" sidebar and right "Shortcuts"/"Mode" sidebars; only the "Movement" group (mode toggle + Ball speed) is backed by this story's ACs, and the legacy puts the movement/speed controls together (`Labyrinthes_copy.py` lines 328-330, 1814-1832). A single left-hand sidebar with the "Movement" group is the minimal, mockup-consistent placement; Pause/Restart/Sound/Legend/Mode stay out per Story 2.4's explicit deferral.
 

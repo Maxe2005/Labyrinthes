@@ -1,5 +1,20 @@
 # Deferred Work
 
+## Deferred from: code review of spec-2-5-movement-modes-smooth-vs-discrete-configurable-speed (2026-08-13)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-5-movement-modes-smooth-vs-discrete-configurable-speed.md`
+  summary: The "Movement" sidebar group is built as a plain `Frame` with two `ToolButton`s plus manual active-state sync, not a `ToolButtonGroup` as the Code Map specifies. Functionally fine (only a single boolean toggle exists, so group exclusivity adds nothing); revisit when the sidebar gains more toggle groups.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-5-movement-modes-smooth-vs-discrete-configurable-speed.md`
+  summary: Post-solve, the sidebar `_toggle_mode`/`_cycle_speed` handlers still run: they call the session no-op (`set_mode`/`set_speed` return unchanged once solved), then write the new value to settings and update the button label/active state, so the button can disagree with the frozen session. Cosmetic on a finished run; persisting the preference for the next session is arguably desirable.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-5-movement-modes-smooth-vs-discrete-configurable-speed.md`
+  summary: `movement_settings._read_member` catches only `SettingNotFoundError`/`SettingCorruptError`/`ValueError`/`TypeError`; any other exception from `settings.get` would propagate despite the "Never raises" docstring. Parity with the existing `maze_size_bounds._read_bound` pattern; revisit if a concrete repository can raise other error types.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-5-movement-modes-smooth-vs-discrete-configurable-speed.md`
+  summary: `_SPEED_CYCLE = tuple(MovementSpeed)` depends on enum member declaration order for the Slow→Normal→Fast cycle; a future reorder would silently change the cycle. Enum order is stable today.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-5-movement-modes-smooth-vs-discrete-configurable-speed.md`
+  summary: No screen-level test that a movement key after solving is a no-op (doesn't reschedule an animation job). Domain solved-guard tests cover the underlying behavior.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-5-movement-modes-smooth-vs-discrete-configurable-speed.md`
+  summary: No corrupt-settings-at-mount integration test for the player screen. The never-raise guarantee is covered by `test_movement_settings` unit tests.
+
 ## Deferred from: code review of spec-1-8-home-breadcrumb-navigation-settings-access (2026-08-06)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-8-home-breadcrumb-navigation-settings-access.md`
