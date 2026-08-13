@@ -68,6 +68,10 @@ class Wall:
     col: int
     side: Literal["top", "left"]
 
+    def __post_init__(self) -> None:
+        if self.side not in ("top", "left"):
+            raise DomainValidationError(f"Invalid wall side: {self.side!r}")
+
 
 @dataclass(frozen=True)
 class Partition:
@@ -75,6 +79,10 @@ class Partition:
 
     top_left: Position
     bottom_right: Position
+
+    def __post_init__(self) -> None:
+        if self.top_left.row >= self.bottom_right.row or self.top_left.col >= self.bottom_right.col:
+            raise DomainValidationError(f"Degenerate partition: {self!r}")
 
 
 @dataclass(frozen=True)
@@ -285,7 +293,9 @@ def advance_visibility(
     if visibility.level is Level.TWO:
         current = _partition_index(visibility.partitions, position)
         if current in visibility.visited:
-            return visibility
+            if current == visibility.current_partition:
+                return visibility
+            return replace(visibility, current_partition=current)
         visited = visibility.visited | {current}
         threshold = reveal_threshold(
             _partition_counts(visibility.partitions), visibility.difficulty

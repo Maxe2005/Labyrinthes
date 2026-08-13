@@ -1,4 +1,7 @@
+import pytest
+
 from labyrinthes.domain.difficulty import Difficulty
+from labyrinthes.domain.errors import DomainValidationError
 from labyrinthes.domain.grid import Grid
 from labyrinthes.domain.level import Level
 from labyrinthes.domain.level_visibility import (
@@ -143,6 +146,24 @@ def test_level_two_visible_walls_cover_every_visited_partition():
 
     assert len(vis.visited) == 2
     assert len(both_partitions) > len(one_partition)
+
+
+def test_level_two_reentering_a_visited_partition_updates_current_partition():
+    maze = _filled_maze(width=8, height=6)  # 3x3 partitions
+    vis = initial_level_visibility(maze, Level.TWO, Difficulty.ONE, Position(0, 0))
+    vis = advance_visibility(vis, maze, Position(0, 3))  # 0 -> 1
+    assert vis.current_partition == 1
+
+    vis = advance_visibility(vis, maze, Position(0, 0))  # back into 0
+    assert vis.current_partition == 0
+    assert vis.visited == frozenset({0, 1})
+
+
+def test_level_two_staying_within_the_current_partition_is_a_no_op():
+    maze = _filled_maze(width=8, height=6)
+    vis = initial_level_visibility(maze, Level.TWO, Difficulty.ONE, Position(0, 0))
+
+    assert advance_visibility(vis, maze, Position(0, 2)) is vis
 
 
 def test_level_two_show_contour_is_always_true():
@@ -293,3 +314,25 @@ def test_is_border_wall_identifies_border_segments():
 def test_total_interior_walls_counts_only_non_border_segments():
     assert total_interior_walls(Grid.filled(width=2, height=2)) == 4
     assert total_interior_walls(Grid.filled(width=3, height=3)) == 12
+
+
+# -- value-object validation -------------------------------------------
+
+
+def test_wall_rejects_an_invalid_side():
+    with pytest.raises(DomainValidationError):
+        Wall(row=0, col=0, side="bottom")
+
+
+def test_wall_accepts_the_two_valid_sides():
+    assert Wall(row=0, col=0, side="top") is not None
+    assert Wall(row=0, col=0, side="left") is not None
+
+
+def test_partition_rejects_a_degenerate_rectangle():
+    with pytest.raises(DomainValidationError):
+        Partition(Position(0, 0), Position(0, 3))
+    with pytest.raises(DomainValidationError):
+        Partition(Position(0, 0), Position(3, 0))
+    with pytest.raises(DomainValidationError):
+        Partition(Position(2, 2), Position(1, 3))
