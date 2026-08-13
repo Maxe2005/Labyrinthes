@@ -284,8 +284,7 @@ class GameplayScreen(tk.Frame):
         self._session = session_request_move(self._session, direction)
 
         if self._session.moving_direction is not None and previous_moving is None:
-            per_step_ms = cell_crossing_duration(self._session.speed).milliseconds // STEPS_PER_CELL
-            self._animation_job = self.after(per_step_ms, self._on_animation_tick)
+            self._animation_job = self.after(self._per_step_ms(), self._on_animation_tick)
 
     def _on_animation_tick(self) -> None:
         previous_position = self._session.position
@@ -323,13 +322,15 @@ class GameplayScreen(tk.Frame):
 
         self._reschedule_animation()
 
+    def _per_step_ms(self) -> int:
+        # Recompute the per-step delay from the *current* speed so a live
+        # `set_speed` change takes effect immediately on the next reschedule.
+        return cell_crossing_duration(self._session.speed).milliseconds // STEPS_PER_CELL
+
     def _reschedule_animation(self) -> None:
         if self._session.moving_direction is None:
             return
-        # Recompute the per-step delay from the *current* speed on every
-        # reschedule so a live `set_speed` change takes effect immediately.
-        per_step_ms = cell_crossing_duration(self._session.speed).milliseconds // STEPS_PER_CELL
-        self._animation_job = self.after(per_step_ms, self._on_animation_tick)
+        self._animation_job = self.after(self._per_step_ms(), self._on_animation_tick)
 
     def _cancel_animation_job(self) -> None:
         if self._animation_job is not None:
