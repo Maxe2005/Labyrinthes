@@ -1,6 +1,9 @@
 from labyrinthes.adapters.tkinter.common.tokens import Theme, colors_for
 from labyrinthes.adapters.tkinter.player.maze_canvas import MazeCanvas
+from labyrinthes.domain.difficulty import Difficulty
 from labyrinthes.domain.grid import Grid
+from labyrinthes.domain.level import Level
+from labyrinthes.domain.level_visibility import advance_visibility, initial_level_visibility
 from labyrinthes.domain.maze import Maze, MazeKind
 from labyrinthes.domain.position import Position
 
@@ -196,3 +199,119 @@ def test_cell_size_is_clamped_to_the_minimum_for_a_large_maze(tk_root):
 
     assert int(canvas.cget("width")) == 50 * 16
     assert int(canvas.cget("height")) == 35 * 16
+
+
+# -- redraw_structure (Story 2.6) ---------------------------------------
+
+
+def test_redraw_structure_level_one_redraws_all_walls_and_no_contour(tk_root):
+    maze = _maze(width=2, height=2)
+    canvas = MazeCanvas(tk_root, maze, maze.entry, theme=Theme.LIGHT)
+    visibility = initial_level_visibility(maze, Level.ONE, Difficulty.ONE, maze.entry)
+
+    canvas.redraw_structure(visibility)
+
+    assert len(canvas.find_withtag("wall")) == 12
+    assert len(canvas.find_withtag("contour")) == 0
+
+
+def test_redraw_structure_level_two_shows_only_the_visited_partition_and_contour(tk_root):
+    # 5x5 at Difficulty ONE -> (2, 2) partitions; entry partition 0 covers
+    # raw rows/cols 0..2 -> 9 cells, 18 wall bars; Level 2 always draws the
+    # contour around the playable area.
+    maze = _maze(width=5, height=5)
+    canvas = MazeCanvas(tk_root, maze, maze.entry, theme=Theme.LIGHT)
+    visibility = initial_level_visibility(maze, Level.TWO, Difficulty.ONE, maze.entry)
+
+    canvas.redraw_structure(visibility)
+
+    assert len(canvas.find_withtag("wall")) == 18
+    assert len(canvas.find_withtag("contour")) > 0
+
+
+def test_redraw_structure_level_three_shows_only_the_current_partition(tk_root):
+    maze = _maze(width=5, height=5)
+    canvas = MazeCanvas(tk_root, maze, maze.entry, theme=Theme.LIGHT)
+    visibility = initial_level_visibility(maze, Level.THREE, Difficulty.ONE, maze.entry)
+
+    canvas.redraw_structure(visibility)
+
+    assert len(canvas.find_withtag("wall")) == 18
+    assert len(canvas.find_withtag("contour")) > 0
+
+
+def test_redraw_structure_level_four_starts_with_no_walls_and_the_contour(tk_root):
+    maze = _maze(width=5, height=5)
+    canvas = MazeCanvas(tk_root, maze, maze.entry, theme=Theme.LIGHT)
+    visibility = initial_level_visibility(maze, Level.FOUR, Difficulty.ONE, maze.entry)
+
+    canvas.redraw_structure(visibility)
+
+    assert len(canvas.find_withtag("wall")) == 0
+    assert len(canvas.find_withtag("contour")) > 0
+
+
+def test_redraw_structure_level_max_has_no_walls_and_contour_only_while_shown(tk_root):
+    maze = _maze(width=5, height=5)
+    canvas = MazeCanvas(tk_root, maze, maze.entry, theme=Theme.LIGHT)
+    shown = initial_level_visibility(maze, Level.MAX, Difficulty.ONE, maze.entry)
+
+    canvas.redraw_structure(shown)
+    assert len(canvas.find_withtag("wall")) == 0
+    assert len(canvas.find_withtag("contour")) > 0
+
+    canvas.redraw_structure(advance_visibility(shown, maze, Position(row=0, col=1)))
+    assert len(canvas.find_withtag("wall")) == 0
+    assert len(canvas.find_withtag("contour")) == 0
+
+
+def test_redraw_structure_is_idempotent(tk_root):
+    maze = _maze(width=5, height=5)
+    canvas = MazeCanvas(tk_root, maze, maze.entry, theme=Theme.LIGHT)
+    visibility = initial_level_visibility(maze, Level.TWO, Difficulty.ONE, maze.entry)
+
+    canvas.redraw_structure(visibility)
+    first = len(canvas.find_withtag("wall"))
+    canvas.redraw_structure(visibility)
+    second = len(canvas.find_withtag("wall"))
+
+    assert first == second == 18
+
+
+def test_redraw_structure_leaves_entry_exit_and_ball_untouched(tk_root):
+    maze = _maze(width=5, height=5)
+    canvas = MazeCanvas(tk_root, maze, maze.entry, theme=Theme.LIGHT)
+    entry_coords = canvas.coords(canvas.find_withtag("entry-marker")[0])
+    exit_coords = canvas.coords(canvas.find_withtag("exit-marker")[0])
+    ball_coords = canvas.coords(canvas.find_withtag("ball")[0])
+
+    canvas.redraw_structure(initial_level_visibility(maze, Level.MAX, Difficulty.ONE, maze.entry))
+
+    assert len(canvas.find_withtag("entry-marker")) == 1
+    assert len(canvas.find_withtag("exit-marker")) == 1
+    assert len(canvas.find_withtag("ball")) == 1
+    assert canvas.coords(canvas.find_withtag("entry-marker")[0]) == entry_coords
+    assert canvas.coords(canvas.find_withtag("exit-marker")[0]) == exit_coords
+    assert canvas.coords(canvas.find_withtag("ball")[0]) == ball_coords
+
+
+def test_redraw_structure_reopens_the_exit_side_with_a_corridor_bar(tk_root):
+    # Exit on the bottom edge only (not a corner) -> one reopen bar + the
+    # rectangle = 2 contour items, and the reopen bar uses the corridor color.
+    maze = Maze(
+        grid=Grid.filled(width=5, height=5),
+        entry=Position(row=0, col=0),
+        exit=Position(row=4, col=2),
+        kind=MazeKind.CLASSIC,
+        id=None,
+    )
+    canvas = MazeCanvas(tk_root, maze, maze.entry, theme=Theme.LIGHT)
+    colors = colors_for(Theme.LIGHT)
+
+    canvas.redraw_structure(initial_level_visibility(maze, Level.TWO, Difficulty.ONE, maze.entry))
+
+    contour_items = canvas.find_withtag("contour")
+    assert len(contour_items) == 2
+    reopen = [item for item in contour_items if canvas.itemcget(item, "fill") == colors.corridor]
+    assert len(reopen) == 1
+    assert canvas.coords(reopen[0]) == [80, 200, 120, 200]

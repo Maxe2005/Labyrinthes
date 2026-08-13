@@ -17,18 +17,33 @@ cleared, so it's retried at the following boundary). Both modes share the
 same engine and the same `cell_crossing_duration(speed)` tick rate, so the
 one configurable `speed` is reflected identically in both.
 
-`request_move`/`advance_step`/`set_mode`/`set_speed`/`tick` are all no-ops --
-return `session` unchanged -- once `session.solved` is `True` (except
-`advance_step`/`request_move` which return unchanged once at rest where
-applicable), which is what lets `GameplayScreen` keep calling them after a
-win without any special casing of its own.
+`request_move`/`advance_step`/`set_mode`/`set_speed`/`set_level`/`tick`
+are all no-ops -- return `session` unchanged -- once `session.solved` is
+`True` (except `advance_step`/`request_move` which return unchanged once at
+rest where applicable), which is what lets `GameplayScreen` keep calling
+them after a win without any special casing of its own.
+
+Story 2.6 threads the play level through the session. Every leg commit
+advances `visibility` via `advance_visibility`; a blocked direction at rest
+-- and Smooth's stop-at-boundary -- feeds `note_collision` instead, and the
+Level MAX contour is re-shown on such a collision. `set_level` re-initializes
+`visibility` from the current position, letting the screen re-render the
+structure for the new level without restarting the run.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
+from labyrinthes.domain.difficulty import Difficulty
 from labyrinthes.domain.duration import Duration
+from labyrinthes.domain.level import Level
+from labyrinthes.domain.level_visibility import (
+    LevelVisibility,
+    advance_visibility,
+    initial_level_visibility,
+    note_collision,
+)
 from labyrinthes.domain.maze import Maze
 from labyrinthes.domain.movement import Direction, attempt_move
 from labyrinthes.domain.movement_mode import MovementMode
@@ -40,6 +55,7 @@ __all__ = [
     "PlayerSession",
     "advance_step",
     "request_move",
+    "set_level",
     "set_mode",
     "set_speed",
     "start_session",
@@ -67,15 +83,19 @@ class PlayerSession:
     leg_target: Position | None
     step: int
     pending_direction: Direction | None
+    level: Level
+    difficulty: Difficulty
+    visibility: LevelVisibility
 
 
 def start_session(maze: Maze) -> PlayerSession:
     """A fresh `PlayerSession` for `maze`: ball at `maze.entry`, zero elapsed,
-    at rest, with the plain defaults `SMOOTH`/`NORMAL`.
+    at rest, with the plain defaults `SMOOTH`/`NORMAL` and Level ONE.
 
     The screen applies settings-loaded mode/speed by chaining `set_mode`/
     `set_speed` on the result -- `start_session` itself stays pure with
-    plain defaults and never reads the repository.
+    plain defaults and never reads the repository. Level is session state
+    (not persisted); it always starts at `Level.ONE`.
     """
     return PlayerSession(
         maze=maze,
@@ -88,6 +108,9 @@ def start_session(maze: Maze) -> PlayerSession:
         leg_target=None,
         step=0,
         pending_direction=None,
+        level=Level.ONE,
+        difficulty=Difficulty.ONE,
+        visibility=initial_level_visibility(maze, Level.ONE, Difficulty.ONE, maze.entry),
     )
 
 
@@ -117,7 +140,12 @@ def request_move(session: PlayerSession, direction: Direction) -> PlayerSession:
     if session.moving_direction is None:
         target = attempt_move(session.maze.grid, session.position, direction)
         if target == session.position:
-            return session
+            visibility = note_collision(
+                session.visibility, session.maze, session.position, direction
+            )
+            if visibility is session.visibility:
+                return session
+            return replace(session, visibility=visibility)
         return _start_leg(session, direction)
 
     if session.mode is MovementMode.DISCRETE:
@@ -131,11 +159,12 @@ def advance_step(session: PlayerSession) -> PlayerSession:
     A pure, fixed-duration tick: it never reads elapsed time, it simply
     advances the in-flight leg by one of `STEPS_PER_CELL` uniform sub-steps.
     A no-op once solved and a no-op when at rest. On the final sub-step the
-    leg commits (`position = leg_target`), checks the win, and -- for Smooth
-    only -- resolves the next heading at the boundary: redirect into an open
-    `pending_direction`, else continue straight, else stop. A blocked
-    `pending_direction` is kept for retry at the following boundary (legacy
-    "banked turn" semantics); `pending_direction` never applies in Discrete.
+    leg commits (`position = leg_target`), advances `visibility`, checks the
+    win, and -- for Smooth only -- resolves the next heading at the boundary:
+    redirect into an open `pending_direction`, else continue straight, else
+    stop (`note_collision`). A blocked `pending_direction` is kept for retry
+    at the following boundary (legacy "banked turn" semantics);
+    `pending_direction` never applies in Discrete.
     """
     if session.solved or session.moving_direction is None:
         return session
@@ -155,6 +184,7 @@ def advance_step(session: PlayerSession) -> PlayerSession:
             leg_target=None,
             pending_direction=None,
             step=0,
+            visibility=advance_visibility(session.visibility, session.maze, position),
         )
 
     if session.mode is MovementMode.DISCRETE:
@@ -165,9 +195,14 @@ def advance_step(session: PlayerSession) -> PlayerSession:
             leg_target=None,
             pending_direction=None,
             step=0,
+            visibility=advance_visibility(session.visibility, session.maze, position),
         )
 
-    committed = replace(session, position=position)
+    committed = replace(
+        session,
+        position=position,
+        visibility=advance_visibility(session.visibility, session.maze, position),
+    )
     return _resolve_smooth_next(committed)
 
 
@@ -185,12 +220,14 @@ def _resolve_smooth_next(session: PlayerSession) -> PlayerSession:
     if attempt_move(session.maze.grid, position, heading) != position:
         return _start_leg(session, heading)
 
+    visibility = note_collision(session.visibility, session.maze, position, heading)
     return replace(
         session,
         moving_direction=None,
         leg_target=None,
         pending_direction=None,
         step=0,
+        visibility=visibility,
     )
 
 
@@ -216,6 +253,20 @@ def set_speed(session: PlayerSession, speed: MovementSpeed) -> PlayerSession:
     if session.solved:
         return session
     return replace(session, speed=speed)
+
+
+def set_level(session: PlayerSession, level: Level) -> PlayerSession:
+    """`session` with `level` replaced; a no-op once solved.
+
+    The session's difficulty is left untouched -- the persistence grid keeps
+    the create-time difficulty, only the *played* level changes. The level
+    change re-initializes `visibility` from the current position, so the
+    structure re-renders per the new level without restarting the run.
+    """
+    if session.solved:
+        return session
+    visibility = initial_level_visibility(session.maze, level, session.difficulty, session.position)
+    return replace(session, level=level, visibility=visibility)
 
 
 def tick(session: PlayerSession, elapsed: Duration) -> PlayerSession:

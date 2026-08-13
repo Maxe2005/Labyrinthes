@@ -13,6 +13,8 @@ from labyrinthes.application.settings_keys import MOVEMENT_MODE, MOVEMENT_SPEED
 from labyrinthes.application.settings_repository import SettingsScope
 from labyrinthes.domain.cell import Cell
 from labyrinthes.domain.grid import Grid
+from labyrinthes.domain.level import Level
+from labyrinthes.domain.level_visibility import Wall
 from labyrinthes.domain.maze import Maze, MazeKind
 from labyrinthes.domain.movement import Direction
 from labyrinthes.domain.movement_mode import MovementMode
@@ -50,6 +52,23 @@ def _open_maze(width=2) -> Maze:
     row = real_cells + (Cell("2"),)
     padding_row = tuple(Cell("1") for _ in range(width)) + (Cell("0"),)
     grid = Grid(cells=(row, padding_row))
+    return Maze(
+        grid=grid,
+        entry=Position(row=0, col=0),
+        exit=Position(row=0, col=width - 1),
+        kind=MazeKind.CLASSIC,
+        id=None,
+    )
+
+
+def _corridor_maze(width=4) -> Maze:
+    """A 2-row corridor: row 0 open left-to-right, exit at the far right,
+    everything below walled -- open enough to move across partition
+    boundaries, walled enough to exercise blocked moves."""
+    row0 = tuple(Cell("0") for _ in range(width)) + (Cell("2"),)
+    row1 = tuple(Cell("3") for _ in range(width)) + (Cell("2"),)
+    padding_row = tuple(Cell("1") for _ in range(width)) + (Cell("0"),)
+    grid = Grid(cells=(row0, row1, padding_row))
     return Maze(
         grid=grid,
         entry=Position(row=0, col=0),
@@ -118,7 +137,7 @@ def test_initial_render_shows_the_maze_canvas_with_entry_exit_and_ball(
     assert (ball_x1 - ball_x0) < (entry_x1 - entry_x0)
 
 
-def test_hud_shows_placeholder_level_and_difficulty_and_initial_time_and_pos(
+def test_hud_shows_level_and_difficulty_and_initial_time_and_pos(
     tk_root, fake_maze_repository, fake_settings_repository
 ):
     maze = _classic_maze()
@@ -918,3 +937,197 @@ def test_save_shortcut_unregisters_once_the_maze_is_saved_and_the_button_rebuilt
     tk_root.update()
 
     assert tk_root.bind_all(save_kb.event) == ""
+
+
+# -- level & visibility (Story 2.6) ------------------------------------
+
+
+def test_level_chip_and_sidebar_label_show_the_initial_level_one(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    screen = GameplayScreen(
+        tk_root,
+        _classic_maze(),
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+
+    assert screen._session.level is Level.ONE
+    assert screen._level_chip._value_label.cget("text") == "1"
+    assert screen._level_value_label.cget("text") == "1"
+
+
+def test_cycling_the_level_updates_the_chip_and_sidebar_label_and_wraps(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    screen = GameplayScreen(
+        tk_root,
+        _classic_maze(),
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+
+    screen._cycle_level(1)  # ONE -> TWO
+    assert screen._session.level is Level.TWO
+    assert screen._level_chip._value_label.cget("text") == "2"
+    assert screen._level_value_label.cget("text") == "2"
+
+    screen._cycle_level(1)  # TWO -> THREE
+    assert screen._session.level is Level.THREE
+    assert screen._level_chip._value_label.cget("text") == "3"
+
+    screen._cycle_level(1)  # THREE -> FOUR
+    assert screen._session.level is Level.FOUR
+    assert screen._level_chip._value_label.cget("text") == "4"
+
+    screen._cycle_level(1)  # FOUR -> MAX
+    assert screen._session.level is Level.MAX
+    assert screen._level_chip._value_label.cget("text") == "Max"
+    assert screen._level_value_label.cget("text") == "Max"
+
+    screen._cycle_level(1)  # MAX -> ONE (wrapped)
+    assert screen._session.level is Level.ONE
+    assert screen._level_chip._value_label.cget("text") == "1"
+
+
+def test_minus_cycling_wraps_from_one_to_max(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    screen = GameplayScreen(
+        tk_root,
+        _classic_maze(),
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+
+    screen._cycle_level(-1)
+
+    assert screen._session.level is Level.MAX
+    assert screen._level_chip._value_label.cget("text") == "Max"
+
+
+def test_level_change_redraws_the_structure_without_restarting_the_run(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    _use_discrete(fake_settings_repository)
+    maze = _corridor_maze()
+    screen = GameplayScreen(
+        tk_root,
+        maze,
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    screen._on_move(Direction.RIGHT)
+    _settle(screen)
+    assert screen._session.position == Position(row=0, col=1)
+    walls_at_level_one = len(screen._maze_canvas.find_withtag("wall"))
+    assert len(screen._maze_canvas.find_withtag("contour")) == 0
+
+    screen._cycle_level(1)  # ONE -> TWO
+
+    assert screen._session.level is Level.TWO
+    assert screen._session.position == Position(row=0, col=1)
+    assert screen._session.solved is False
+    assert len(screen._maze_canvas.find_withtag("wall")) < walls_at_level_one
+    assert len(screen._maze_canvas.find_withtag("contour")) > 0
+
+
+def test_level_four_blocked_at_rest_redraws_the_discovered_wall(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    _use_discrete(fake_settings_repository)
+    maze = _corridor_maze()
+    screen = GameplayScreen(
+        tk_root,
+        maze,
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    screen._cycle_level(3)  # ONE -> FOUR
+    assert screen._session.level is Level.FOUR
+    assert len(screen._maze_canvas.find_withtag("wall")) == 0
+
+    screen._on_move(Direction.RIGHT)
+    _settle(screen)
+    assert screen._session.position == Position(row=0, col=1)
+
+    screen._on_move(Direction.DOWN)  # blocked at rest: reveals Wall(1, 1, top)
+
+    assert screen._session.visibility.discovered_walls == frozenset(
+        {Wall(row=1, col=1, side="top")}
+    )
+    assert len(screen._maze_canvas.find_withtag("wall")) == 1
+
+
+def test_level_two_partition_advance_redraws_the_structure(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    _use_discrete(fake_settings_repository)
+    maze = _corridor_maze(width=5)
+    screen = GameplayScreen(
+        tk_root,
+        maze,
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    screen._cycle_level(1)  # ONE -> TWO
+    walls_at_partition_zero = len(screen._maze_canvas.find_withtag("wall"))
+
+    screen._on_move(Direction.RIGHT)  # (0, 0) -> (0, 1), still partition 0
+    _settle(screen)
+    assert screen._rendered_visibility is screen._session.visibility
+    assert len(screen._maze_canvas.find_withtag("wall")) == walls_at_partition_zero
+
+    screen._on_move(Direction.RIGHT)  # (0, 1) -> (0, 2), partition 1 entered
+    _settle(screen)
+    assert screen._session.visibility.visited == frozenset({0, 1})
+    assert len(screen._maze_canvas.find_withtag("wall")) > walls_at_partition_zero
+
+
+def test_level_change_is_a_no_op_after_solve(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    maze = _open_maze(width=2)
+    screen = GameplayScreen(
+        tk_root,
+        maze,
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    screen._on_move(Direction.RIGHT)
+    _settle(screen)
+    assert screen._session.solved is True
+
+    screen._cycle_level(1)
+
+    assert screen._session.level is Level.ONE
+    assert screen._session.solved is True
+    assert screen._level_chip._value_label.cget("text") == "1"
+
+
+def test_level_change_is_a_no_op_while_focus_is_in_another_toplevel(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    screen = GameplayScreen(
+        tk_root,
+        _classic_maze(),
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    other = tk.Toplevel(tk_root)
+    other_entry = tk.Entry(other)
+    screen.focus_get = lambda: other_entry
+
+    screen._cycle_level(1)
+
+    assert screen._session.level is Level.ONE
+    assert screen._level_chip._value_label.cget("text") == "1"
+    other.destroy()

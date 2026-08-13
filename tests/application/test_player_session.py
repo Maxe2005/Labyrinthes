@@ -2,14 +2,18 @@ from labyrinthes.application.player_session import (
     STEPS_PER_CELL,
     advance_step,
     request_move,
+    set_level,
     set_mode,
     set_speed,
     start_session,
     tick,
 )
 from labyrinthes.domain.cell import Cell
+from labyrinthes.domain.difficulty import Difficulty
 from labyrinthes.domain.duration import Duration
 from labyrinthes.domain.grid import Grid
+from labyrinthes.domain.level import Level
+from labyrinthes.domain.level_visibility import Wall
 from labyrinthes.domain.maze import Maze, MazeKind
 from labyrinthes.domain.movement import Direction
 from labyrinthes.domain.movement_mode import MovementMode
@@ -120,6 +124,48 @@ def _redirect_win_maze() -> Maze:
     )
 
 
+def _partition_maze() -> Maze:
+    # 5x3 playable, corridor along row 0. Difficulty ONE partitions are
+    # (2, 2) here, so (0,0)-(0,1) sit in partition 0 and (0,2)-(0,3) in
+    # partition 1 -- open enough to move the ball across a partition
+    # boundary, walled enough to exercise blocked moves at rest.
+    grid = Grid(
+        cells=(
+            (Cell("0"), Cell("0"), Cell("0"), Cell("0"), Cell("0"), Cell("2")),
+            (Cell("3"), Cell("3"), Cell("3"), Cell("3"), Cell("3"), Cell("2")),
+            (Cell("3"), Cell("3"), Cell("3"), Cell("3"), Cell("3"), Cell("2")),
+            (Cell("1"), Cell("1"), Cell("1"), Cell("1"), Cell("1"), Cell("0")),
+        )
+    )
+    return Maze(
+        grid=grid,
+        entry=Position(row=0, col=0),
+        exit=Position(row=0, col=4),
+        kind=MazeKind.GENERATED,
+        id=None,
+    )
+
+
+def _stopping_maze() -> Maze:
+    # Corridor along row 0 that ends against an interior wall: (0,1) going
+    # right is blocked by the left wall of (0,2), which is not a border.
+    grid = Grid(
+        cells=(
+            (Cell("0"), Cell("0"), Cell("3"), Cell("0"), Cell("0"), Cell("2")),
+            (Cell("3"), Cell("3"), Cell("3"), Cell("3"), Cell("3"), Cell("2")),
+            (Cell("3"), Cell("3"), Cell("3"), Cell("3"), Cell("3"), Cell("2")),
+            (Cell("1"), Cell("1"), Cell("1"), Cell("1"), Cell("1"), Cell("0")),
+        )
+    )
+    return Maze(
+        grid=grid,
+        entry=Position(row=0, col=0),
+        exit=Position(row=0, col=4),
+        kind=MazeKind.GENERATED,
+        id=None,
+    )
+
+
 def _discrete(maze: Maze):
     return set_mode(start_session(maze), MovementMode.DISCRETE)
 
@@ -150,6 +196,10 @@ def test_start_session_places_the_ball_at_entry_with_plain_defaults():
     assert session.leg_target is None
     assert session.pending_direction is None
     assert session.step == 0
+    assert session.level is Level.ONE
+    assert session.difficulty is Difficulty.ONE
+    assert session.visibility.level is Level.ONE
+    assert session.visibility.current_partition == 0
 
 
 # -- discrete ----------------------------------------------------------
@@ -388,3 +438,106 @@ def test_tick_is_a_no_op_once_solved():
     result = tick(session, Duration(milliseconds=5000))
 
     assert result is session
+
+
+# -- level / visibility -------------------------------------------------
+
+
+def test_set_level_reinitializes_visibility_from_the_current_position():
+    maze = _partition_maze()
+    session = _discrete(maze)
+    session = request_move(session, Direction.RIGHT)
+    session = _settle(session)
+    assert session.position == Position(row=0, col=1)
+    assert session.moving_direction is None
+
+    session = set_level(session, Level.MAX)
+
+    assert session.level is Level.MAX
+    assert session.position == Position(row=0, col=1)
+    assert session.solved is False
+    assert session.visibility.level is Level.MAX
+    assert session.visibility.contour_shown is True
+
+
+def test_set_level_is_a_no_op_once_solved():
+    maze = _open_maze(width=2)
+    session = _discrete(maze)
+    session = request_move(session, Direction.RIGHT)
+    session = _settle(session)
+    assert session.solved is True
+
+    result = set_level(session, Level.MAX)
+
+    assert result is session
+
+
+def test_discrete_leg_commit_advances_level_two_partition_tracking():
+    maze = _partition_maze()
+    session = set_level(_discrete(maze), Level.TWO)
+
+    session = request_move(session, Direction.RIGHT)
+    session = _settle(session)
+    assert session.position == Position(row=0, col=1)
+    assert session.visibility.visited == frozenset({0})
+
+    session = request_move(session, Direction.RIGHT)
+    session = _settle(session)
+    assert session.position == Position(row=0, col=2)
+    assert session.visibility.visited == frozenset({0, 1})
+
+
+def test_level_four_blocked_at_rest_reveals_the_collided_wall():
+    maze = _partition_maze()
+    session = set_level(_discrete(maze), Level.FOUR)
+    session = request_move(session, Direction.RIGHT)
+    session = _settle(session)
+    assert session.position == Position(row=0, col=1)
+
+    result = request_move(session, Direction.DOWN)
+
+    assert result is not session
+    assert result.visibility.discovered_walls == frozenset({Wall(row=1, col=1, side="top")})
+
+
+def test_blocked_at_rest_at_levels_one_to_three_is_a_no_op():
+    maze = _partition_maze()
+    for level in (Level.ONE, Level.TWO, Level.THREE):
+        session = set_level(_discrete(maze), level)
+        session = request_move(session, Direction.RIGHT)
+        session = _settle(session)
+        assert session.position == Position(row=0, col=1)
+
+        result = request_move(session, Direction.DOWN)
+
+        assert result is session
+        assert session.visibility.discovered_walls == frozenset()
+
+
+def test_level_max_contour_is_hidden_after_a_move_and_reshown_on_collision():
+    maze = _partition_maze()
+    session = set_level(_discrete(maze), Level.MAX)
+    assert session.visibility.contour_shown is True
+
+    session = request_move(session, Direction.RIGHT)
+    session = _settle(session)
+    assert session.position == Position(row=0, col=1)
+    assert session.visibility.contour_shown is False
+
+    session = request_move(session, Direction.DOWN)
+
+    assert session.visibility.contour_shown is True
+    assert session.position == Position(row=0, col=1)
+    assert session.moving_direction is None
+
+
+def test_smooth_boundary_stop_reveals_the_collided_wall_at_level_four():
+    maze = _stopping_maze()
+    session = set_level(start_session(maze), Level.FOUR)
+    session = request_move(session, Direction.RIGHT)
+
+    session = _advance_n(session, STEPS_PER_CELL)
+
+    assert session.position == Position(row=0, col=1)
+    assert session.moving_direction is None
+    assert session.visibility.discovered_walls == frozenset({Wall(row=0, col=2, side="left")})

@@ -17,11 +17,16 @@ effect immediately). Win detection now fires from the animation tick's
 leg-completion branch, not from the keypress handler, so both modes resolve
 a win at leg completion.
 
-Movement mechanics/session orchestration are pure functions imported from
-`domain`/`application` -- this module only wires input events to them,
-renders the result, and owns the `.after()` loops (the elapsed-time tick and
-the per-sub-step animation tick). Both tick jobs are cancelled on `<Destroy>`
-and on solve so a torn-down or solved screen never fires a stale callback.
+Story 2.6 makes the Level HUD chip real (driven by `session.level`) and
+adds a "Levels" sidebar group (`−`/label/`+` cycling ONE..MAX, wrapped).
+Level changes reroute through `set_level` (a session-level no-op once
+solved), which re-initializes the session's `LevelVisibility`; whenever
+`session.visibility` changes identity -- a level switch, a Level 2/3
+partition advance, a Level 4 wall discovery, or a Level Max contour
+toggle -- the screen calls `MazeCanvas.redraw_structure()` (an exact
+object-identity diff, so nothing redraws on a run that doesn't change the
+visible structure). Both `.after()` loops are cancelled on `<Destroy>` and
+on solve so a torn-down or solved screen never fires a stale callback.
 """
 
 from __future__ import annotations
@@ -63,6 +68,9 @@ from labyrinthes.application.player_session import (
     request_move as session_request_move,
 )
 from labyrinthes.application.player_session import (
+    set_level as session_set_level,
+)
+from labyrinthes.application.player_session import (
     set_mode as session_set_mode,
 )
 from labyrinthes.application.player_session import (
@@ -73,6 +81,7 @@ from labyrinthes.application.player_session import (
 )
 from labyrinthes.application.settings_repository import SettingsRepository
 from labyrinthes.domain.duration import Duration
+from labyrinthes.domain.level import Level
 from labyrinthes.domain.maze import Maze, MazeKind
 from labyrinthes.domain.movement import Direction
 from labyrinthes.domain.movement_mode import MovementMode
@@ -83,8 +92,17 @@ __all__ = ["GameplayScreen"]
 
 _TICK_INTERVAL_MS = 1000
 
-_PLACEHOLDER_LEVEL = "1"
 _PLACEHOLDER_DIFFICULTY = "—"
+
+_LEVEL_LABELS: dict[Level, str] = {
+    Level.ONE: "1",
+    Level.TWO: "2",
+    Level.THREE: "3",
+    Level.FOUR: "4",
+    Level.MAX: "Max",
+}
+
+_LEVEL_CYCLE: tuple[Level, ...] = tuple(Level)
 
 _DIRECTION_ACTION_IDS: tuple[tuple[str, Direction], ...] = (
     ("move_up", Direction.UP),
@@ -94,6 +112,11 @@ _DIRECTION_ACTION_IDS: tuple[tuple[str, Direction], ...] = (
 )
 
 _SPEED_CYCLE: tuple[MovementSpeed, ...] = tuple(MovementSpeed)
+
+
+def _level_label(level: Level) -> str:
+    """The Level chip/sidebar label: `1`/`2`/`3`/`4`/`Max`."""
+    return _LEVEL_LABELS[level]
 
 
 def _pos_text(position: Position) -> str:
@@ -139,6 +162,7 @@ class GameplayScreen(tk.Frame):
         self._build_hud(colors)
         self._build_sidebar(colors)
         self._build_maze_frame(colors, theme)
+        self._rendered_visibility = self._session.visibility
         self._save_zone = tk.Frame(self, background=colors.window)
         self._save_zone.pack(anchor="w", pady=(SPACING["lg"], 0))
         self._build_save_zone()
@@ -164,7 +188,9 @@ class GameplayScreen(tk.Frame):
         hud_row = tk.Frame(self, background=colors.window)
         hud_row.pack(fill="x", pady=(0, SPACING["lg"]))
 
-        self._level_chip = HudChip(hud_row, "Level", _PLACEHOLDER_LEVEL, theme=self._theme)
+        self._level_chip = HudChip(
+            hud_row, "Level", _level_label(self._session.level), theme=self._theme
+        )
         self._level_chip.pack(side="left", padx=(0, SPACING["sm"]))
 
         self._difficulty_chip = HudChip(
@@ -211,6 +237,42 @@ class GameplayScreen(tk.Frame):
             command=self._cycle_speed,
         )
         self._speed_button.pack(anchor="w")
+
+        tk.Label(
+            self._sidebar,
+            text="Levels",
+            font=TYPOGRAPHY.body.to_tk_font(),
+            background=colors.window,
+            foreground=colors.ink,
+        ).pack(anchor="w", pady=(SPACING["lg"], SPACING["sm"]))
+
+        level_row = tk.Frame(self._sidebar, background=colors.window)
+        level_row.pack(anchor="w")
+
+        self._level_minus_button = ToolButton(
+            level_row,
+            "−",
+            theme=self._theme,
+            command=functools.partial(self._cycle_level, -1),
+        )
+        self._level_minus_button.pack(side="left", padx=(0, SPACING["sm"]))
+
+        self._level_value_label = tk.Label(
+            level_row,
+            text=_level_label(self._session.level),
+            font=TYPOGRAPHY.hud_stat.to_tk_font(),
+            background=colors.window,
+            foreground=colors.ink,
+        )
+        self._level_value_label.pack(side="left", padx=(0, SPACING["sm"]))
+
+        self._level_plus_button = ToolButton(
+            level_row,
+            "+",
+            theme=self._theme,
+            command=functools.partial(self._cycle_level, +1),
+        )
+        self._level_plus_button.pack(side="left")
 
         self._sync_mode_button()
 
@@ -282,6 +344,7 @@ class GameplayScreen(tk.Frame):
 
         previous_moving = self._session.moving_direction
         self._session = session_request_move(self._session, direction)
+        self._sync_visibility()
 
         if self._session.moving_direction is not None and previous_moving is None:
             self._animation_job = self.after(self._per_step_ms(), self._on_animation_tick)
@@ -289,6 +352,7 @@ class GameplayScreen(tk.Frame):
     def _on_animation_tick(self) -> None:
         previous_position = self._session.position
         self._session = session_advance_step(self._session)
+        self._sync_visibility()
 
         direction = self._session.moving_direction
         if direction is not None:
@@ -338,6 +402,33 @@ class GameplayScreen(tk.Frame):
             self._animation_job = None
 
     # -- movement mode & speed ---------------------------------------------
+
+    def _sync_visibility(self) -> None:
+        """Redraw the maze structure iff the session's visibility changed identity.
+
+        `set_level`/`advance_visibility`/`note_collision` only mint a *new*
+        `LevelVisibility` object when something visible changes (their
+        documented contract), so this exact `is not` diff redraws exactly
+        when needed and never churns a run that leaves the structure alone.
+        """
+        if self._session.visibility is not self._rendered_visibility:
+            self._maze_canvas.redraw_structure(self._session.visibility)
+            self._rendered_visibility = self._session.visibility
+
+    def _cycle_level(self, delta: int) -> None:
+        if not self._toplevel_has_focus():
+            return
+        new_level = _LEVEL_CYCLE[
+            (_LEVEL_CYCLE.index(self._session.level) + delta) % len(_LEVEL_CYCLE)
+        ]
+        self._session = session_set_level(self._session, new_level)
+        self._sync_level_widgets()
+        self._sync_visibility()
+
+    def _sync_level_widgets(self) -> None:
+        label = _level_label(self._session.level)
+        self._level_chip.set_value(label)
+        self._level_value_label.configure(text=label)
 
     def _toggle_mode(self) -> None:
         if not self._toplevel_has_focus():
