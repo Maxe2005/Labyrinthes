@@ -196,7 +196,18 @@ def reveal_threshold(axis_counts: tuple[int, int], difficulty: Difficulty) -> in
     Applied to both Level 2's visited-partition count and Level 4's
     discovered-wall count (Level 4 passes its `total_interior_walls` as the
     `(count, 1)` axis pair), so the legacy FR-13 formula inconsistency is
-    not reproduced. Story 2.7 finalizes this function.
+    not reproduced.
+
+    Python's built-in `round()` is banker's rounding (round-half-to-even),
+    and that is the faithful port of legacy: the shipped `Labyrinthes_copy.py`
+    uses Python's built-in `round(...)` directly -- there is no half-up
+    `arrondi` helper anywhere in the legacy tree -- so this is pinned as the
+    final decision, not a divergence to revisit. At Difficulty ONE the Level-4
+    threshold is `round(total/2)` -- for even totals exactly `total/2`,
+    matching legacy Level-4's `/2` semantics, while odd totals round to the
+    nearest even integer (the same banker's behavior as every other value);
+    the unification fixes only the D2/D3 divisors (`/3`, `/4` replace the
+    legacy `/5`, `/10`).
     """
     axis_cols, axis_rows = axis_counts
     return round(axis_cols * axis_rows / (difficulty + 1))

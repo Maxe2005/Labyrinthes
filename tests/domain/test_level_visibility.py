@@ -72,9 +72,35 @@ def test_partition_grid_folds_remainder_rows_and_columns_into_the_last_partition
 
 
 def test_reveal_threshold_uses_the_shared_division_formula():
+    # Level 2's axis pair: (3, 2) -> round(6/2)=3, round(6/3)=2,
+    # round(6/4)=2. The last value is banker's rounding (round-half-to-even:
+    # 1.5 -> 2) -- the faithful port of legacy, which used Python's built-in
+    # `round()` directly (see the Story 2.7 Design Notes).
     assert reveal_threshold((3, 2), Difficulty.ONE) == 3
     assert reveal_threshold((3, 2), Difficulty.TWO) == 2
-    assert reveal_threshold((2, 2), Difficulty.ONE) == 2
+    assert reveal_threshold((3, 2), Difficulty.THREE) == 2
+    assert reveal_threshold((8, 3), Difficulty.ONE) == 12
+    assert reveal_threshold((8, 3), Difficulty.TWO) == 8
+    assert reveal_threshold((8, 3), Difficulty.THREE) == 6
+
+
+def test_reveal_threshold_uses_bankers_rounding():
+    # Legacy shipped Python's built-in `round()`, so half values round to
+    # even, not away from zero -- this is a faithful port, not a divergence.
+    assert reveal_threshold((3, 1), Difficulty.ONE) == 2  # round(1.5) == 2
+    assert reveal_threshold((1, 3), Difficulty.THREE) == 1  # round(0.75) == 1
+
+
+def test_reveal_threshold_level_four_pair_uses_the_same_single_function():
+    # Level 4 passes (total_interior_walls, 1); the one `reveal_threshold`
+    # serves both Level 2's partition count and Level 4's wall count, so
+    # the legacy FR-13 formula inconsistency is not reproduced.
+    assert reveal_threshold((4, 1), Difficulty.ONE) == 2
+    assert reveal_threshold((4, 1), Difficulty.TWO) == 1
+    assert reveal_threshold((4, 1), Difficulty.THREE) == 1
+    assert reveal_threshold((12, 1), Difficulty.ONE) == 6
+    assert reveal_threshold((12, 1), Difficulty.TWO) == 4
+    assert reveal_threshold((12, 1), Difficulty.THREE) == 3
 
 
 # -- initial state -----------------------------------------------------
@@ -261,6 +287,19 @@ def test_level_four_threshold_reset_hides_all_but_the_last_discovered_wall():
 
     vis = note_collision(vis, maze, Position(0, 1), Direction.LEFT)
     assert vis.discovered_walls == frozenset({Wall(0, 1, "left")})
+
+
+def test_level_four_threshold_responds_to_difficulty():
+    maze = _filled_maze(width=2, height=2)  # 4 interior walls, threshold = round(4/3) = 1
+    vis = initial_level_visibility(maze, Level.FOUR, Difficulty.TWO, Position(1, 1))
+    assert vis.total_interior_walls == 4
+
+    vis = note_collision(vis, maze, Position(1, 0), Direction.UP)
+    assert vis.discovered_walls == frozenset({Wall(1, 0, "top")})  # at the threshold, not past it
+
+    vis = note_collision(vis, maze, Position(1, 1), Direction.UP)
+    # past the D2 threshold -> reset to just this wall
+    assert vis.discovered_walls == frozenset({Wall(1, 1, "top")})
 
 
 def test_level_four_show_contour_is_always_true():

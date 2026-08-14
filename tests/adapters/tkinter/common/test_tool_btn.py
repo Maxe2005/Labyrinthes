@@ -147,3 +147,53 @@ def test_set_text_replaces_the_label_in_place_without_disturbing_active_state(tk
 
     assert button._label.cget("text") == "Fast"
     assert button.active is True
+
+
+def test_disabled_tool_button_click_does_not_fire_the_command(tk_root):
+    calls = []
+    button = ToolButton(tk_root, "Solo", theme=Theme.LIGHT, command=lambda: calls.append(1))
+    button.set_enabled(False)
+
+    button._on_click()
+
+    assert calls == []
+
+
+def test_disabled_tool_button_is_non_focusable_and_renders_ghost_styling(tk_root):
+    colors = colors_for(Theme.LIGHT)
+    button = ToolButton(tk_root, "Break Wall", theme=Theme.LIGHT)
+    button.set_enabled(False)
+
+    assert button.cget("takefocus") == "0"
+    assert button.cget("background") == colors.window
+    assert button._label.cget("foreground") == colors.ghost
+
+
+def test_re_enabled_tool_button_restores_focusability_activation_and_styling(tk_root):
+    colors = colors_for(Theme.LIGHT)
+    calls = []
+    button = ToolButton(tk_root, "Solo", theme=Theme.LIGHT, command=lambda: calls.append(1))
+    button.set_enabled(False)
+    assert button.cget("takefocus") == "0"
+
+    button.set_enabled(True)
+    button._on_click()
+
+    assert calls == [1]
+    assert button.cget("takefocus") == "1"
+    # The ghost disabled branch is gone: the click re-activated the button,
+    # so it renders active (accent), never the ghost disabled palette.
+    assert button.cget("background") == colors.accent_bg
+    assert button._label.cget("foreground") != colors.ghost
+
+
+def test_disabled_tool_button_focus_in_shows_no_focus_ring(tk_root):
+    colors = colors_for(Theme.LIGHT)
+    button = ToolButton(tk_root, "Break Wall", theme=Theme.LIGHT)
+    button.set_enabled(False)
+
+    button._on_focus_in()
+
+    assert button.cget("highlightthickness") == RESTING_RING_THICKNESS
+    assert button.cget("highlightbackground") == colors.ghost
+    assert button.cget("highlightcolor") == colors.ghost

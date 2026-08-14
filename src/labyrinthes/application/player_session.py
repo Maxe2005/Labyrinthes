@@ -29,6 +29,12 @@ advances `visibility` via `advance_visibility`; a blocked direction at rest
 Level MAX contour is re-shown on such a collision. `set_level` re-initializes
 `visibility` from the current position, letting the screen re-render the
 structure for the new level without restarting the run.
+
+Story 2.7 threads the difficulty through the session the same way:
+`set_difficulty` re-initializes `visibility` from the current position with
+the new partition sizing/reveal threshold, so a mid-run difficulty change
+re-renders the structure without restarting the run (an identity change on
+`visibility` is what drives the screen's redraw).
 """
 
 from __future__ import annotations
@@ -55,6 +61,7 @@ __all__ = [
     "PlayerSession",
     "advance_step",
     "request_move",
+    "set_difficulty",
     "set_level",
     "set_mode",
     "set_speed",
@@ -267,6 +274,21 @@ def set_level(session: PlayerSession, level: Level) -> PlayerSession:
         return session
     visibility = initial_level_visibility(session.maze, level, session.difficulty, session.position)
     return replace(session, level=level, visibility=visibility)
+
+
+def set_difficulty(session: PlayerSession, difficulty: Difficulty) -> PlayerSession:
+    """`session` with `difficulty` replaced; a no-op once solved.
+
+    Mirrors `set_level`: the difficulty change re-initializes `visibility`
+    from the current position, so the structure re-renders with the new
+    partition sizing/reveal threshold without restarting the run. The
+    in-flight leg's geometry is unaffected -- the next commit re-applies
+    against the freshly re-initialized visibility.
+    """
+    if session.solved:
+        return session
+    visibility = initial_level_visibility(session.maze, session.level, difficulty, session.position)
+    return replace(session, difficulty=difficulty, visibility=visibility)
 
 
 def tick(session: PlayerSession, elapsed: Duration) -> PlayerSession:
