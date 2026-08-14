@@ -1663,10 +1663,11 @@ def test_hard_mode_toggle_is_a_no_op_once_solved(
 
     # `session_set_hard_mode` is a no-op once solved (Story 2.5/2.6/2.7
     # convention), and `_sync_hard_mode_visuals` reads the unchanged session,
-    # so HARD stays off and the light stays hidden; the button's active flag
-    # may flip without the run changing (the same accepted cosmetic quirk as
-    # `_toggle_mode`, see deferred-work.md Story 2.5).
+    # so HARD stays off, the light stays hidden, and the button mirrors the
+    # session (stays inactive -- unlike `_toggle_mode`, which is also a no-op
+    # but derives its button from the session too).
     assert screen._session.hard_mode is False
+    assert screen._mode_hard_button.active is False
     assert screen._status_light_frame.winfo_manager() == ""
 
 
@@ -1706,3 +1707,51 @@ def test_hard_mode_shortcut_h_is_registered(
     kb = keybinding("toggle_hard_mode")
 
     assert tk_root.bind_all(kb.event) != ""
+
+
+def test_hard_mode_shortcut_h_invokes_the_toggle(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    # The `h` shortcut's wrapped handler (returned by `bind_shortcut`, which
+    # cannot synthesize a real key on a withdrawn `tk_root`) must flip HARD
+    # on exactly like clicking the button.
+    screen = GameplayScreen(
+        tk_root,
+        _classic_maze(),
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+
+    screen._hard_mode_handler()
+
+    assert screen._session.hard_mode is True
+    assert screen._mode_hard_button.active is True
+
+
+def test_enabling_hard_mode_mid_leg_hides_the_ball_and_shows_the_fog_immediately(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    # Regression: a HARD toggle fired while a leg is in flight must apply the
+    # moving-state visuals right away (the in-flight ball disappears and the
+    # fog shows), not wait for the next `_on_animation_tick` -- the
+    # `moving-state predicate includes hard_mode` edge-case (spec matrix).
+    maze = _open_maze(width=3)
+    screen = GameplayScreen(
+        tk_root,
+        maze,
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    screen._on_move(Direction.RIGHT)
+    assert screen._session.moving_direction is not None
+    ball = screen._maze_canvas.find_withtag("ball")[0]
+    assert screen._maze_canvas.itemcget(ball, "state") == "normal"
+
+    screen._toggle_hard_mode()
+
+    assert screen._session.hard_mode is True
+    assert screen._maze_canvas.itemcget(ball, "state") == "hidden"
+    assert screen._maze_canvas.itemcget("fog", "state") == "normal"
+    assert screen._status_label.cget("text") == "Moving"

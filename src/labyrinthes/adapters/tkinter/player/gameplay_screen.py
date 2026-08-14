@@ -197,6 +197,10 @@ class GameplayScreen(tk.Frame):
         self._tick_job: str | None = None
         self._animation_job: str | None = None
         self._win_banner: tk.Frame | None = None
+        # `(hard_mode, moving)` of the last `_sync_hard_mode_visuals()` that
+        # actually did work -- lets per-tick calls skip redundant canvas
+        # toggles / repository color reads when nothing changed (Story 2.8).
+        self._last_hard_sync_state: tuple[bool, bool] | None = None
 
         self._build_hud(colors)
         self._build_sidebar(colors)
@@ -212,7 +216,7 @@ class GameplayScreen(tk.Frame):
         mode_kb = keybinding("toggle_movement_mode")
         bind_shortcut(self, mode_kb, self._toggle_mode)
         hard_kb = keybinding("toggle_hard_mode")
-        bind_shortcut(self, hard_kb, self._toggle_hard_mode)
+        self._hard_mode_handler = bind_shortcut(self, hard_kb, self._toggle_hard_mode)
 
         # `add="+"`: `bind_shortcut()` above already registered its own
         # `<Destroy>` cleanup on `self` (once per keybinding, each via
@@ -629,7 +633,13 @@ class GameplayScreen(tk.Frame):
             return
         new = not self._session.hard_mode
         self._session = session_set_hard_mode(self._session, new)
-        self._mode_hard_button.set_active(new)
+        # Derive the button's active flag from the *session*, not the
+        # requested `new` value: `set_hard_mode` is a strict no-op once
+        # solved, so flipping the button from `new` there would show it
+        # "active" while `session.hard_mode` is still `False` (the
+        # `_toggle_mode`/`_sync_mode_button` convention -- the button always
+        # mirrors the session).
+        self._mode_hard_button.set_active(self._session.hard_mode)
         self._sync_hard_mode_visuals()
 
     def _sync_hard_mode_visuals(self) -> None:
@@ -640,10 +650,21 @@ class GameplayScreen(tk.Frame):
         redraws structure. With HARD off the light is hidden and the ball is
         shown; with HARD on the light packs in and colors/labels follow
         ready vs. moving from `_hard_mode_colors()`.
+
+        The `(hard_mode, moving)` guard makes repeated per-tick calls cheap:
+        only the leg start/stop and toggle transitions that actually change
+        the visual state do any work (canvas `itemconfigure` + the two
+        fresh repository color reads), so the default HARD-off path and the
+        steady-moving path both cost a tuple compare per sub-step.
         """
-        moving = self._session.hard_mode and self._session.moving_direction is not None
+        hard = self._session.hard_mode
+        moving = hard and self._session.moving_direction is not None
+        state = (hard, moving)
+        if state == self._last_hard_sync_state:
+            return
+        self._last_hard_sync_state = state
         self._maze_canvas.set_hard_mode_moving(moving)
-        if not self._session.hard_mode:
+        if not hard:
             self._status_light_frame.pack_forget()
             return
         self._status_light_frame.pack(side="left", padx=(SPACING["sm"], 0))

@@ -71,6 +71,32 @@ def test_falls_back_to_the_default_when_a_stored_value_is_not_a_string():
     assert read_hard_mode_moving_color(repository, "#00ff00") == "#00ff00"
 
 
+def test_falls_back_to_the_default_when_a_stored_value_is_not_a_valid_color():
+    # A stored string that isn't a Tk-usable color would reach
+    # `itemconfigure(fill=...)` and raise `TclError` at render time; the
+    # reader must treat it as corrupt and fall back instead (patch from
+    # code review). Named colors are also rejected -- without `tkinter`
+    # (AD-1) they can't be validated, and the theme/color-picker both use
+    # hex anyway.
+    repository = _InMemorySettingsRepository()
+    repository.set(SettingsScope.GAME, HARD_MODE_READY_COLOR, "")
+    repository.set(SettingsScope.GAME, HARD_MODE_MOVING_COLOR, "garbage")
+
+    assert read_hard_mode_ready_color(repository, "#ff0000") == "#ff0000"
+    assert read_hard_mode_moving_color(repository, "#00ff00") == "#00ff00"
+
+
+def test_accepts_valid_hex_colors_in_all_tk_supported_lengths():
+    # Tk accepts `#RGB`/`#RRGGBB`/`#RRRRGGGGBBBB` (3, 6, 9, or 12 hex
+    # digits) -- these must round-trip, not fall back.
+    repository = _InMemorySettingsRepository()
+    repository.set(SettingsScope.GAME, HARD_MODE_READY_COLOR, "#f00")
+    repository.set(SettingsScope.GAME, HARD_MODE_MOVING_COLOR, "#ff0000000000")
+
+    assert read_hard_mode_ready_color(repository, "#ff0000") == "#f00"
+    assert read_hard_mode_moving_color(repository, "#00ff00") == "#ff0000000000"
+
+
 def test_never_writes_on_read():
     class _ExplodingOnSetRepository(SettingsRepository):
         def get(self, scope, key):
