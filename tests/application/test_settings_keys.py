@@ -6,6 +6,8 @@ _KEY_NAMES = [
     "MAZE_MIN_ROWS",
     "MAZE_MAX_ROWS",
     "THEME",
+    "HARD_MODE_READY_COLOR",
+    "HARD_MODE_MOVING_COLOR",
 ]
 
 

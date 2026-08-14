@@ -38,6 +38,18 @@ fires on the resulting identity change. The Difficulty controls are disabled
 unlockable from Level 2 onward, and inert at MAX (no partitions/walls to
 threshold), matching the legacy `Niveau_max` gate. Both controls share the
 toplevel focus guard and have no global shortcut.
+
+Story 2.8 adds HARD mode: a "Mode" sidebar group with a single HARD
+`ToolButton` (bound to the `h` shortcut) toggles `session.hard_mode`, and a
+status light (a 10px round light + Ready/Moving label) in the HUD row shows
+only while HARD is active. While the ball moves, `_sync_hard_mode_visuals()`
+calls `MazeCanvas.set_hard_mode_moving(True)` so the ball is genuinely not
+rendered and a fog scrim covers the corridor plane; at rest it restores the
+ball and hides the fog instantly. Both light states read their color fresh
+from the `game`-scoped settings on every activation/state sync
+(`_hard_mode_colors()`), so a color change recolors ready *and* moving and
+can never break the ready<->moving toggle (the legacy `"blue"` hardcode bug
+is fixed by construction -- no color literal lives in this module).
 """
 
 from __future__ import annotations
@@ -61,6 +73,10 @@ from labyrinthes.adapters.tkinter.common.tokens import (
 from labyrinthes.adapters.tkinter.common.tool_btn import ToolButton
 from labyrinthes.adapters.tkinter.player.maze_canvas import MazeCanvas
 from labyrinthes.adapters.tkinter.player.save_maze_dialog import SaveMazeDialog
+from labyrinthes.application.hard_mode_settings import (
+    read_hard_mode_moving_color,
+    read_hard_mode_ready_color,
+)
 from labyrinthes.application.maze_repository import MazeRepository
 from labyrinthes.application.movement_settings import (
     read_movement_mode,
@@ -80,6 +96,9 @@ from labyrinthes.application.player_session import (
 )
 from labyrinthes.application.player_session import (
     set_difficulty as session_set_difficulty,
+)
+from labyrinthes.application.player_session import (
+    set_hard_mode as session_set_hard_mode,
 )
 from labyrinthes.application.player_session import (
     set_level as session_set_level,
@@ -178,6 +197,10 @@ class GameplayScreen(tk.Frame):
         self._tick_job: str | None = None
         self._animation_job: str | None = None
         self._win_banner: tk.Frame | None = None
+        # `(hard_mode, moving)` of the last `_sync_hard_mode_visuals()` that
+        # actually did work -- lets per-tick calls skip redundant canvas
+        # toggles / repository color reads when nothing changed (Story 2.8).
+        self._last_hard_sync_state: tuple[bool, bool] | None = None
 
         self._build_hud(colors)
         self._build_sidebar(colors)
@@ -192,6 +215,8 @@ class GameplayScreen(tk.Frame):
             bind_shortcut(self, kb, functools.partial(self._on_move, direction))
         mode_kb = keybinding("toggle_movement_mode")
         bind_shortcut(self, mode_kb, self._toggle_mode)
+        hard_kb = keybinding("toggle_hard_mode")
+        self._hard_mode_handler = bind_shortcut(self, hard_kb, self._toggle_hard_mode)
 
         # `add="+"`: `bind_shortcut()` above already registered its own
         # `<Destroy>` cleanup on `self` (once per keybinding, each via
@@ -228,6 +253,34 @@ class GameplayScreen(tk.Frame):
         )
         self._pos_chip.pack(side="left")
 
+        # HARD-mode status light (Story 2.8): a 10px round light + a
+        # Ready/Moving label, per the mockup's `.status-wrap`. Built but
+        # hidden at mount -- HARD starts off -- `_sync_hard_mode_visuals()`
+        # packs it in (and recolors it) only while HARD is active.
+        self._status_light_frame = tk.Frame(hud_row, background=colors.window)
+        self._status_light_canvas = tk.Canvas(
+            self._status_light_frame,
+            width=10,
+            height=10,
+            background=colors.window,
+            highlightthickness=0,
+            bd=0,
+        )
+        self._status_light = self._status_light_canvas.create_oval(
+            0, 0, 10, 10, fill=colors.accent, outline=""
+        )
+        self._status_light_canvas.pack(side="left", padx=(0, SPACING["xs"]))
+        self._status_label = tk.Label(
+            self._status_light_frame,
+            text="Ready",
+            font=TYPOGRAPHY.label.to_tk_font(),
+            background=colors.window,
+            foreground=colors.ink_soft,
+        )
+        self._status_label.pack(side="left")
+        self._status_light_frame.pack(side="left", padx=(SPACING["sm"], 0))
+        self._status_light_frame.pack_forget()
+
     def _build_sidebar(self, colors: ColorTokens) -> None:
         self._sidebar = tk.Frame(self, background=colors.window)
         self._sidebar.pack(side="left", fill="y", padx=(0, SPACING["lg"]))
@@ -257,6 +310,24 @@ class GameplayScreen(tk.Frame):
             command=self._cycle_speed,
         )
         self._speed_button.pack(anchor="w")
+
+        tk.Label(
+            self._sidebar,
+            text="Mode",
+            font=TYPOGRAPHY.body.to_tk_font(),
+            background=colors.window,
+            foreground=colors.ink,
+        ).pack(anchor="w", pady=(SPACING["lg"], SPACING["sm"]))
+
+        hard_kb = keybinding("toggle_hard_mode")
+        self._mode_hard_button = ToolButton(
+            self._sidebar,
+            "HARD",
+            theme=self._theme,
+            shortcut=hard_kb.display,
+            command=self._toggle_hard_mode,
+        )
+        self._mode_hard_button.pack(anchor="w")
 
         tk.Label(
             self._sidebar,
@@ -402,6 +473,7 @@ class GameplayScreen(tk.Frame):
         previous_moving = self._session.moving_direction
         self._session = session_request_move(self._session, direction)
         self._sync_visibility()
+        self._sync_hard_mode_visuals()
 
         if self._session.moving_direction is not None and previous_moving is None:
             self._animation_job = self.after(self._per_step_ms(), self._on_animation_tick)
@@ -410,6 +482,9 @@ class GameplayScreen(tk.Frame):
         previous_position = self._session.position
         self._session = session_advance_step(self._session)
         self._sync_visibility()
+        # Sync before the solved branch so a rest-after-solve keeps the ball
+        # visible at rest (`moving_direction` is None on solve).
+        self._sync_hard_mode_visuals()
 
         direction = self._session.moving_direction
         if direction is not None:
@@ -533,6 +608,71 @@ class GameplayScreen(tk.Frame):
         self._session = session_set_speed(self._session, new_speed)
         write_movement_speed(self._settings_repository, new_speed)
         self._speed_button.set_text(_speed_label(new_speed))
+
+    # -- HARD mode (Story 2.8) ------------------------------------------
+
+    def _hard_mode_colors(self) -> tuple[str, str]:
+        """The current `(ready, moving)` status-light colors, read fresh.
+
+        Both states read their color from the `game`-scoped settings on every
+        call -- never cached -- so a settings change recolors ready *and*
+        moving consistently and can never break the ready<->moving toggle
+        (AC-4). The theme defaults (`colors.accent` ready / `colors.exit`
+        moving, per DESIGN.md `status-light-default`) are passed into the
+        application-layer readers as parameters, keeping `application/`
+        theme-agnostic.
+        """
+        colors = colors_for(self._theme)
+        return (
+            read_hard_mode_ready_color(self._settings_repository, colors.accent),
+            read_hard_mode_moving_color(self._settings_repository, colors.exit),
+        )
+
+    def _toggle_hard_mode(self) -> None:
+        if not self._toplevel_has_focus():
+            return
+        new = not self._session.hard_mode
+        self._session = session_set_hard_mode(self._session, new)
+        # Derive the button's active flag from the *session*, not the
+        # requested `new` value: `set_hard_mode` is a strict no-op once
+        # solved, so flipping the button from `new` there would show it
+        # "active" while `session.hard_mode` is still `False` (the
+        # `_toggle_mode`/`_sync_mode_button` convention -- the button always
+        # mirrors the session).
+        self._mode_hard_button.set_active(self._session.hard_mode)
+        self._sync_hard_mode_visuals()
+
+    def _sync_hard_mode_visuals(self) -> None:
+        """Make the fog/ball/status light match the current HARD + moving state.
+
+        Driven by `session.moving_direction` (leg start/stop), never by
+        animation sub-steps, and only toggles canvas item `state` -- it never
+        redraws structure. With HARD off the light is hidden and the ball is
+        shown; with HARD on the light packs in and colors/labels follow
+        ready vs. moving from `_hard_mode_colors()`.
+
+        The `(hard_mode, moving)` guard makes repeated per-tick calls cheap:
+        only the leg start/stop and toggle transitions that actually change
+        the visual state do any work (canvas `itemconfigure` + the two
+        fresh repository color reads), so the default HARD-off path and the
+        steady-moving path both cost a tuple compare per sub-step.
+        """
+        hard = self._session.hard_mode
+        moving = hard and self._session.moving_direction is not None
+        state = (hard, moving)
+        if state == self._last_hard_sync_state:
+            return
+        self._last_hard_sync_state = state
+        self._maze_canvas.set_hard_mode_moving(moving)
+        if not hard:
+            self._status_light_frame.pack_forget()
+            return
+        self._status_light_frame.pack(side="left", padx=(SPACING["sm"], 0))
+        ready_color, moving_color = self._hard_mode_colors()
+        self._status_light_canvas.itemconfigure(
+            self._status_light, fill=moving_color if moving else ready_color
+        )
+        self._status_label.configure(text="Moving" if moving else "Ready")
 
     # -- elapsed-time ticking ----------------------------------------------
 

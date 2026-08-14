@@ -349,3 +349,85 @@ def test_redraw_structure_reopens_every_exit_edge_with_corridor_bars(
     contour_items = canvas.find_withtag("contour")
     reopen = [item for item in contour_items if canvas.itemcget(item, "fill") == colors.corridor]
     assert sorted(canvas.coords(item) for item in reopen) == sorted(expected_reopen_coords)
+
+
+# -- HARD mode fog (Story 2.8) ----------------------------------------
+
+
+def test_fog_item_spans_the_canvas_is_filled_with_bg_and_hidden_by_default(tk_root):
+    maze = _maze(width=2, height=2)
+    colors = colors_for(Theme.LIGHT)
+
+    canvas = MazeCanvas(tk_root, maze, maze.entry, theme=Theme.LIGHT)
+
+    fog_items = canvas.find_withtag("fog")
+    assert len(fog_items) == 1
+    assert canvas.type(fog_items[0]) == "rectangle"
+    assert canvas.itemcget(fog_items[0], "fill") == colors.bg
+    assert canvas.itemcget(fog_items[0], "state") == "hidden"
+    assert canvas.coords(fog_items[0]) == [
+        0,
+        0,
+        int(canvas.cget("width")),
+        int(canvas.cget("height")),
+    ]
+
+
+def test_fog_item_stacks_below_the_first_wall_item(tk_root):
+    # The fog scrim sits above the corridor plane but below every wall bar /
+    # marker / ball. On a `tk.Canvas` items draw in creation order and later
+    # items stack on top, so the fog must be the *first* item created.
+    maze = _maze(width=2, height=2)
+
+    canvas = MazeCanvas(tk_root, maze, maze.entry, theme=Theme.LIGHT)
+
+    order = canvas.find_all()
+    fog_index = min(order.index(item) for item in canvas.find_withtag("fog"))
+    wall_index = min(order.index(item) for item in canvas.find_withtag("wall"))
+    assert fog_index < wall_index
+
+
+def test_fog_stays_below_walls_after_redraw_structure(tk_root):
+    maze = _maze(width=2, height=2)
+    canvas = MazeCanvas(tk_root, maze, maze.entry, theme=Theme.LIGHT)
+    canvas.redraw_structure(initial_level_visibility(maze, Level.ONE, Difficulty.ONE, maze.entry))
+
+    order = canvas.find_all()
+    fog_index = min(order.index(item) for item in canvas.find_withtag("fog"))
+    wall_index = min(order.index(item) for item in canvas.find_withtag("wall"))
+    assert fog_index < wall_index
+
+
+def test_set_hard_mode_moving_true_hides_the_ball_and_shows_the_fog(tk_root):
+    maze = _maze(width=2, height=2)
+    canvas = MazeCanvas(tk_root, maze, maze.entry, theme=Theme.LIGHT)
+    ball = canvas.find_withtag("ball")[0]
+
+    canvas.set_hard_mode_moving(True)
+
+    assert canvas.itemcget("fog", "state") == "normal"
+    assert canvas.itemcget(ball, "state") == "hidden"
+
+
+def test_set_hard_mode_moving_false_restores_ball_and_hides_the_fog(tk_root):
+    maze = _maze(width=2, height=2)
+    canvas = MazeCanvas(tk_root, maze, maze.entry, theme=Theme.LIGHT)
+    ball = canvas.find_withtag("ball")[0]
+
+    canvas.set_hard_mode_moving(True)
+    canvas.set_hard_mode_moving(False)
+
+    assert canvas.itemcget("fog", "state") == "hidden"
+    assert canvas.itemcget(ball, "state") == "normal"
+
+
+def test_set_hard_mode_moving_is_idempotent(tk_root):
+    maze = _maze(width=2, height=2)
+    canvas = MazeCanvas(tk_root, maze, maze.entry, theme=Theme.LIGHT)
+    ball = canvas.find_withtag("ball")[0]
+
+    canvas.set_hard_mode_moving(True)
+    canvas.set_hard_mode_moving(True)
+
+    assert canvas.itemcget("fog", "state") == "normal"
+    assert canvas.itemcget(ball, "state") == "hidden"

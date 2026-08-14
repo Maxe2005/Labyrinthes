@@ -3,6 +3,7 @@ from labyrinthes.application.player_session import (
     advance_step,
     request_move,
     set_difficulty,
+    set_hard_mode,
     set_level,
     set_mode,
     set_speed,
@@ -201,6 +202,7 @@ def test_start_session_places_the_ball_at_entry_with_plain_defaults():
     assert session.difficulty is Difficulty.ONE
     assert session.visibility.level is Level.ONE
     assert session.visibility.current_partition == 0
+    assert session.hard_mode is False
 
 
 # -- discrete ----------------------------------------------------------
@@ -650,3 +652,54 @@ def test_smooth_boundary_stop_reveals_the_collided_wall_at_level_four():
     assert session.position == Position(row=0, col=1)
     assert session.moving_direction is None
     assert session.visibility.discovered_walls == frozenset({Wall(row=0, col=2, side="left")})
+
+
+# -- hard mode (Story 2.8) -------------------------------------------
+
+
+def test_set_hard_mode_sets_the_flag():
+    maze = _walled_maze()
+
+    session = set_hard_mode(start_session(maze), True)
+
+    assert session.hard_mode is True
+
+
+def test_set_hard_mode_false_disables_the_flag():
+    maze = _walled_maze()
+
+    session = set_hard_mode(set_hard_mode(start_session(maze), True), False)
+
+    assert session.hard_mode is False
+
+
+def test_set_hard_mode_preserves_an_in_flight_leg_and_the_other_run_fields():
+    maze = _open_maze(width=3)
+    session = request_move(start_session(maze), Direction.RIGHT)
+    session = set_speed(session, MovementSpeed.FAST)
+    session = set_level(session, Level.TWO)
+    assert session.moving_direction is Direction.RIGHT
+    assert session.leg_target == Position(row=0, col=1)
+    assert session.step == 0
+
+    session = set_hard_mode(session, True)
+
+    assert session.hard_mode is True
+    assert session.moving_direction is Direction.RIGHT
+    assert session.leg_target == Position(row=0, col=1)
+    assert session.step == 0
+    assert session.speed is MovementSpeed.FAST
+    assert session.level is Level.TWO
+
+
+def test_set_hard_mode_is_a_no_op_once_solved():
+    maze = _open_maze(width=2)
+    session = _discrete(maze)
+    session = request_move(session, Direction.RIGHT)
+    session = _settle(session)
+    assert session.solved is True
+
+    result = set_hard_mode(session, True)
+
+    assert result is session
+    assert session.hard_mode is False

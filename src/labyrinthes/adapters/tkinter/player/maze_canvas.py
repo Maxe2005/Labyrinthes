@@ -84,12 +84,40 @@ class MazeCanvas(tk.Canvas):
             bd=0,
         )
 
+        # The HARD-mode fog scrim must be the *first* item created: Tk canvas
+        # items draw in creation order, so a first-created rectangle sits above
+        # the corridor background (the canvas itself) and below every wall
+        # bar/marker/ball, and `redraw_structure`'s later wall recreations keep
+        # stacking above it -- the load-bearing z-order that keeps the
+        # structure crisp on top of the scrim. It is hidden by default; the
+        # screen shows it only while HARD mode is active and the ball moves.
+        self._draw_fog(colors)
         self._draw_walls(colors)
         self._draw_entry_marker(colors)
         self._draw_exit_marker(colors)
         self._ball_id = self._draw_ball(position, colors)
 
     # -- drawing -------------------------------------------------------
+
+    def _draw_fog(self, colors: ColorTokens) -> None:
+        """The HARD-mode scrim: a full-canvas `colors.bg` rectangle (tag `"fog"`).
+
+        Tk `Canvas` items have no per-item alpha channel, so DESIGN.md's
+        `opacity: 0.85` is approximated with a solid `colors.bg` fill -- the
+        scrim reads as a translucent veil because the corridor is the
+        lightest/darkest surface and the hex is still the design token.
+        Show/hide is an instant `state` toggle, never an animation.
+        """
+        self.create_rectangle(
+            0,
+            0,
+            self._maze.grid.width * self._cell_size,
+            self._maze.grid.height * self._cell_size,
+            fill=colors.bg,
+            outline="",
+            tags=("fog",),
+            state="hidden",
+        )
 
     def _draw_walls(self, colors: ColorTokens) -> None:
         grid = self._maze.grid
@@ -252,3 +280,15 @@ class MazeCanvas(tk.Canvas):
     def set_ball_position(self, position: Position) -> None:
         """Move the ball item to `position`'s cell center, without redrawing anything else."""
         self.set_ball_offset(position, 0, 0)
+
+    def set_hard_mode_moving(self, moving: bool) -> None:
+        """Toggle HARD-mode rendering for a moving (True) or resting (False) ball.
+
+        While moving, the ball is genuinely not rendered (`state="hidden"`,
+        not merely occluded) and the fog scrim is shown above the
+        corridor/ball plane and below every wall bar/marker. Callable
+        repeatedly; idempotent. When HARD mode is off the screen never calls
+        it with `True`, so the ball stays visible and the fog hidden.
+        """
+        self.itemconfigure("fog", state="normal" if moving else "hidden")
+        self.itemconfigure(self._ball_id, state="hidden" if moving else "normal")
