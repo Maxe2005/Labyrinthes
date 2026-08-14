@@ -2,9 +2,9 @@
 title: 'Story 2.7: Difficulty — unified threshold formula'
 type: 'feature'
 created: '2026-08-14'
-status: 'review'
+status: 'done'
 baseline_commit: 'd716269'
-review_loop_iteration: 0
+review_loop_iteration: 1
 followup_review_recommended: false
 context: ['_bmad-output/implementation-artifacts/epic-2-context.md']
 baseline_revision: 'd716269'
@@ -12,7 +12,7 @@ baseline_revision: 'd716269'
 
 # Story 2.7: Difficulty — unified threshold formula
 
-Status: review
+Status: done
 
 ## Story
 
@@ -84,7 +84,7 @@ Wire the Difficulty control end-to-end on the session and the gameplay screen, a
   - `_difficulty_enabled() -> bool` — **NEW**: `self._session.level not in (Level.ONE, Level.MAX)`.
   - `_cycle_level` — **UPDATE**: after syncing level widgets, call `_sync_difficulty_widgets()` so entering/exiting ONE (or MAX) re-evaluates the Difficulty control's enabled state.
   - Import `Difficulty` and alias `set_difficulty as session_set_difficulty` (matching the existing `session_set_*` import block). Keep the `session_set_difficulty` call a screen-side orchestration only.
-- `tests/domain/test_level_visibility.py` — **UPDATE**: pin the finalized formula — explicit D1/D2/D3 threshold values for a known axis pair (e.g. `(3,2)` → `3`/`2`/`1` via `round(6/2)=3`, `round(6/3)=2`, `round(6/4)=1`) and a Level-4-style `(total, 1)` pair, plus a comment-backed assertion that Level 2 and Level 4 share this one function (they already call the same `reveal_threshold`).
+- `tests/domain/test_level_visibility.py` — **UPDATE**: pin the finalized formula — explicit D1/D2/D3 threshold values for a known axis pair (e.g. `(3,2)` → `3`/`2`/`2` via `round(6/2)=3`, `round(6/3)=2`, `round(6/4)=2` — the last is banker's rounding, `round(1.5)==2`) and a Level-4-style `(total, 1)` pair, plus a comment-backed assertion that Level 2 and Level 4 share this one function (they already call the same `reveal_threshold`).
 - `tests/application/test_player_session.py` — **UPDATE**: `set_difficulty` replaces difficulty and re-initializes visibility at the current position; preserves position/elapsed/mode/speed; preserves an in-flight leg; no-op once solved. Mirror the existing `set_level` tests.
 - `tests/adapters/tkinter/common/test_tool_btn.py` — **UPDATE**: `set_enabled(False)` — click is a no-op (command not fired), `takefocus` is falsy, ghost styling rendered; `set_enabled(True)` — focusability, activation, and normal styling restored; a disabled button does not show a focus ring on `_on_focus_in`.
 - `tests/adapters/tkinter/player/test_gameplay_screen.py` — **UPDATE**: Difficulty group renders at `Level.ONE` disabled; `−`/`+` cycle `session.difficulty` + HUD chip + sidebar label (wrap both directions); a Difficulty change redraws the canvas (assert the wall/partition set changed) without restarting the run (position/elapsed/mode/speed preserved); controls disabled at Level ONE and MAX, enabled at TWO; a level cycle re-evaluates the enabled state; focus guard applies to the Difficulty controls; no-op after solve. Update `test_hud_shows_level_and_difficulty_and_initial_time_and_pos` (line ~173): the Difficulty chip now shows `"1"`, not `"—"`.
@@ -108,16 +108,25 @@ Wire the Difficulty control end-to-end on the session and the gameplay screen, a
 
 ### Review Findings
 
-_No review yet — this story is fresh (`ready-for-dev`)._
+- [x] [Review][Patch] Stale `_focused` flag across disable→re-enable leaves a phantom focus ring [`src/labyrinthes/adapters/tkinter/common/tool_btn.py`] — disabling a focused button leaves `_focused=True` (both `_on_focus_out` and `_on_focus_in` early-return while disabled), so re-enabling renders a focus ring with no focus event. Not reachable through the Difficulty controls today (a level cycle moves focus first), but this is shared-toolkit code promised for Stories 2.9/2.10.
+- [x] [Review][Patch] Difficulty→visibility re-init paths under-verified (AC-2/AC-3) [`tests/domain/test_level_visibility.py`, `tests/application/test_player_session.py`] — the Level FOUR path is never exercised: `set_difficulty` at FOUR asserts only preserved fields, and `note_collision` (Level-4 wall-threshold consumer) is tested at `Difficulty.ONE` only. `test_set_difficulty_preserves_an_in_flight_leg` runs at Level ONE where difficulty has no effect (proves leg preservation, not difficulty re-init mid-leg). The "Level 2 and Level 4 share one `reveal_threshold`" property is asserted only in a test comment, not through the real call paths.
+- [x] [Review][Patch] Screen "no-op once solved" test never exercises the solved path [`tests/adapters/tkinter/player/test_gameplay_screen.py`] — the run is solved at default `Level.ONE`, so `_cycle_difficulty` returns at the disabled-guard before `session_set_difficulty` is reached; the solved no-op is only genuinely covered at the application layer.
+- [x] [Review][Patch] Spec Code Map worked example `(3,2) → 3/2/1` is wrong under banker's rounding [`_bmad-output/implementation-artifacts/spec-2-7-difficulty-unified-threshold-formula.md`] — `round(6/4) == 2`, so the correct pinned values are `3/2/2`; the spec body was never corrected to match the tests (Dev Agent Record acknowledges this).
+- [x] [Review][Patch] Spec "Review Findings"/"Review Triage Log" still say "fresh (`ready-for-dev`)" while frontmatter/Status say `review` [`_bmad-output/implementation-artifacts/spec-2-7-difficulty-unified-threshold-formula.md`]
+- [x] [Review][Patch] `set_enabled(True)` unconditionally forces `takefocus=True` rather than restoring the pre-disable value [`src/labyrinthes/adapters/tkinter/common/tool_btn.py`] — latent today (all `ToolButton`s are constructed `takefocus=True`), but wrong for any future non-focusable button.
+- [x] [Review][Patch] `set_enabled` does not reconcile a lingering `_active` [`src/labyrinthes/adapters/tkinter/common/tool_btn.py`] — a grouped active button disabled→re-enabled renders active without interaction. Not hit by the Difficulty controls (not grouped, never active); latent in shared toolkit.
+- [x] [Review][Patch] `reveal_threshold` docstring "exactly `total/2`" overstates fidelity under banker's rounding [`src/labyrinthes/domain/level_visibility.py`] — for odd totals `round(total/2)` rounds half-to-even (e.g. `round(7/2)==4`) vs legacy integer division `3`; wording should say "rounds to the nearest even integer of `total/2`" or similar.
+- [x] [Review][Patch] Screen redraw test omits `elapsed` preservation and level-cycle label/chip re-sync assertions [`tests/adapters/tkinter/player/test_gameplay_screen.py`] — `test_difficulty_change_redraws_the_structure_without_restarting_the_run` asserts position/mode but not elapsed (covered at app layer); `test_difficulty_controls_disable_at_level_max_and_at_level_one` never asserts the value-label foreground or HUD chip after a level cycle.
 
 ## Spec Change Log
 
 - 2026-08-14 — Created spec from epics.md Story 2.7 ACs (lines 628-646), epic-2-context.md (Difficulty mechanics, game-scoped settings list, mid-session recalculation), PRD FR-13 + addendum "Level detail" (Level 2 vs Level 4 formula inconsistency), deferred-work.md (the two Story-2.7 seams), legacy `Labyrinthes_copy.py` (`Difficultee.plus`/`moins`, `refresh_difficultee`, `init_taille_partition_par_difficultées`, `Position_joueur_sur_back_lab_partition`, `test_nb_murs_niv_4`), Story 2.6's spec/review learnings, and the current `rewrite` codebase (post-Story 2.6).
 - 2026-08-14 — Implemented Story 2.7: `set_difficulty` in `player_session.py`, `reveal_threshold` docstring finalized (no behavior change), `ToolButton.set_enabled` disabled state, Difficulty sidebar group + real HUD chip in `gameplay_screen.py`; status `ready-for-dev` → `review`.
+- 2026-08-14 — Code review: applied all 9 `patch` findings (stale `_focused`/`_active` cleared on disable, `takefocus` restored, Level-FOUR + mid-leg difficulty coverage, solved no-op screen test, spec example + placeholders corrected, docstring precision, redraw/disable assertions); 5 dismissed; status `review` → `done`.
 
 ## Review Triage Log
 
-_No review yet — this story is fresh (`ready-for-dev`)._
+- 2026-08-14 — Code review (9 findings, all `patch`): stale `_focused` across disable→re-enable; Level-FOUR difficulty path under-verified; solved no-op test never exercising the solved path; spec worked example wrong; stale spec placeholder; `takefocus` forced `True` on re-enable; lingering `_active` not reconciled; docstring "exactly `total/2`" overstatement; redraw/disable test gaps. 5 findings dismissed as noise/by-design. All 9 patches applied. Status `review` → `done`.
 
 ## Design Notes
 
