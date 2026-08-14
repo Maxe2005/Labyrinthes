@@ -51,6 +51,7 @@ class ToolButton(tk.Frame):
         self._active = False
         self._focused = False
         self._enabled = True
+        self._default_takefocus = self.cget("takefocus")
 
         self._label = tk.Label(
             self,
@@ -108,7 +109,15 @@ class ToolButton(tk.Frame):
         if enabled == self._enabled:
             return
         self._enabled = enabled
-        self.configure(takefocus=enabled)
+        if not enabled:
+            # A disabled button can't hold focus or an active selection;
+            # clear both so re-enabling never re-renders a stale ring or a
+            # "selected" style the user never asked for. Focus-out is
+            # swallowed while disabled (see `_on_focus_out`), so the flag
+            # would otherwise survive a disable-while-focused round-trip.
+            self._focused = False
+            self._active = False
+        self.configure(takefocus=self._default_takefocus if enabled else False)
         for widget in self._clickable_widgets():
             widget.configure(cursor="hand2" if enabled else "")
         self._apply_style()

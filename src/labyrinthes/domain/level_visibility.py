@@ -203,7 +203,9 @@ def reveal_threshold(axis_counts: tuple[int, int], difficulty: Difficulty) -> in
     uses Python's built-in `round(...)` directly -- there is no half-up
     `arrondi` helper anywhere in the legacy tree -- so this is pinned as the
     final decision, not a divergence to revisit. At Difficulty ONE the Level-4
-    threshold is exactly `total/2`, matching legacy Level-4's `/2` semantics;
+    threshold is `round(total/2)` -- for even totals exactly `total/2`,
+    matching legacy Level-4's `/2` semantics, while odd totals round to the
+    nearest even integer (the same banker's behavior as every other value);
     the unification fixes only the D2/D3 divisors (`/3`, `/4` replace the
     legacy `/5`, `/10`).
     """
