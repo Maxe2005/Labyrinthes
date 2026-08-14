@@ -12,6 +12,7 @@ from labyrinthes.application.player_session import STEPS_PER_CELL
 from labyrinthes.application.settings_keys import MOVEMENT_MODE, MOVEMENT_SPEED
 from labyrinthes.application.settings_repository import SettingsScope
 from labyrinthes.domain.cell import Cell
+from labyrinthes.domain.difficulty import Difficulty
 from labyrinthes.domain.grid import Grid
 from labyrinthes.domain.level import Level
 from labyrinthes.domain.level_visibility import Wall, visible_walls
@@ -170,7 +171,7 @@ def test_hud_shows_level_and_difficulty_and_initial_time_and_pos(
     )
 
     assert screen._level_chip._value_label.cget("text") == "1"
-    assert screen._difficulty_chip._value_label.cget("text") == "—"
+    assert screen._difficulty_chip._value_label.cget("text") == "1"
     assert screen._time_chip._value_label.cget("text") == "00:00"
     assert screen._pos_chip._value_label.cget("text") == "(0, 0)"
 
@@ -1238,3 +1239,195 @@ def test_level_change_is_a_no_op_while_focus_is_in_another_toplevel(
     assert screen._session.level is Level.ONE
     assert screen._level_chip._value_label.cget("text") == "1"
     other.destroy()
+
+
+# -- difficulty (Story 2.7) --------------------------------------------
+
+
+def test_difficulty_group_renders_disabled_at_level_one(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    screen = GameplayScreen(
+        tk_root,
+        _classic_maze(),
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    assert screen._session.difficulty is Difficulty.ONE
+    assert screen._difficulty_chip._value_label.cget("text") == "1"
+    assert screen._difficulty_value_label.cget("text") == "1"
+    assert screen._difficulty_minus_button._enabled is False
+    assert screen._difficulty_plus_button._enabled is False
+
+
+def test_cycling_difficulty_updates_session_chip_and_sidebar_and_wraps_both_directions(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    screen = GameplayScreen(
+        tk_root,
+        _classic_maze(),
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    screen._cycle_level(1)  # ONE -> TWO, unlocking the Difficulty control
+
+    screen._cycle_difficulty(1)  # ONE -> TWO
+    assert screen._session.difficulty is Difficulty.TWO
+    assert screen._difficulty_chip._value_label.cget("text") == "2"
+    assert screen._difficulty_value_label.cget("text") == "2"
+
+    screen._cycle_difficulty(1)  # TWO -> THREE
+    assert screen._session.difficulty is Difficulty.THREE
+    assert screen._difficulty_chip._value_label.cget("text") == "3"
+
+    screen._cycle_difficulty(1)  # THREE -> ONE (wrapped forward)
+    assert screen._session.difficulty is Difficulty.ONE
+    assert screen._difficulty_chip._value_label.cget("text") == "1"
+
+    screen._cycle_difficulty(-1)  # ONE -> THREE (wrapped backward)
+    assert screen._session.difficulty is Difficulty.THREE
+    assert screen._difficulty_chip._value_label.cget("text") == "3"
+
+
+def test_difficulty_change_redraws_the_structure_without_restarting_the_run(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    _use_discrete(fake_settings_repository)
+    maze = _classic_maze(width=8, height=6)  # D1 -> 3x3 partitions, D2 -> 2x2
+    screen = GameplayScreen(
+        tk_root,
+        maze,
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    screen._cycle_level(1)  # ONE -> TWO
+    walls_at_d1 = len(screen._maze_canvas.find_withtag("wall"))
+    assert walls_at_d1 > 0
+
+    screen._cycle_difficulty(1)  # ONE -> TWO: 3x3 -> 2x2 partitions
+
+    assert screen._session.difficulty is Difficulty.TWO
+    assert screen._session.position == maze.entry
+    assert screen._session.solved is False
+    assert screen._session.level is Level.TWO
+    assert screen._rendered_visibility is screen._session.visibility
+    assert len(screen._maze_canvas.find_withtag("wall")) != walls_at_d1
+
+
+def test_difficulty_controls_disable_at_level_max_and_at_level_one(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    screen = GameplayScreen(
+        tk_root,
+        _classic_maze(),
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    assert screen._difficulty_plus_button._enabled is False
+
+    screen._cycle_level(1)  # ONE -> TWO
+    assert screen._difficulty_plus_button._enabled is True
+    assert screen._difficulty_minus_button._enabled is True
+
+    screen._cycle_level(1)  # TWO -> THREE
+    assert screen._difficulty_plus_button._enabled is True
+
+    screen._cycle_level(1)  # THREE -> FOUR
+    assert screen._difficulty_plus_button._enabled is True
+
+    screen._cycle_level(1)  # FOUR -> MAX
+    assert screen._difficulty_plus_button._enabled is False
+
+    screen._cycle_level(1)  # MAX -> ONE (wrapped)
+    assert screen._difficulty_plus_button._enabled is False
+
+
+def test_difficulty_cycle_is_a_no_op_while_the_control_is_disabled(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    screen = GameplayScreen(
+        tk_root,
+        _classic_maze(),
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    assert screen._session.level is Level.ONE
+
+    screen._cycle_difficulty(1)
+
+    assert screen._session.difficulty is Difficulty.ONE
+    assert screen._difficulty_chip._value_label.cget("text") == "1"
+
+
+def test_difficulty_change_is_a_no_op_once_solved(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    maze = _open_maze(width=2)
+    screen = GameplayScreen(
+        tk_root,
+        maze,
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    screen._on_move(Direction.RIGHT)
+    _settle(screen)
+    assert screen._session.solved is True
+
+    screen._cycle_difficulty(1)
+
+    assert screen._session.solved is True
+    assert screen._session.difficulty is Difficulty.ONE
+
+
+def test_difficulty_cycle_is_a_no_op_while_focus_is_in_another_toplevel(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    screen = GameplayScreen(
+        tk_root,
+        _classic_maze(),
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    screen._cycle_level(1)  # unlock: ONE -> TWO
+    other = tk.Toplevel(tk_root)
+    other_entry = tk.Entry(other)
+    screen.focus_get = lambda: other_entry
+
+    screen._cycle_difficulty(1)
+
+    assert screen._session.difficulty is Difficulty.ONE
+    other.destroy()
+
+
+def test_difficulty_change_preserves_position_and_level_and_run_state(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    _use_discrete(fake_settings_repository)
+    maze = _corridor_maze(width=5)
+    screen = GameplayScreen(
+        tk_root,
+        maze,
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    screen._cycle_level(1)  # ONE -> TWO
+    screen._on_move(Direction.RIGHT)
+    _settle(screen)
+    assert screen._session.position == Position(row=0, col=1)
+    assert screen._session.mode is MovementMode.DISCRETE
+
+    screen._cycle_difficulty(1)
+
+    assert screen._session.position == Position(row=0, col=1)
+    assert screen._session.level is Level.TWO
+    assert screen._session.solved is False
+    assert screen._session.mode is MovementMode.DISCRETE
+    assert screen._session.visibility.difficulty is Difficulty.TWO

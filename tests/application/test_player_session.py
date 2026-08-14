@@ -2,6 +2,7 @@ from labyrinthes.application.player_session import (
     STEPS_PER_CELL,
     advance_step,
     request_move,
+    set_difficulty,
     set_level,
     set_mode,
     set_speed,
@@ -507,6 +508,71 @@ def test_set_level_is_a_no_op_once_solved():
     assert session.solved is True
 
     result = set_level(session, Level.MAX)
+
+    assert result is session
+
+
+def test_set_difficulty_replaces_difficulty_and_reinitializes_visibility_at_the_position():
+    maze = _walled_maze(width=8, height=6)
+    session = set_level(start_session(maze), Level.TWO)
+    assert session.difficulty is Difficulty.ONE
+    assert session.visibility.partition_size == (3, 3)
+
+    session = set_difficulty(session, Difficulty.TWO)
+
+    assert session.difficulty is Difficulty.TWO
+    assert session.position == maze.entry
+    assert session.solved is False
+    assert session.visibility.level is Level.TWO
+    assert session.visibility.difficulty is Difficulty.TWO
+    assert session.visibility.partition_size == (2, 2)
+
+
+def test_set_difficulty_preserves_elapsed_mode_speed_and_level():
+    maze = _walled_maze(width=8, height=6)
+    session = set_speed(start_session(maze), MovementSpeed.FAST)
+    session = set_mode(session, MovementMode.DISCRETE)
+    session = tick(session, Duration(milliseconds=5000))
+    session = set_level(session, Level.FOUR)
+
+    session = set_difficulty(session, Difficulty.THREE)
+
+    assert session.elapsed == Duration(milliseconds=5000)
+    assert session.mode is MovementMode.DISCRETE
+    assert session.speed is MovementSpeed.FAST
+    assert session.level is Level.FOUR
+
+
+def test_set_difficulty_preserves_an_in_flight_leg():
+    maze = _partition_maze()
+    session = _discrete(maze)
+    session = request_move(session, Direction.RIGHT)
+    assert session.moving_direction is Direction.RIGHT
+    assert session.leg_target == Position(row=0, col=1)
+    assert session.step == 0
+
+    session = set_difficulty(session, Difficulty.TWO)
+
+    assert session.difficulty is Difficulty.TWO
+    assert session.moving_direction is Direction.RIGHT
+    assert session.leg_target == Position(row=0, col=1)
+    assert session.step == 0
+    assert session.pending_direction is None
+
+    session = _settle(session)
+    assert session.position == Position(row=0, col=1)
+    assert session.moving_direction is None
+    assert session.level is Level.ONE
+
+
+def test_set_difficulty_is_a_no_op_once_solved():
+    maze = _open_maze(width=2)
+    session = _discrete(maze)
+    session = request_move(session, Direction.RIGHT)
+    session = _settle(session)
+    assert session.solved is True
+
+    result = set_difficulty(session, Difficulty.THREE)
 
     assert result is session
 
