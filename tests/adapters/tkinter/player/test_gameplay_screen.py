@@ -8,6 +8,12 @@ from labyrinthes.adapters.tkinter.common.tokens import Theme, colors_for
 from labyrinthes.adapters.tkinter.player.gameplay_screen import GameplayScreen
 from labyrinthes.adapters.tkinter.player.maze_canvas import MazeCanvas
 from labyrinthes.adapters.tkinter.player.save_maze_dialog import SaveMazeDialog
+from labyrinthes.application.hard_mode_settings import (
+    read_hard_mode_moving_color,
+    read_hard_mode_ready_color,
+    write_hard_mode_moving_color,
+    write_hard_mode_ready_color,
+)
 from labyrinthes.application.player_session import STEPS_PER_CELL
 from labyrinthes.application.settings_keys import MOVEMENT_MODE, MOVEMENT_SPEED
 from labyrinthes.application.settings_repository import SettingsScope
@@ -1443,3 +1449,260 @@ def test_difficulty_change_preserves_position_and_level_and_run_state(
     assert screen._session.solved is False
     assert screen._session.mode is MovementMode.DISCRETE
     assert screen._session.visibility.difficulty is Difficulty.TWO
+
+
+# -- HARD mode (Story 2.8) --------------------------------------------
+
+
+def test_hard_mode_starts_disabled_with_the_light_hidden(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    screen = GameplayScreen(
+        tk_root,
+        _classic_maze(),
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+
+    assert screen._session.hard_mode is False
+    assert screen._mode_hard_button.active is False
+    assert screen._status_light_frame.winfo_manager() == ""
+    assert screen._maze_canvas.itemcget("fog", "state") == "hidden"
+
+
+def test_toggling_hard_mode_on_activates_the_button_and_shows_the_ready_light(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    screen = GameplayScreen(
+        tk_root,
+        _classic_maze(),
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    colors = colors_for(Theme.LIGHT)
+
+    screen._toggle_hard_mode()
+
+    assert screen._session.hard_mode is True
+    assert screen._mode_hard_button.active is True
+    assert screen._status_light_frame.winfo_manager() == "pack"
+    ready_color = read_hard_mode_ready_color(fake_settings_repository, colors.accent)
+    assert screen._status_light_canvas.itemcget(screen._status_light, "fill") == ready_color
+    assert screen._status_label.cget("text") == "Ready"
+    assert screen._maze_canvas.itemcget("fog", "state") == "hidden"
+
+
+def test_hard_mode_moving_hides_the_ball_shows_the_fog_and_marks_the_light_moving(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    maze = _open_maze(width=3)
+    screen = GameplayScreen(
+        tk_root,
+        maze,
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    screen._toggle_hard_mode()
+    colors = colors_for(Theme.LIGHT)
+    ball = screen._maze_canvas.find_withtag("ball")[0]
+
+    screen._on_move(Direction.RIGHT)  # mid-leg, no `_settle`
+
+    assert screen._session.moving_direction is not None
+    assert screen._maze_canvas.itemcget(ball, "state") == "hidden"
+    assert screen._maze_canvas.itemcget("fog", "state") == "normal"
+    moving_color = read_hard_mode_moving_color(fake_settings_repository, colors.exit)
+    assert screen._status_light_canvas.itemcget(screen._status_light, "fill") == moving_color
+    assert screen._status_label.cget("text") == "Moving"
+
+
+def test_hard_mode_rest_restores_the_ball_and_switches_the_light_back_to_ready(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    maze = _open_maze(width=3)
+    screen = GameplayScreen(
+        tk_root,
+        maze,
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    screen._toggle_hard_mode()
+    screen._on_move(Direction.RIGHT)
+    assert screen._status_label.cget("text") == "Moving"
+
+    _settle(screen)
+
+    assert screen._session.moving_direction is None
+    ball = screen._maze_canvas.find_withtag("ball")[0]
+    assert screen._maze_canvas.itemcget(ball, "state") == "normal"
+    assert screen._maze_canvas.itemcget("fog", "state") == "hidden"
+    colors = colors_for(Theme.LIGHT)
+    ready_color = read_hard_mode_ready_color(fake_settings_repository, colors.accent)
+    assert screen._status_light_canvas.itemcget(screen._status_light, "fill") == ready_color
+    assert screen._status_label.cget("text") == "Ready"
+
+
+def test_deactivating_hard_mode_mid_leg_shows_the_ball_on_the_next_tick(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    maze = _open_maze(width=3)
+    screen = GameplayScreen(
+        tk_root,
+        maze,
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    screen._toggle_hard_mode()
+    screen._on_move(Direction.RIGHT)
+    ball = screen._maze_canvas.find_withtag("ball")[0]
+    assert screen._maze_canvas.itemcget(ball, "state") == "hidden"
+
+    screen._toggle_hard_mode()
+
+    assert screen._session.hard_mode is False
+    assert screen._mode_hard_button.active is False
+    assert screen._status_light_frame.winfo_manager() == ""
+    assert screen._maze_canvas.itemcget(ball, "state") == "normal"
+    assert screen._maze_canvas.itemcget("fog", "state") == "hidden"
+
+
+def test_changing_the_hard_mode_colors_recolors_both_states_from_the_new_values(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    # AC-4: both states always read the same current setting, so a color
+    # change can't break the ready<->moving toggle -- no literal anywhere.
+    write_hard_mode_ready_color(fake_settings_repository, "#111111")
+    write_hard_mode_moving_color(fake_settings_repository, "#222222")
+    maze = _open_maze(width=3)
+    screen = GameplayScreen(
+        tk_root,
+        maze,
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+
+    screen._toggle_hard_mode()
+
+    assert screen._status_light_canvas.itemcget(screen._status_light, "fill") == "#111111"
+
+    screen._on_move(Direction.RIGHT)
+
+    assert screen._status_light_canvas.itemcget(screen._status_light, "fill") == "#222222"
+
+    _settle(screen)
+
+    assert screen._status_light_canvas.itemcget(screen._status_light, "fill") == "#111111"
+    assert screen._status_label.cget("text") == "Ready"
+
+
+def test_a_color_change_mid_session_is_picked_up_on_the_next_activation(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    screen = GameplayScreen(
+        tk_root,
+        _classic_maze(),
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    colors = colors_for(Theme.LIGHT)
+    screen._toggle_hard_mode()
+    assert screen._status_light_canvas.itemcget(screen._status_light, "fill") == colors.accent
+
+    write_hard_mode_ready_color(fake_settings_repository, "#111111")
+    write_hard_mode_moving_color(fake_settings_repository, "#222222")
+    screen._toggle_hard_mode()  # off
+    screen._toggle_hard_mode()  # on again: `_hard_mode_colors()` re-reads both
+
+    assert screen._status_light_canvas.itemcget(screen._status_light, "fill") == "#111111"
+
+
+def test_hard_mode_toggle_is_a_no_op_while_focus_is_in_another_toplevel(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    screen = GameplayScreen(
+        tk_root,
+        _classic_maze(),
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    other = tk.Toplevel(tk_root)
+    other_entry = tk.Entry(other)
+    screen.focus_get = lambda: other_entry
+
+    screen._toggle_hard_mode()
+
+    assert screen._session.hard_mode is False
+    assert screen._status_light_frame.winfo_manager() == ""
+    other.destroy()
+
+
+def test_hard_mode_toggle_is_a_no_op_once_solved(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    maze = _open_maze(width=2)
+    screen = GameplayScreen(
+        tk_root,
+        maze,
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    screen._on_move(Direction.RIGHT)
+    _settle(screen)
+    assert screen._session.solved is True
+
+    screen._toggle_hard_mode()
+
+    # `session_set_hard_mode` is a no-op once solved (Story 2.5/2.6/2.7
+    # convention), and `_sync_hard_mode_visuals` reads the unchanged session,
+    # so HARD stays off and the light stays hidden; the button's active flag
+    # may flip without the run changing (the same accepted cosmetic quirk as
+    # `_toggle_mode`, see deferred-work.md Story 2.5).
+    assert screen._session.hard_mode is False
+    assert screen._status_light_frame.winfo_manager() == ""
+
+
+def test_hard_mode_solve_keeps_the_ball_visible_at_rest(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    maze = _open_maze(width=2)
+    screen = GameplayScreen(
+        tk_root,
+        maze,
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    screen._toggle_hard_mode()
+
+    screen._on_move(Direction.RIGHT)
+    _settle(screen)
+
+    assert screen._session.solved is True
+    ball = screen._maze_canvas.find_withtag("ball")[0]
+    assert screen._maze_canvas.itemcget(ball, "state") == "normal"
+    assert screen._maze_canvas.itemcget("fog", "state") == "hidden"
+    assert screen._status_label.cget("text") == "Ready"
+
+
+def test_hard_mode_shortcut_h_is_registered(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    GameplayScreen(
+        tk_root,
+        _classic_maze(),
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    kb = keybinding("toggle_hard_mode")
+
+    assert tk_root.bind_all(kb.event) != ""

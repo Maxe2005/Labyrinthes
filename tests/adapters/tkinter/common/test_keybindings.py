@@ -138,6 +138,19 @@ def test_toggle_movement_mode_key_does_not_collide_with_any_other_key():
     assert keys.count("m") == 1
 
 
+def test_toggle_hard_mode_is_registered_on_the_h_keysym():
+    assert keybinding("toggle_hard_mode").action_id == "toggle_hard_mode"
+    assert keybinding("toggle_hard_mode").label == "Toggle HARD mode"
+    assert keybinding("toggle_hard_mode").key == "h"
+    assert keybinding("toggle_hard_mode").display == "H"
+    assert keybinding("toggle_hard_mode").event == "<KeyPress-h>"
+
+
+def test_toggle_hard_mode_key_does_not_collide_with_any_other_key():
+    keys = [kb.key.lower() for kb in KEYBINDINGS]
+    assert keys.count("h") == 1
+
+
 def test_bind_shortcut_does_not_register_an_uppercase_variant_for_a_multi_char_keysym(tk_root):
     # Regression: an unguarded `f"<KeyPress-{kb.key.upper()}>"` on a
     # multi-char keysym like "Up" produces "<KeyPress-UP>", which is not a
