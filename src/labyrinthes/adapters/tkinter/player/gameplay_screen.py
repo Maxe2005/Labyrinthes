@@ -27,6 +27,17 @@ toggle -- the screen calls `MazeCanvas.redraw_structure()` (an exact
 object-identity diff, so nothing redraws on a run that doesn't change the
 visible structure). Both `.after()` loops are cancelled on `<Destroy>` and
 on solve so a torn-down or solved screen never fires a stale callback.
+
+Story 2.7 makes the Difficulty HUD chip real (driven by `session.difficulty`)
+and adds a "Difficulty" sidebar group (`−`/label/`+` cycling ONE..THREE,
+wrapped) directly under the "Levels" group. Difficulty changes reroute
+through `set_difficulty` (a no-op once solved), which re-initializes
+`visibility` from the current position; the same `_sync_visibility()` redraw
+fires on the resulting identity change. The Difficulty controls are disabled
+(shared `ToolButton.set_enabled`) whenever the level is ONE or MAX --
+unlockable from Level 2 onward, and inert at MAX (no partitions/walls to
+threshold), matching the legacy `Niveau_max` gate. Both controls share the
+toplevel focus guard and have no global shortcut.
 """
 
 from __future__ import annotations
@@ -68,6 +79,9 @@ from labyrinthes.application.player_session import (
     request_move as session_request_move,
 )
 from labyrinthes.application.player_session import (
+    set_difficulty as session_set_difficulty,
+)
+from labyrinthes.application.player_session import (
     set_level as session_set_level,
 )
 from labyrinthes.application.player_session import (
@@ -80,6 +94,7 @@ from labyrinthes.application.player_session import (
     tick as session_tick,
 )
 from labyrinthes.application.settings_repository import SettingsRepository
+from labyrinthes.domain.difficulty import Difficulty
 from labyrinthes.domain.duration import Duration
 from labyrinthes.domain.level import Level
 from labyrinthes.domain.maze import Maze, MazeKind
@@ -92,8 +107,6 @@ __all__ = ["GameplayScreen"]
 
 _TICK_INTERVAL_MS = 1000
 
-_PLACEHOLDER_DIFFICULTY = "—"
-
 _LEVEL_LABELS: dict[Level, str] = {
     Level.ONE: "1",
     Level.TWO: "2",
@@ -103,6 +116,8 @@ _LEVEL_LABELS: dict[Level, str] = {
 }
 
 _LEVEL_CYCLE: tuple[Level, ...] = tuple(Level)
+
+_DIFFICULTY_CYCLE: tuple[Difficulty, ...] = tuple(Difficulty)
 
 _DIRECTION_ACTION_IDS: tuple[tuple[str, Direction], ...] = (
     ("move_up", Direction.UP),
@@ -117,6 +132,11 @@ _SPEED_CYCLE: tuple[MovementSpeed, ...] = tuple(MovementSpeed)
 def _level_label(level: Level) -> str:
     """The Level chip/sidebar label: `1`/`2`/`3`/`4`/`Max`."""
     return _LEVEL_LABELS[level]
+
+
+def _difficulty_label(difficulty: Difficulty) -> str:
+    """The Difficulty chip/sidebar label: `1`/`2`/`3`."""
+    return str(difficulty.value)
 
 
 def _pos_text(position: Position) -> str:
@@ -194,7 +214,7 @@ class GameplayScreen(tk.Frame):
         self._level_chip.pack(side="left", padx=(0, SPACING["sm"]))
 
         self._difficulty_chip = HudChip(
-            hud_row, "Difficulty", _PLACEHOLDER_DIFFICULTY, theme=self._theme
+            hud_row, "Difficulty", _difficulty_label(self._session.difficulty), theme=self._theme
         )
         self._difficulty_chip.pack(side="left", padx=(0, SPACING["sm"]))
 
@@ -274,6 +294,43 @@ class GameplayScreen(tk.Frame):
         )
         self._level_plus_button.pack(side="left")
 
+        tk.Label(
+            self._sidebar,
+            text="Difficulty",
+            font=TYPOGRAPHY.body.to_tk_font(),
+            background=colors.window,
+            foreground=colors.ink,
+        ).pack(anchor="w", pady=(SPACING["lg"], SPACING["sm"]))
+
+        difficulty_row = tk.Frame(self._sidebar, background=colors.window)
+        difficulty_row.pack(anchor="w")
+
+        self._difficulty_minus_button = ToolButton(
+            difficulty_row,
+            "−",
+            theme=self._theme,
+            command=functools.partial(self._cycle_difficulty, -1),
+        )
+        self._difficulty_minus_button.pack(side="left", padx=(0, SPACING["sm"]))
+
+        self._difficulty_value_label = tk.Label(
+            difficulty_row,
+            text=_difficulty_label(self._session.difficulty),
+            font=TYPOGRAPHY.hud_stat.to_tk_font(),
+            background=colors.window,
+            foreground=colors.ink,
+        )
+        self._difficulty_value_label.pack(side="left", padx=(0, SPACING["sm"]))
+
+        self._difficulty_plus_button = ToolButton(
+            difficulty_row,
+            "+",
+            theme=self._theme,
+            command=functools.partial(self._cycle_difficulty, +1),
+        )
+        self._difficulty_plus_button.pack(side="left")
+
+        self._sync_difficulty_widgets()
         self._sync_mode_button()
 
     def _sync_mode_button(self) -> None:
@@ -423,12 +480,39 @@ class GameplayScreen(tk.Frame):
         ]
         self._session = session_set_level(self._session, new_level)
         self._sync_level_widgets()
+        self._sync_difficulty_widgets()
         self._sync_visibility()
 
     def _sync_level_widgets(self) -> None:
         label = _level_label(self._session.level)
         self._level_chip.set_value(label)
         self._level_value_label.configure(text=label)
+
+    def _cycle_difficulty(self, delta: int) -> None:
+        if not self._toplevel_has_focus():
+            return
+        if not self._difficulty_enabled():
+            return
+        new_difficulty = _DIFFICULTY_CYCLE[
+            (_DIFFICULTY_CYCLE.index(self._session.difficulty) + delta) % len(_DIFFICULTY_CYCLE)
+        ]
+        self._session = session_set_difficulty(self._session, new_difficulty)
+        self._sync_difficulty_widgets()
+        self._sync_visibility()
+
+    def _sync_difficulty_widgets(self) -> None:
+        enabled = self._difficulty_enabled()
+        self._difficulty_minus_button.set_enabled(enabled)
+        self._difficulty_plus_button.set_enabled(enabled)
+        colors = colors_for(self._theme)
+        self._difficulty_value_label.configure(
+            text=_difficulty_label(self._session.difficulty),
+            foreground=colors.ink if enabled else colors.ghost,
+        )
+        self._difficulty_chip.set_value(_difficulty_label(self._session.difficulty))
+
+    def _difficulty_enabled(self) -> bool:
+        return self._session.level not in (Level.ONE, Level.MAX)
 
     def _toggle_mode(self) -> None:
         if not self._toplevel_has_focus():
