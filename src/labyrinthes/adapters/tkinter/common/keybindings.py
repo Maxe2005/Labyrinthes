@@ -80,6 +80,7 @@ KEYBINDINGS: tuple[Keybinding, ...] = (
     Keybinding("move_left", "Move left", "Left"),
     Keybinding("move_right", "Move right", "Right"),
     Keybinding("toggle_movement_mode", "Toggle movement mode", "m"),
+    Keybinding("toggle_hard_mode", "Toggle HARD mode", "h"),
 )
 
 _BY_ACTION_ID: dict[str, Keybinding] = {kb.action_id: kb for kb in KEYBINDINGS}

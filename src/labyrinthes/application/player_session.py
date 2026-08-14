@@ -35,6 +35,12 @@ Story 2.7 threads the difficulty through the session the same way:
 the new partition sizing/reveal threshold, so a mid-run difficulty change
 re-renders the structure without restarting the run (an identity change on
 `visibility` is what drives the screen's redraw).
+
+Story 2.8 adds HARD mode: `set_hard_mode` mirrors `set_mode`/`set_speed` --
+session-scoped, never persisted, a no-op once solved. HARD is purely
+presentational (the screen hides the ball and draws a fog scrim while
+moving) and never changes movement math, so no visibility re-init is
+needed; a fresh mount starts with HARD off.
 """
 
 from __future__ import annotations
@@ -62,6 +68,7 @@ __all__ = [
     "advance_step",
     "request_move",
     "set_difficulty",
+    "set_hard_mode",
     "set_level",
     "set_mode",
     "set_speed",
@@ -93,6 +100,7 @@ class PlayerSession:
     level: Level
     difficulty: Difficulty
     visibility: LevelVisibility
+    hard_mode: bool
 
 
 def start_session(maze: Maze) -> PlayerSession:
@@ -118,6 +126,7 @@ def start_session(maze: Maze) -> PlayerSession:
         level=Level.ONE,
         difficulty=Difficulty.ONE,
         visibility=initial_level_visibility(maze, Level.ONE, Difficulty.ONE, maze.entry),
+        hard_mode=False,
     )
 
 
@@ -260,6 +269,19 @@ def set_speed(session: PlayerSession, speed: MovementSpeed) -> PlayerSession:
     if session.solved:
         return session
     return replace(session, speed=speed)
+
+
+def set_hard_mode(session: PlayerSession, enabled: bool) -> PlayerSession:
+    """`session` with `hard_mode` replaced. A no-op once solved.
+
+    HARD is purely presentational -- the screen hides the ball and draws a
+    fog scrim while the ball moves -- and never changes movement math, so
+    unlike `set_level`/`set_difficulty` there is no visibility re-init. The
+    flag is session-scoped and not persisted; a fresh mount starts HARD off.
+    """
+    if session.solved:
+        return session
+    return replace(session, hard_mode=enabled)
 
 
 def set_level(session: PlayerSession, level: Level) -> PlayerSession:
