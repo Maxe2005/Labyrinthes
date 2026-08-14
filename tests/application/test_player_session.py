@@ -541,11 +541,13 @@ def test_set_difficulty_preserves_elapsed_mode_speed_and_level():
     assert session.mode is MovementMode.DISCRETE
     assert session.speed is MovementSpeed.FAST
     assert session.level is Level.FOUR
+    assert session.visibility.difficulty is Difficulty.THREE
+    assert session.visibility.total_interior_walls > 0
 
 
 def test_set_difficulty_preserves_an_in_flight_leg():
     maze = _partition_maze()
-    session = _discrete(maze)
+    session = set_level(_discrete(maze), Level.TWO)
     session = request_move(session, Direction.RIGHT)
     assert session.moving_direction is Direction.RIGHT
     assert session.leg_target == Position(row=0, col=1)
@@ -558,11 +560,13 @@ def test_set_difficulty_preserves_an_in_flight_leg():
     assert session.leg_target == Position(row=0, col=1)
     assert session.step == 0
     assert session.pending_direction is None
+    assert session.visibility.level is Level.TWO
+    assert session.visibility.difficulty is Difficulty.TWO
 
     session = _settle(session)
     assert session.position == Position(row=0, col=1)
     assert session.moving_direction is None
-    assert session.level is Level.ONE
+    assert session.level is Level.TWO
 
 
 def test_set_difficulty_is_a_no_op_once_solved():

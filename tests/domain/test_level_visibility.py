@@ -289,6 +289,19 @@ def test_level_four_threshold_reset_hides_all_but_the_last_discovered_wall():
     assert vis.discovered_walls == frozenset({Wall(0, 1, "left")})
 
 
+def test_level_four_threshold_responds_to_difficulty():
+    maze = _filled_maze(width=2, height=2)  # 4 interior walls, threshold = round(4/3) = 1
+    vis = initial_level_visibility(maze, Level.FOUR, Difficulty.TWO, Position(1, 1))
+    assert vis.total_interior_walls == 4
+
+    vis = note_collision(vis, maze, Position(1, 0), Direction.UP)
+    assert vis.discovered_walls == frozenset({Wall(1, 0, "top")})  # at the threshold, not past it
+
+    vis = note_collision(vis, maze, Position(1, 1), Direction.UP)
+    # past the D2 threshold -> reset to just this wall
+    assert vis.discovered_walls == frozenset({Wall(1, 1, "top")})
+
+
 def test_level_four_show_contour_is_always_true():
     maze = _filled_maze(width=3, height=3)
     vis = initial_level_visibility(maze, Level.FOUR, Difficulty.ONE, maze.entry)

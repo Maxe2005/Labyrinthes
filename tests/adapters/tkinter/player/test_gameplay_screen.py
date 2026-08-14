@@ -4,7 +4,7 @@ import tkinter as tk
 
 from labyrinthes.adapters.tkinter.common.keybindings import keybinding
 from labyrinthes.adapters.tkinter.common.pill_btn import PillButton
-from labyrinthes.adapters.tkinter.common.tokens import Theme
+from labyrinthes.adapters.tkinter.common.tokens import Theme, colors_for
 from labyrinthes.adapters.tkinter.player.gameplay_screen import GameplayScreen
 from labyrinthes.adapters.tkinter.player.maze_canvas import MazeCanvas
 from labyrinthes.adapters.tkinter.player.save_maze_dialog import SaveMazeDialog
@@ -1306,6 +1306,9 @@ def test_difficulty_change_redraws_the_structure_without_restarting_the_run(
     screen._cycle_level(1)  # ONE -> TWO
     walls_at_d1 = len(screen._maze_canvas.find_withtag("wall"))
     assert walls_at_d1 > 0
+    elapsed_before = screen._session.elapsed
+    speed_before = screen._session.speed
+    mode_before = screen._session.mode
 
     screen._cycle_difficulty(1)  # ONE -> TWO: 3x3 -> 2x2 partitions
 
@@ -1313,6 +1316,9 @@ def test_difficulty_change_redraws_the_structure_without_restarting_the_run(
     assert screen._session.position == maze.entry
     assert screen._session.solved is False
     assert screen._session.level is Level.TWO
+    assert screen._session.elapsed == elapsed_before
+    assert screen._session.mode is mode_before
+    assert screen._session.speed is speed_before
     assert screen._rendered_visibility is screen._session.visibility
     assert len(screen._maze_canvas.find_withtag("wall")) != walls_at_d1
 
@@ -1327,11 +1333,14 @@ def test_difficulty_controls_disable_at_level_max_and_at_level_one(
         maze_repository=fake_maze_repository,
         settings_repository=fake_settings_repository,
     )
+    colors = colors_for(Theme.LIGHT)
     assert screen._difficulty_plus_button._enabled is False
+    assert screen._difficulty_value_label.cget("foreground") == colors.ghost
 
     screen._cycle_level(1)  # ONE -> TWO
     assert screen._difficulty_plus_button._enabled is True
     assert screen._difficulty_minus_button._enabled is True
+    assert screen._difficulty_value_label.cget("foreground") == colors.ink
 
     screen._cycle_level(1)  # TWO -> THREE
     assert screen._difficulty_plus_button._enabled is True
@@ -1341,6 +1350,8 @@ def test_difficulty_controls_disable_at_level_max_and_at_level_one(
 
     screen._cycle_level(1)  # FOUR -> MAX
     assert screen._difficulty_plus_button._enabled is False
+    assert screen._difficulty_value_label.cget("foreground") == colors.ghost
+    assert screen._difficulty_chip._value_label.cget("text") == "1"
 
     screen._cycle_level(1)  # MAX -> ONE (wrapped)
     assert screen._difficulty_plus_button._enabled is False
@@ -1375,6 +1386,7 @@ def test_difficulty_change_is_a_no_op_once_solved(
         maze_repository=fake_maze_repository,
         settings_repository=fake_settings_repository,
     )
+    screen._cycle_level(1)  # ONE -> TWO, so the Difficulty control is enabled
     screen._on_move(Direction.RIGHT)
     _settle(screen)
     assert screen._session.solved is True
