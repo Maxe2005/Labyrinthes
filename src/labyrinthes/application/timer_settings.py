@@ -43,6 +43,8 @@ def _to_bool(value) -> bool:
 
 def _to_int(value, default: int) -> int:
     """Convert a stored value to int, falling back to `default` on failure."""
+    if isinstance(value, bool):
+        return default
     try:
         return int(value)
     except (ValueError, TypeError):

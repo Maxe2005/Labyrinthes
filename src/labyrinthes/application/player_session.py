@@ -328,7 +328,7 @@ def tick(session: PlayerSession, elapsed: Duration) -> PlayerSession:
 
     If `time_limit` is set and `elapsed >= time_limit`, sets `timed_out=True`.
     """
-    if session.solved:
+    if session.solved or session.timed_out:
         return session
     new_session = replace(session, elapsed=elapsed)
     limit_exceeded = (

@@ -1733,7 +1733,7 @@ def test_hard_mode_shortcut_h_invokes_the_toggle(
 
 
 def test_timer_limit_enabled_at_mount_updates_hud(tk_root, fake_maze_repository, fake_settings_repository):
-    """When timer limit is enabled in settings, the HUD shows the configured duration."""
+    """When timer limit is enabled in settings, the HUD shows elapsed time at mount."""
     fake_settings_repository.set(SettingsScope.GAME, "timer_limit_enabled", "true")
     fake_settings_repository.set(SettingsScope.GAME, "timer_limit_seconds", "30")
     screen = GameplayScreen(
@@ -1744,8 +1744,9 @@ def test_timer_limit_enabled_at_mount_updates_hud(tk_root, fake_maze_repository,
         settings_repository=fake_settings_repository,
     )
 
-    # The time chip should show "00:30" at mount since the limit is 30s
-    assert screen._time_chip._value_label.cget("text") == "00:30"
+    # The HUD shows elapsed time, which starts at 00:00 and updates continuously
+    # (AC1: "the Time HUD chip updates continuously").
+    assert screen._time_chip._value_label.cget("text") == "00:00"
 
 
 def test_timeout_detection_sets_timed_out_flag():

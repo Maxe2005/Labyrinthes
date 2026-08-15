@@ -491,6 +491,9 @@ class GameplayScreen(tk.Frame):
             self._animation_job = self.after(self._per_step_ms(), self._on_animation_tick)
 
     def _on_animation_tick(self) -> None:
+        if self._session.timed_out:
+            self._sync_timeout_visuals()
+            return
         previous_position = self._session.position
         self._session = session_advance_step(self._session)
         self._sync_visibility()
@@ -690,6 +693,9 @@ class GameplayScreen(tk.Frame):
     # -- elapsed-time ticking ----------------------------------------------
 
     def _on_tick(self) -> None:
+        if self._session.timed_out:
+            self._sync_timeout_visuals()
+            return
         elapsed_ms = int((time.monotonic() - self._start_time) * 1000)
         self._session = session_tick(self._session, Duration(milliseconds=elapsed_ms))
         self._time_chip.set_value(self._session.elapsed.to_clock_string())
@@ -734,7 +740,8 @@ class GameplayScreen(tk.Frame):
             highlightbackground=colors.exit,
             highlightcolor=colors.exit,
         )
-        self._timeout_banner.pack(fill="x", pady=(0, SPACING["lg"]), before=self._maze_frame)
+        pack_before = self._maze_frame if hasattr(self, "_maze_frame") else self
+        self._timeout_banner.pack(fill="x", pady=(0, SPACING["lg"]), before=pack_before)
 
         tk.Label(
             self._timeout_banner,
@@ -766,7 +773,14 @@ class GameplayScreen(tk.Frame):
     def _on_continue_after_timeout(self) -> None:
         self._hide_timeout_banner()
         self._session = ignore_timeout(self._session)
+        # Re-apply timer limit if configured, so the run continues under the same pressure.
+        if self._session.time_limit is None:
+            if read_timer_limit_enabled(self._settings_repository):
+                limit_seconds = read_timer_limit_seconds(self._settings_repository)
+                limit = Duration(milliseconds=limit_seconds * 1000)
+                self._session = set_time_limit(self._session, limit)
         self._time_chip.set_value(self._session.elapsed.to_clock_string())
+        self._cancel_tick_job()
         self._tick_job = self.after(_TICK_INTERVAL_MS, self._on_tick)
 
     def _on_restart_after_timeout(self) -> None:
@@ -778,6 +792,12 @@ class GameplayScreen(tk.Frame):
         self._session = session_set_speed(
             self._session, read_movement_speed(self._settings_repository)
         )
+        # Re-apply timer limit if it was previously configured, so the restarted
+        # run begins under the same time pressure as the original run.
+        if read_timer_limit_enabled(self._settings_repository):
+            limit_seconds = read_timer_limit_seconds(self._settings_repository)
+            limit = Duration(milliseconds=limit_seconds * 1000)
+            self._session = set_time_limit(self._session, limit)
         self._start_time = time.monotonic()
         self._sync_visibility()
         self._time_chip.set_value(self._session.elapsed.to_clock_string())
