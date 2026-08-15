@@ -86,6 +86,8 @@ from labyrinthes.application.movement_settings import (
 )
 from labyrinthes.application.player_session import (
     STEPS_PER_CELL,
+    ignore_timeout,
+    set_time_limit,
     start_session,
 )
 from labyrinthes.application.player_session import (
@@ -113,6 +115,10 @@ from labyrinthes.application.player_session import (
     tick as session_tick,
 )
 from labyrinthes.application.settings_repository import SettingsRepository
+from labyrinthes.application.timer_settings import (
+    read_timer_limit_enabled,
+    read_timer_limit_seconds,
+)
 from labyrinthes.domain.difficulty import Difficulty
 from labyrinthes.domain.duration import Duration
 from labyrinthes.domain.level import Level
@@ -193,8 +199,14 @@ class GameplayScreen(tk.Frame):
         # screen is rebuilt on re-navigate, so settings loaded here are fresh.
         self._session = session_set_mode(self._session, read_movement_mode(settings_repository))
         self._session = session_set_speed(self._session, read_movement_speed(settings_repository))
+        # Apply timer limit settings if enabled.
+        if read_timer_limit_enabled(settings_repository):
+            limit_seconds = read_timer_limit_seconds(settings_repository)
+            limit = Duration(milliseconds=limit_seconds * 1000)
+            self._session = set_time_limit(self._session, limit)
         self._start_time = time.monotonic()
         self._tick_job: str | None = None
+        self._timeout_banner: tk.Frame | None = None
         self._animation_job: str | None = None
         self._win_banner: tk.Frame | None = None
         # `(hard_mode, moving)` of the last `_sync_hard_mode_visuals()` that
@@ -485,6 +497,7 @@ class GameplayScreen(tk.Frame):
         # Sync before the solved branch so a rest-after-solve keeps the ball
         # visible at rest (`moving_direction` is None on solve).
         self._sync_hard_mode_visuals()
+        self._sync_timeout_visuals()
 
         direction = self._session.moving_direction
         if direction is not None:
@@ -680,6 +693,7 @@ class GameplayScreen(tk.Frame):
         elapsed_ms = int((time.monotonic() - self._start_time) * 1000)
         self._session = session_tick(self._session, Duration(milliseconds=elapsed_ms))
         self._time_chip.set_value(self._session.elapsed.to_clock_string())
+        self._sync_timeout_visuals()
         self._tick_job = self.after(_TICK_INTERVAL_MS, self._on_tick)
 
     def _cancel_tick_job(self) -> None:
@@ -690,6 +704,86 @@ class GameplayScreen(tk.Frame):
     def _on_destroy(self, _event: tk.Event | None = None) -> None:
         self._cancel_tick_job()
         self._cancel_animation_job()
+
+    # -- timeout handling ------------------------------------------------------
+
+    def _sync_timeout_visuals(self) -> None:
+        """Show or hide the timeout failure banner.
+
+        If `timed_out` is `True`, displays the failure banner above the maze;
+        otherwise hides it. Only the leg-start/stop transitions trigger a visual
+        change (per-tick calls are cheap via the `timed_out` flag guard).
+        """
+        if self._session.timed_out:
+            if self._timeout_banner is None:
+                self._show_failure_banner()
+        else:
+            self._hide_timeout_banner()
+
+    def _hide_timeout_banner(self) -> None:
+        if self._timeout_banner is not None:
+            self._timeout_banner.destroy()
+            self._timeout_banner = None
+
+    def _show_failure_banner(self) -> None:
+        colors = colors_for(self._theme)
+        self._timeout_banner = tk.Frame(
+            self,
+            background=colors.exit_bg,
+            highlightthickness=1,
+            highlightbackground=colors.exit,
+            highlightcolor=colors.exit,
+        )
+        self._timeout_banner.pack(fill="x", pady=(0, SPACING["lg"]), before=self._maze_frame)
+
+        tk.Label(
+            self._timeout_banner,
+            text="Time's up — the exit wasn't reached.",
+            font=TYPOGRAPHY.body.to_tk_font(),
+            background=colors.exit_bg,
+            foreground=colors.exit,
+        ).pack(side="left", padx=SPACING["lg"], pady=SPACING["sm"])
+
+        btn_row = tk.Frame(self._timeout_banner, background=colors.exit_bg)
+        btn_row.pack(side="right", padx=SPACING["lg"])
+
+        PillButton(
+            btn_row,
+            "Restart",
+            theme=self._theme,
+            primary=True,
+            command=self._on_restart_after_timeout,
+        ).pack(side="left", padx=SPACING["sm"])
+
+        PillButton(
+            btn_row,
+            "Continue",
+            theme=self._theme,
+            primary=False,
+            command=self._on_continue_after_timeout,
+        ).pack(side="left")
+
+    def _on_continue_after_timeout(self) -> None:
+        self._hide_timeout_banner()
+        self._session = ignore_timeout(self._session)
+        self._time_chip.set_value(self._session.elapsed.to_clock_string())
+        self._tick_job = self.after(_TICK_INTERVAL_MS, self._on_tick)
+
+    def _on_restart_after_timeout(self) -> None:
+        self._hide_timeout_banner()
+        self._session = start_session(self._maze)
+        self._session = session_set_mode(
+            self._session, read_movement_mode(self._settings_repository)
+        )
+        self._session = session_set_speed(
+            self._session, read_movement_speed(self._settings_repository)
+        )
+        self._start_time = time.monotonic()
+        self._sync_visibility()
+        self._time_chip.set_value(self._session.elapsed.to_clock_string())
+        self._cancel_tick_job()
+        self._cancel_animation_job()
+        self._tick_job = self.after(_TICK_INTERVAL_MS, self._on_tick)
 
     # -- win banner ------------------------------------------------------
 

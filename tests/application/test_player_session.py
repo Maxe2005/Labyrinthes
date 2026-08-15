@@ -9,6 +9,8 @@ from labyrinthes.application.player_session import (
     set_speed,
     start_session,
     tick,
+    set_time_limit,
+    ignore_timeout,
 )
 from labyrinthes.domain.cell import Cell
 from labyrinthes.domain.difficulty import Difficulty
@@ -441,6 +443,104 @@ def test_tick_is_a_no_op_once_solved():
     result = tick(session, Duration(milliseconds=5000))
 
     assert result is session
+
+
+def test_tick_sets_timed_out_when_limit_exceeded():
+    """tick sets timed_out=True when elapsed >= time_limit."""
+    maze = _walled_maze()
+    session = start_session(maze)
+    session = set_time_limit(session, Duration(milliseconds=100))
+    # Advance elapsed to exceed the limit
+    session = tick(session, Duration(milliseconds=200))
+
+    assert session.timed_out is True
+
+
+def test_tick_no_timed_out_when_limit_not_exceeded():
+    """tick does NOT set timed_out when elapsed < time_limit."""
+    maze = _walled_maze()
+    session = start_session(maze)
+    session = set_time_limit(session, Duration(milliseconds=1000))
+    # elapsed well under the limit
+    session = tick(session, Duration(milliseconds=100))
+
+    assert session.timed_out is False
+
+
+def test_tick_no_timed_out_when_no_limit():
+    """tick does NOT set timed_out when time_limit is None."""
+    maze = _walled_maze()
+    session = start_session(maze)
+    # No time limit set
+    session = tick(session, Duration(milliseconds=5000))
+
+    assert session.timed_out is False
+
+
+def test_set_time_limit_no_op_once_solved():
+    maze = _open_maze(width=2)
+    session = _discrete(maze)
+    session = request_move(session, Direction.RIGHT)
+    session = _settle(session)
+    assert session.solved is True
+
+    result = set_time_limit(session, Duration(milliseconds=5000))
+
+    assert result is session
+
+
+def test_set_time_limit_no_op_once_timed_out():
+    maze = _walled_maze()
+    session = start_session(maze)
+    session = set_time_limit(session, Duration(milliseconds=100))
+    session = tick(session, Duration(milliseconds=200))  # triggers timeout
+
+    assert session.timed_out is True
+
+    result = set_time_limit(session, Duration(milliseconds=5000))
+
+    assert result is session
+
+
+def test_ignore_timeout_clears_flags():
+    maze = _walled_maze()
+    session = start_session(maze)
+    session = set_time_limit(session, Duration(milliseconds=100))
+    session = tick(session, Duration(milliseconds=200))  # triggers timeout
+
+    assert session.timed_out is True
+    assert session.time_limit is not None
+
+    session = ignore_timeout(session)
+
+    assert session.timed_out is False
+    assert session.time_limit is None
+
+
+def test_request_move_no_op_once_timed_out():
+    maze = _walled_maze()
+    session = start_session(maze)
+    session = set_time_limit(session, Duration(milliseconds=100))
+    session = tick(session, Duration(milliseconds=200))  # triggers timeout
+
+    assert session.timed_out is True
+
+    result = request_move(session, Direction.UP)
+
+    assert result is session  # no-op because timed_out
+
+
+def test_advance_step_no_op_once_timed_out():
+    maze = _walled_maze()
+    session = start_session(maze)
+    session = set_time_limit(session, Duration(milliseconds=100))
+    session = tick(session, Duration(milliseconds=200))  # triggers timeout
+
+    assert session.timed_out is True
+
+    result = advance_step(session)
+
+    assert result is session  # no-op because timed_out
 
 
 # -- level / visibility -------------------------------------------------

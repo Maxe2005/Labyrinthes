@@ -1729,6 +1729,177 @@ def test_hard_mode_shortcut_h_invokes_the_toggle(
     assert screen._mode_hard_button.active is True
 
 
+# -- timer limit (Story 2.9) ------------------------------------------------
+
+
+def test_timer_limit_enabled_at_mount_updates_hud(tk_root, fake_maze_repository, fake_settings_repository):
+    """When timer limit is enabled in settings, the HUD shows the configured duration."""
+    fake_settings_repository.set(SettingsScope.GAME, "timer_limit_enabled", "true")
+    fake_settings_repository.set(SettingsScope.GAME, "timer_limit_seconds", "30")
+    screen = GameplayScreen(
+        tk_root,
+        _classic_maze(),
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+
+    # The time chip should show "00:30" at mount since the limit is 30s
+    assert screen._time_chip._value_label.cget("text") == "00:30"
+
+
+def test_timeout_detection_sets_timed_out_flag():
+    """After elapsed time exceeds the limit, timed_out is True."""
+    maze = _classic_maze()
+    screen = GameplayScreen(
+        tk_root,
+        maze,
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    # Manually set a short time limit and exceed it
+    screen._session = type(screen._session)(
+        maze=screen._session.maze,
+        position=screen._session.position,
+        elapsed=Duration(milliseconds=3000),
+        solved=screen._session.solved,
+        mode=screen._session.mode,
+        speed=screen._session.speed,
+        moving_direction=screen._session.moving_direction,
+        leg_target=screen._session.leg_target,
+        step=screen._session.step,
+        pending_direction=screen._session.pending_direction,
+        level=screen._session.level,
+        difficulty=screen._session.difficulty,
+        visibility=screen._session.visibility,
+        hard_mode=screen._session.hard_mode,
+        time_limit=Duration(milliseconds=100),
+        timed_out=False,
+    )
+    # Tick past the limit
+    screen._on_tick()
+
+    assert screen._session.timed_out is True
+
+
+def test_timeout_failure_banner_appears():
+    """When timed_out, the failure banner is displayed above the maze."""
+    maze = _classic_maze()
+    screen = GameplayScreen(
+        tk_root,
+        maze,
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    # Manually trigger timeout
+    screen._session = type(screen._session)(
+        maze=screen._session.maze,
+        position=screen._session.position,
+        elapsed=Duration(milliseconds=3000),
+        solved=screen._session.solved,
+        mode=screen._session.mode,
+        speed=screen._session.speed,
+        moving_direction=screen._session.moving_direction,
+        leg_target=screen._session.leg_target,
+        step=screen._session.step,
+        pending_direction=screen._session.pending_direction,
+        level=screen._session.level,
+        difficulty=screen._session.difficulty,
+        visibility=screen._session.visibility,
+        hard_mode=screen._session.hard_mode,
+        time_limit=Duration(milliseconds=100),
+        timed_out=True,
+    )
+    # Call sync visuals to show the banner
+    screen._sync_timeout_visuals()
+
+    assert screen._timeout_banner is not None
+    assert screen._timeout_banner.winfo_exists()
+
+
+def test_continue_after_timeout_hides_banner_and_resumes():
+    """Clicking Continue hides the failure banner and resumes the run."""
+    maze = _classic_maze()
+    screen = GameplayScreen(
+        tk_root,
+        maze,
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    # Manually trigger timeout
+    screen._session = type(screen._session)(
+        maze=screen._session.maze,
+        position=screen._session.position,
+        elapsed=Duration(milliseconds=3000),
+        solved=screen._session.solved,
+        mode=screen._session.mode,
+        speed=screen._session.speed,
+        moving_direction=screen._session.moving_direction,
+        leg_target=screen._session.leg_target,
+        step=screen._session.step,
+        pending_direction=screen._session.pending_direction,
+        level=screen._session.level,
+        difficulty=screen._session.difficulty,
+        visibility=screen._session.visibility,
+        hard_mode=screen._session.hard_mode,
+        time_limit=Duration(milliseconds=100),
+        timed_out=True,
+    )
+    screen._timeout_banner = tk.Frame(screen, background="red")
+    screen._timeout_banner.pack()
+
+    screen._on_continue_after_timeout()
+
+    assert screen._timeout_banner is None or not screen._timeout_banner.winfo_exists()
+    assert screen._session.timed_out is False
+    assert screen._session.time_limit is None
+
+
+def test_restart_after_timeout_resets_the_run():
+    """Clicking Restart resets the session and starts a new timer."""
+    maze = _classic_maze()
+    screen = GameplayScreen(
+        tk_root,
+        maze,
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    # Manually trigger timeout
+    screen._session = type(screen._session)(
+        maze=screen._session.maze,
+        position=screen._session.position,
+        elapsed=Duration(milliseconds=3000),
+        solved=screen._session.solved,
+        mode=screen._session.mode,
+        speed=screen._session.speed,
+        moving_direction=screen._session.moving_direction,
+        leg_target=screen._session.leg_target,
+        step=screen._session.step,
+        pending_direction=screen._session.pending_direction,
+        level=screen._session.level,
+        difficulty=screen._session.difficulty,
+        visibility=screen._session.visibility,
+        hard_mode=screen._session.hard_mode,
+        time_limit=Duration(milliseconds=100),
+        timed_out=True,
+    )
+    screen._timeout_banner = tk.Frame(screen, background="red")
+    screen._timeout_banner.pack()
+
+    screen._on_restart_after_timeout()
+
+    # Session should be reset
+    assert screen._session.timed_out is False
+    assert screen._session.time_limit is None
+    assert screen._session.elapsed.milliseconds == 0
+    # Banner should be hidden
+    assert screen._timeout_banner is None or not screen._timeout_banner.winfo_exists()
+
+
 def test_enabling_hard_mode_mid_leg_hides_the_ball_and_shows_the_fog_immediately(
     tk_root, fake_maze_repository, fake_settings_repository
 ):

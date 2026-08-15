@@ -74,6 +74,8 @@ __all__ = [
     "set_speed",
     "start_session",
     "tick",
+    "ignore_timeout",
+    "set_time_limit",
 ]
 
 # The fixed number of uniform sub-steps in a one-cell leg (the legacy
@@ -101,6 +103,8 @@ class PlayerSession:
     difficulty: Difficulty
     visibility: LevelVisibility
     hard_mode: bool
+    time_limit: Duration | None
+    timed_out: bool
 
 
 def start_session(maze: Maze) -> PlayerSession:
@@ -111,6 +115,8 @@ def start_session(maze: Maze) -> PlayerSession:
     `set_speed` on the result -- `start_session` itself stays pure with
     plain defaults and never reads the repository. Level is session state
     (not persisted); it always starts at `Level.ONE`.
+
+    Timer limit defaults to `None` (disabled) and `timed_out` to `False`.
     """
     return PlayerSession(
         maze=maze,
@@ -127,6 +133,8 @@ def start_session(maze: Maze) -> PlayerSession:
         difficulty=Difficulty.ONE,
         visibility=initial_level_visibility(maze, Level.ONE, Difficulty.ONE, maze.entry),
         hard_mode=False,
+        time_limit=None,
+        timed_out=False,
     )
 
 
@@ -148,9 +156,9 @@ def request_move(session: PlayerSession, direction: Direction) -> PlayerSession:
     Discrete's leg is exactly one cell). Mid-leg, Discrete silently ignores
     the press (one press = one cell, no queuing), while Smooth banks
     `pending_direction` for resolution at the next cell boundary. A blocked
-    direction at rest is a silent no-op. A no-op once solved.
+    direction at rest is a silent no-op. A no-op once solved or timed out.
     """
-    if session.solved:
+    if session.solved or session.timed_out:
         return session
 
     if session.moving_direction is None:
@@ -181,8 +189,10 @@ def advance_step(session: PlayerSession) -> PlayerSession:
     stop (`note_collision`). A blocked `pending_direction` is kept for retry
     at the following boundary (legacy "banked turn" semantics);
     `pending_direction` never applies in Discrete.
+
+    Also a no-op once timed out.
     """
-    if session.solved or session.moving_direction is None:
+    if session.solved or session.timed_out:
         return session
 
     new_step = session.step + 1
@@ -314,7 +324,35 @@ def set_difficulty(session: PlayerSession, difficulty: Difficulty) -> PlayerSess
 
 
 def tick(session: PlayerSession, elapsed: Duration) -> PlayerSession:
-    """`session` with `elapsed` replacing its current elapsed time; a no-op once solved."""
+    """`session` with `elapsed` replacing its current elapsed time; a no-op once solved.
+
+    If `time_limit` is set and `elapsed >= time_limit`, sets `timed_out=True`.
+    """
     if session.solved:
         return session
-    return replace(session, elapsed=elapsed)
+    new_session = replace(session, elapsed=elapsed)
+    limit_exceeded = (
+        new_session.time_limit is not None
+        and elapsed.milliseconds >= new_session.time_limit.milliseconds
+    )
+    if limit_exceeded:
+        return replace(new_session, timed_out=True)
+    return new_session
+
+
+def set_time_limit(session: PlayerSession, limit: Duration | None) -> PlayerSession:
+    """`session` with `time_limit` replaced.
+
+    No-op once solved or timed out.
+    """
+    if session.solved or session.timed_out:
+        return session
+    return replace(session, time_limit=limit)
+
+
+def ignore_timeout(session: PlayerSession) -> PlayerSession:
+    """`session` with `timed_out` cleared to `False` and `time_limit` removed (set to `None`).
+
+    Allows the player to continue without further pressure after a timeout.
+    """
+    return replace(session, timed_out=False, time_limit=None)
