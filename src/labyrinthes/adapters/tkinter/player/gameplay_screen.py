@@ -774,11 +774,10 @@ class GameplayScreen(tk.Frame):
         self._hide_timeout_banner()
         self._session = ignore_timeout(self._session)
         # Re-apply timer limit if configured, so the run continues under the same pressure.
-        if self._session.time_limit is None:
-            if read_timer_limit_enabled(self._settings_repository):
-                limit_seconds = read_timer_limit_seconds(self._settings_repository)
-                limit = Duration(milliseconds=limit_seconds * 1000)
-                self._session = set_time_limit(self._session, limit)
+        if self._session.time_limit is None and read_timer_limit_enabled(self._settings_repository):
+            limit_seconds = read_timer_limit_seconds(self._settings_repository)
+            limit = Duration(milliseconds=limit_seconds * 1000)
+            self._session = set_time_limit(self._session, limit)
         self._time_chip.set_value(self._session.elapsed.to_clock_string())
         self._cancel_tick_job()
         self._tick_job = self.after(_TICK_INTERVAL_MS, self._on_tick)
