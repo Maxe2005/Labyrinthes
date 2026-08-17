@@ -19,7 +19,7 @@ development_status:
   1-11-settings-dialog-survives-screen-navigation: done
   1-12-persistence-hardening-atomic-writes-typed-errors: done
   epic-1-retrospective: done
-  epic-2: in-progress
+  epic-2: done
   2-1-player-maze-selection-screen-classic-maze-browsing: done
   2-2-random-maze-generation-with-validation: done
   2-3-random-maze-saving-reappears-after-restart: done
