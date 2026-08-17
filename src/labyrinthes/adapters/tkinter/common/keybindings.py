@@ -73,6 +73,7 @@ class Keybinding:
 KEYBINDINGS: tuple[Keybinding, ...] = (
     Keybinding("open_builder", "Open Builder", "b"),
     Keybinding("open_player", "Open Player", "p"),
+    Keybinding("open_new_maze", "New Maze", "c"),
     Keybinding("generate_random", "Generate random", "n"),
     Keybinding("save_maze", "Save", "s"),
     Keybinding("move_up", "Move up", "Up"),
