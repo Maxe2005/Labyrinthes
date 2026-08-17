@@ -48,6 +48,10 @@ def read_time_limit(settings: SettingsRepository) -> Duration | None:
 def write_time_limit(settings: SettingsRepository, limit: Duration | None) -> None:
     """Persist `limit` as the `game`-scope time limit, in whole seconds.
 
+    The stored value is the whole-second *floor* of `limit.milliseconds`:
+    `Duration(75000)` persists `75`. A sub-second duration floors to `0` --
+    the no-limit sentinel -- so a `Duration(500)` limit silently writes "no
+    limit" and reads back `None`; callers must pass whole-second durations.
     A `None` limit persists `0` -- the documented on-disk sentinel for "no
     limit", since the port has no delete operation.
     """

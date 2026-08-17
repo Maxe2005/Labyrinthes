@@ -83,3 +83,25 @@ def test_writes_a_limit_in_whole_seconds_in_the_game_scope_and_reads_it_back():
 
     assert repository.get(SettingsScope.GAME, TIME_LIMIT_SECONDS) == 75
     assert read_time_limit(repository) == Duration(milliseconds=75000)
+
+
+def test_writes_the_whole_second_floor_of_a_sub_second_limit():
+    # `Duration(1500)` floors to 1s -- `Duration(1000)` reads back, the
+    # caller's 1.5s is not preserved (whole-second contract).
+    repository = _InMemorySettingsRepository()
+
+    write_time_limit(repository, Duration(milliseconds=1500))
+
+    assert repository.get(SettingsScope.GAME, TIME_LIMIT_SECONDS) == 1
+    assert read_time_limit(repository) == Duration(milliseconds=1000)
+
+
+def test_a_sub_second_limit_writes_zero_and_reads_back_no_limit():
+    # `Duration(500)` floors to `0`, the no-limit sentinel -- documented
+    # behavior; callers must pass whole-second durations.
+    repository = _InMemorySettingsRepository()
+
+    write_time_limit(repository, Duration(milliseconds=500))
+
+    assert repository.get(SettingsScope.GAME, TIME_LIMIT_SECONDS) == 0
+    assert read_time_limit(repository) is None

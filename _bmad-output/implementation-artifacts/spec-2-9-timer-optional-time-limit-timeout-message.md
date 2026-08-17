@@ -2,14 +2,14 @@
 title: 'Story 2.9: Timer — optional time limit, timeout message'
 type: 'feature'
 created: '2026-08-17'
-status: 'review'
+status: 'done'
 baseline_commit: '0f7cbbd'
 context: ['_bmad-output/implementation-artifacts/epic-2-context.md']
 ---
 
 # Story 2.9: Timer — optional time limit, timeout message
 
-Status: review
+Status: done
 
 ## Story
 
@@ -126,6 +126,18 @@ Four layers, mirroring the established per-story seams:
 - [x] Given a limit reached before the exit → inline non-modal "Time's up — the exit wasn't reached." banner, run stopped, Restart/Continue reachable from it
 - [x] Given the timer → `Duration` is the only time type (session `elapsed` and the limit are both `Duration`)
 
+### Review Findings
+
+- [x] [Review][Decision] `write_time_limit` floors sub-second durations to `0` — reads back as "no limit" — [src/labyrinthes/application/time_limit_settings.py:54] — `limit.milliseconds // 1000`: a `Duration(500)` limit persists `0` (the no-limit sentinel), silently disabling the timer; `Duration(1500)` stores `1` and reads back `Duration(1000)`. The whole-second contract is documented, but the sub-second floor-to-sentinel collision is untested and undocumented. No caller exists yet (writer is the deferred Settings seam), so the correct handling (clamp to 1s, reject, or document) needs a decision.
+- [x] [Review][Patch] HARD toggle button stays visually active after a restart from a HARD-on timeout [src/labyrinthes/adapters/tkinter/player/gameplay_screen.py:825] — `_restart_run()` resets `_last_hard_sync_state` + `_sync_hard_mode_visuals()` (fog/ball/light) but never calls `_mode_hard_button.set_active(False)`; the fresh session has `hard_mode=False` while the button keeps showing active (only `_toggle_hard_mode` sets it, line 662). Violates the spec's "Restart = fresh run, HARD off" intent; the new `test_restart_resets_the_hard_mode_visual_state` checks fog/ball/light but not the button's `active` flag.
+- [x] [Review][Patch] Restart's widget resets are unexercised from a non-default pre-restart state [tests/adapters/tkinter/player/test_gameplay_screen.py] — all restart tests time out from the default state (Level ONE, Difficulty ONE, SMOOTH), so `_restart_run()`'s `_sync_level_widgets()`/`_sync_difficulty_widgets()`/`_sync_mode_button()` and the re-applied persisted mode/speed are visual no-ops; a regression dropping them (stale HUD / ignored persisted mode) would ship undetected. No test asserts Level/Difficulty chips, the mode button, or the re-applied mode/speed after restart.
+- [x] [Review][Patch] Timeout mid-leg ball-freeze is unverified [tests/adapters/tkinter/player/test_gameplay_screen.py:1855] — `test_timeout_cancels_an_in_flight_animation_job` starts a leg and asserts only `timed_out`/`_animation_job is None`; the ball is still at entry (offset 0), so the spec's "ball frozen at its current offset" is never exercised. Continue-with-leg-in-flight is also untested (frozen `moving_direction`/`step` persist after the banner dismisses).
+- [x] [Review][Patch] The `>=` timeout boundary case (exact equality) is untested [tests/adapters/tkinter/player/test_gameplay_screen.py] — every timeout test uses a 5s limit with a ~5.0s fake offset; the spec I/O matrix row "limit `Duration(1000)`, `elapsed_ms == 1000` → timeout fires (`>=`)" has no test, so a `<` vs `<=` off-by-one would pass the suite.
+- [x] [Review][Patch] `_restart_run()` hardcodes the Time chip to `"00:00"` [src/labyrinthes/adapters/tkinter/player/gameplay_screen.py:813] — the constructor, `_on_solved`, and `_on_timeout` all derive the chip from `self._session.elapsed.to_clock_string()`; the hardcode is equivalent today (fresh session has elapsed 0) but silently diverges if `to_clock_string()` formatting ever changes.
+- [x] [Review][Patch] Timeout banner styling/placement is never asserted [tests/adapters/tkinter/player/test_gameplay_screen.py] — tests check the message text and pill `_primary` but not the `accent_bg` background, 1px `accent` highlight, or `before=self._maze_frame` packing the spec claims mirrors `_show_win_banner`; a geometry/color regression would pass.
+- [x] [Review][Patch] Corrupt-limit test hardcodes the raw `"time_limit_seconds"` key [tests/adapters/tkinter/player/test_gameplay_screen.py:1797] — `test_mount_reads_none_for_a_corrupt_stored_limit` uses the string literal instead of the `TIME_LIMIT_SECONDS` constant from `settings_keys`, diverging from the key-name convention used elsewhere.
+- [x] [Review][Patch] Spec's test-count record is inaccurate [spec Dev Agent Record / Completion Notes / Change Log] — claims "26 new/updated tests" and "+13" (`test_gameplay_screen.py`) / "+12" (`test_player_session.py`); the diff actually adds 34 (14 + 13 + 7 + 1 settings-key name).
+
 ## Design Notes
 
 **The time limit is read once at mount, like mode/speed.** The limit scopes a run the same way `MOVEMENT_MODE`/`MOVEMENT_SPEED` do (both read once at mount, `gameplay_screen.py:194-195`), so a mid-run settings change does not retroactively retime the active run — it applies to the next mount/restart. This is why `_restart_run()` re-reads it. (The HARD-color readers are the deliberate exception to this rule — AC-4 there *requires* per-sync freshness; a time limit has no such requirement.)
@@ -201,8 +213,8 @@ opencode/deepseek-v4-flash-free
 ### Completion Notes List
 
 - Implemented Story 2.9 end-to-end. AC-3 now green: a configured time limit stops the run with an inline, non-modal `"Time's up — the exit wasn't reached."` banner (UX-DR9) and Restart/Continue pills; AC-1/AC-2/AC-4 kept green (no regression in the tick loop, win banner, or `Duration` usage).
-- Test coverage: `tests/application/test_time_limit_settings.py` (new — reader/writer matrix: absent/corrupt/non-int/`0`/negative → `None`, positive int → `Duration`, `0`-sentinel write, never-writes-on-read, GAME scope); `tests/application/test_player_session.py` (+12: `set_timed_out` sets/clears/preserves fields, no-op once solved, and every operation is a no-op once timed out); `tests/application/test_settings_keys.py` (+`TIME_LIMIT_SECONDS`); `tests/adapters/tkinter/player/test_gameplay_screen.py` (+13: mount-read of the limit, corrupt-stored → `None`, timeout at the limit freezes chip + cancels tick job + shows the exact message, no-limit keeps rescheduling, timeout cancels an in-flight animation job, movement after timeout is a no-op, solve wins the race, restart produces a fresh run (entry/elapsed 0/`"00:00"`/banner gone/`_tick_job` rescheduled/movement works again), restart re-reads the limit, restart with a win banner destroys it, continue keeps the run stopped, banner pills not primary with a `GENERATED` maze, restart resets HARD fog/ball/light).
-- `ruff check src/ tests/` clean, `ruff format --check` clean, full suite 680 passed. `.agents/` lint noise is pre-existing third-party skill code, untouched.
+- Test coverage: `tests/application/test_time_limit_settings.py` (new — reader/writer matrix: absent/corrupt/non-int/`0`/negative → `None`, positive int → `Duration`, `0`-sentinel write, sub-second floor (`Duration(1500)` → `1`, `Duration(500)` → `0`/no-limit), never-writes-on-read, GAME scope); `tests/application/test_player_session.py` (+13: `set_timed_out` sets/clears/preserves fields, no-op once solved, and every operation is a no-op once timed out); `tests/application/test_settings_keys.py` (+`TIME_LIMIT_SECONDS`); `tests/adapters/tkinter/player/test_gameplay_screen.py` (+18: mount-read of the limit, corrupt-stored → `None`, timeout at the limit freezes chip + cancels tick job + shows the exact message, exact `>=` boundary, no-limit keeps rescheduling, timeout cancels an in-flight animation job and freezes the ball mid-cell (also after Continue), movement after timeout is a no-op, solve wins the race, restart produces a fresh run (entry/elapsed 0/`"00:00"`/banner gone/`_tick_job` rescheduled/movement works again), restart re-reads the limit, restart with a win banner destroys it, restart resets Level/Difficulty chips + re-applies persisted mode/speed, continue keeps the run stopped, banner pills not primary with a `GENERATED` maze, banner mirrors the win-banner styling/placement, restart resets HARD fog/ball/light/button).
+- `ruff check src/ tests/` clean, `ruff format --check` clean, full suite 686 passed. `.agents/` lint noise is pre-existing third-party skill code, untouched.
 
 ### File List
 
@@ -220,4 +232,4 @@ opencode/deepseek-v4-flash-free
 
 ## Change Log
 
-- 2026-08-17: Implemented Story 2.9 (AC-3): time-limit settings seam (`application/time_limit_settings.py` + `TIME_LIMIT_SECONDS`), session `timed_out` terminal state with `set_timed_out`, tick-loop timeout trigger, inline non-modal timeout banner with Restart/Continue, and in-place fresh-run restart. Added 26 new/updated tests; full suite green (680 passed); lint/format clean. Logged the no-Settings-UI time-limit-picker deferral.
+- 2026-08-17: Implemented Story 2.9 (AC-3): time-limit settings seam (`application/time_limit_settings.py` + `TIME_LIMIT_SECONDS`), session `timed_out` terminal state with `set_timed_out`, tick-loop timeout trigger, inline non-modal timeout banner with Restart/Continue, and in-place fresh-run restart. Added 40 new/updated tests; full suite green (686 passed); lint/format clean. Logged the no-Settings-UI time-limit-picker deferral.

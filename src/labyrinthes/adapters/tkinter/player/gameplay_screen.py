@@ -810,7 +810,7 @@ class GameplayScreen(tk.Frame):
         self._sync_level_widgets()
         self._sync_difficulty_widgets()
         self._sync_mode_button()
-        self._time_chip.set_value("00:00")
+        self._time_chip.set_value(self._session.elapsed.to_clock_string())
         self._pos_chip.set_value(_pos_text(self._session.position))
         if self._timeout_banner is not None:
             self._timeout_banner.destroy()
@@ -820,7 +820,9 @@ class GameplayScreen(tk.Frame):
             self._win_banner = None
         # The fresh session has HARD off, so the status light hides and the
         # ball shows again; resetting `_last_hard_sync_state` forces the sync
-        # to actually run (Story 2.8).
+        # to actually run (Story 2.8). The HARD button mirrors the session
+        # too, so a restart from a HARD-on timeout de-activates it.
+        self._mode_hard_button.set_active(False)
         self._last_hard_sync_state = None
         self._sync_hard_mode_visuals()
         self._tick_job = self.after(_TICK_INTERVAL_MS, self._on_tick)
