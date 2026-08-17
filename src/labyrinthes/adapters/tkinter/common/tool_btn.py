@@ -50,6 +50,8 @@ class ToolButton(tk.Frame):
         self._group = group
         self._active = False
         self._focused = False
+        self._enabled = True
+        self._default_takefocus = self.cget("takefocus")
 
         self._label = tk.Label(
             self,
@@ -91,6 +93,35 @@ class ToolButton(tk.Frame):
     def active(self) -> bool:
         return self._active
 
+    def set_text(self, text: str) -> None:
+        """Replace the button's label text in place (e.g. a speed tier label)."""
+        self._label.configure(text=text)
+
+    def set_enabled(self, enabled: bool) -> None:
+        """Enable or disable the button (a real disabled state).
+
+        A disabled button is non-focusable (`takefocus=False`), ignores
+        clicks/Enter/Space (`_on_click` returns early), and renders in the
+        `colors.ghost` palette -- the design system's "disabled or not-yet-
+        set state" token. Re-enabling restores focusability, activation,
+        and normal styling.
+        """
+        if enabled == self._enabled:
+            return
+        self._enabled = enabled
+        if not enabled:
+            # A disabled button can't hold focus or an active selection;
+            # clear both so re-enabling never re-renders a stale ring or a
+            # "selected" style the user never asked for. Focus-out is
+            # swallowed while disabled (see `_on_focus_out`), so the flag
+            # would otherwise survive a disable-while-focused round-trip.
+            self._focused = False
+            self._active = False
+        self.configure(takefocus=self._default_takefocus if enabled else False)
+        for widget in self._clickable_widgets():
+            widget.configure(cursor="hand2" if enabled else "")
+        self._apply_style()
+
     def set_active(self, active: bool) -> None:
         """Set this button's active state.
 
@@ -112,6 +143,8 @@ class ToolButton(tk.Frame):
         self._apply_style()
 
     def _on_click(self, _event: tk.Event | None = None) -> None:
+        if not self._enabled:
+            return
         if self._group is not None:
             self._group.activate(self)
         else:
@@ -120,16 +153,24 @@ class ToolButton(tk.Frame):
             self._command()
 
     def _on_focus_in(self, _event: tk.Event | None = None) -> None:
+        if not self._enabled:
+            return
         self._focused = True
         self._apply_style()
 
     def _on_focus_out(self, _event: tk.Event | None = None) -> None:
+        if not self._enabled:
+            return
         self._focused = False
         self._apply_style()
 
     def _apply_style(self) -> None:
         colors = colors_for(self._theme)
-        if self._active:
+        if not self._enabled:
+            background = colors.window
+            border = colors.ghost
+            text_color = colors.ghost
+        elif self._active:
             background = colors.accent_bg
             border = colors.accent
             text_color = colors.accent_on_tint if self._theme is Theme.LIGHT else colors.accent

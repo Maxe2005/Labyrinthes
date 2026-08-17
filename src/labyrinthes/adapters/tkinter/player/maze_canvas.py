@@ -7,12 +7,21 @@ never color alone (NFR6) -- plus the ball (tag `"ball"`, filled circle,
 a distinct color from the entry marker, deliberately *smaller* than a
 marker -- `_BALL_SCALE < _MARKER_SCALE` -- so a marker's shape stays
 visible as a ring around the ball at rest on entry, and around exit at
-the instant of winning, instead of being fully occluded). Walls/markers
-never change after construction in this story (no Level/Difficulty
-visibility rules yet -- Stories 2.6/2.7); only the ball moves, via
-`set_ball_position()` which repositions the existing canvas item through
-`canvas.coords(...)` rather than clearing and redrawing everything on
-every keypress.
+the instant of winning, instead of being fully occluded). Only the ball
+moves after construction, via `set_ball_position()`/`set_ball_offset()`
+which reposition the existing canvas item through `canvas.coords(...)`
+rather than clearing and redrawing everything on every keypress.
+
+Story 2.6 adds `redraw_structure(visibility)`: when the session's
+`LevelVisibility` changes identity (a level switch or a visibility
+advance/collision), it replaces the `"wall"` bars with exactly
+`visible_walls(visibility, grid)` and draws the playable-area contour
+(`"contour"`, tag cleared first so calls are idempotent) whenever
+`show_contour(visibility)` says so -- a faithful port of the legacy
+`trace_contours_lab`, which reopens the exit side(s) with a
+corridor-colored bar (`colors.corridor`). The constructor still draws the
+whole Level-ONE grid once; `redraw_structure` is only called on a
+visibility *change*.
 
 Cell sizing is this story's own decision (no locked design token exists
 for it, see `tokens.py`'s own `RADII` note) -- `cell_size = clamp(min(480
@@ -25,6 +34,12 @@ from __future__ import annotations
 import tkinter as tk
 
 from labyrinthes.adapters.tkinter.common.tokens import ColorTokens, Theme, colors_for
+from labyrinthes.domain.level_visibility import (
+    LevelVisibility,
+    Wall,
+    show_contour,
+    visible_walls,
+)
 from labyrinthes.domain.maze import Maze
 from labyrinthes.domain.position import Position
 
@@ -69,12 +84,40 @@ class MazeCanvas(tk.Canvas):
             bd=0,
         )
 
+        # The HARD-mode fog scrim must be the *first* item created: Tk canvas
+        # items draw in creation order, so a first-created rectangle sits above
+        # the corridor background (the canvas itself) and below every wall
+        # bar/marker/ball, and `redraw_structure`'s later wall recreations keep
+        # stacking above it -- the load-bearing z-order that keeps the
+        # structure crisp on top of the scrim. It is hidden by default; the
+        # screen shows it only while HARD mode is active and the ball moves.
+        self._draw_fog(colors)
         self._draw_walls(colors)
         self._draw_entry_marker(colors)
         self._draw_exit_marker(colors)
         self._ball_id = self._draw_ball(position, colors)
 
     # -- drawing -------------------------------------------------------
+
+    def _draw_fog(self, colors: ColorTokens) -> None:
+        """The HARD-mode scrim: a full-canvas `colors.bg` rectangle (tag `"fog"`).
+
+        Tk `Canvas` items have no per-item alpha channel, so DESIGN.md's
+        `opacity: 0.85` is approximated with a solid `colors.bg` fill -- the
+        scrim reads as a translucent veil because the corridor is the
+        lightest/darkest surface and the hex is still the design token.
+        Show/hide is an instant `state` toggle, never an animation.
+        """
+        self.create_rectangle(
+            0,
+            0,
+            self._maze.grid.width * self._cell_size,
+            self._maze.grid.height * self._cell_size,
+            fill=colors.bg,
+            outline="",
+            tags=("fog",),
+            state="hidden",
+        )
 
     def _draw_walls(self, colors: ColorTokens) -> None:
         grid = self._maze.grid
@@ -91,6 +134,80 @@ class MazeCanvas(tk.Canvas):
                     self.create_line(
                         x0, y0, x0, y0 + size, width=_WALL_WIDTH, fill=colors.wall, tags=("wall",)
                     )
+
+    def _draw_wall_bar(self, wall: Wall, colors: ColorTokens) -> None:
+        """Draw the single wall segment `wall` (raw coordinates) as a wall bar."""
+        size = self._cell_size
+        x0, y0 = wall.col * size, wall.row * size
+        if wall.side == "top":
+            self.create_line(
+                x0, y0, x0 + size, y0, width=_WALL_WIDTH, fill=colors.wall, tags=("wall",)
+            )
+        else:
+            self.create_line(
+                x0, y0, x0, y0 + size, width=_WALL_WIDTH, fill=colors.wall, tags=("wall",)
+            )
+
+    def redraw_structure(self, visibility: LevelVisibility) -> None:
+        """Replace the wall bars/contour with exactly what `visibility` shows.
+
+        Deletes the existing `"wall"`/`"contour"` items first, so repeated
+        calls are idempotent; entry/exit markers and the ball are left
+        untouched. The contour is the legacy `trace_contours_lab` port: a
+        rectangle around the playable area with the exit side(s) reopened.
+        """
+        self.delete("wall")
+        self.delete("contour")
+        colors = colors_for(self._theme)
+        for wall in visible_walls(visibility, self._maze.grid):
+            self._draw_wall_bar(wall, colors)
+        if show_contour(visibility):
+            self._draw_contour(colors)
+
+    def _draw_contour(self, colors: ColorTokens) -> None:
+        """The playable-area contour (legacy `trace_contours_lab`).
+
+        A wall-colored rectangle around the playable area, with the exit
+        side(s) reopened by a corridor-colored bar spanning the exit cell.
+        """
+        size = self._cell_size
+        grid = self._maze.grid
+        x_max = grid.width * size
+        y_max = grid.height * size
+        self.create_rectangle(
+            0, 0, x_max, y_max, outline=colors.wall, width=_WALL_WIDTH, tags=("contour",)
+        )
+        exit_row, exit_col = self._maze.exit.row, self._maze.exit.col
+        exit_span_start = exit_col * size
+        exit_span_end = (exit_col + 1) * size
+        if exit_row == 0:
+            self.create_line(
+                exit_span_start, 0, exit_span_end, 0, fill=colors.corridor, tags=("contour",)
+            )
+        if exit_row == grid.height - 1:
+            self.create_line(
+                exit_span_start,
+                y_max,
+                exit_span_end,
+                y_max,
+                fill=colors.corridor,
+                tags=("contour",),
+            )
+        exit_span_start = exit_row * size
+        exit_span_end = (exit_row + 1) * size
+        if exit_col == 0:
+            self.create_line(
+                0, exit_span_start, 0, exit_span_end, fill=colors.corridor, tags=("contour",)
+            )
+        if exit_col == grid.width - 1:
+            self.create_line(
+                x_max,
+                exit_span_start,
+                x_max,
+                exit_span_end,
+                fill=colors.corridor,
+                tags=("contour",),
+            )
 
     def _cell_center(self, position: Position) -> tuple[float, float]:
         size = self._cell_size
@@ -147,8 +264,31 @@ class MazeCanvas(tk.Canvas):
 
     # -- movement --------------------------------------------------------
 
-    def set_ball_position(self, position: Position) -> None:
-        """Move the ball item to `position`'s cell center, without redrawing anything else."""
-        cx, cy = self._cell_center(position)
+    def set_ball_offset(self, position: Position, row_delta: float, col_delta: float) -> None:
+        """Reposition the ball to an interpolated point near `position`.
+
+        `row_delta`/`col_delta` are fractions of one cell (in units of
+        `self._cell_size`) from `position`'s center -- `0`/`0` is exactly
+        the cell center. Lets `GameplayScreen` render the in-flight position
+        of a partially-completed leg each animation tick.
+        """
+        cx = (position.col + col_delta) * self._cell_size + self._cell_size / 2
+        cy = (position.row + row_delta) * self._cell_size + self._cell_size / 2
         radius = self._radius(_BALL_SCALE)
         self.coords(self._ball_id, cx - radius, cy - radius, cx + radius, cy + radius)
+
+    def set_ball_position(self, position: Position) -> None:
+        """Move the ball item to `position`'s cell center, without redrawing anything else."""
+        self.set_ball_offset(position, 0, 0)
+
+    def set_hard_mode_moving(self, moving: bool) -> None:
+        """Toggle HARD-mode rendering for a moving (True) or resting (False) ball.
+
+        While moving, the ball is genuinely not rendered (`state="hidden"`,
+        not merely occluded) and the fog scrim is shown above the
+        corridor/ball plane and below every wall bar/marker. Callable
+        repeatedly; idempotent. When HARD mode is off the screen never calls
+        it with `True`, so the ball stays visible and the fog hidden.
+        """
+        self.itemconfigure("fog", state="normal" if moving else "hidden")
+        self.itemconfigure(self._ball_id, state="hidden" if moving else "normal")

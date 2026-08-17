@@ -1,9 +1,15 @@
 import tkinter as tk
 
+from labyrinthes.adapters.tkinter.common.confirm_dialog import ConfirmDialog
 from labyrinthes.adapters.tkinter.common.tokens import Theme
 from labyrinthes.adapters.tkinter.player.classic_gallery import ClassicMazeGallery
 from labyrinthes.adapters.tkinter.player.generate_random_dialog import GenerateRandomDialog
 from labyrinthes.app.router import ScreenId
+from labyrinthes.application.confirmation_settings import (
+    read_confirm_invalid_input,
+    write_confirm_invalid_input,
+    write_confirm_switch_maze,
+)
 from labyrinthes.domain.maze import Maze, MazeKind
 from labyrinthes.domain.position import Position
 from tests.adapters.tkinter.player.conftest import saved_random_maze
@@ -377,4 +383,139 @@ def test_confirming_generation_via_the_dialogs_own_confirm_callback_navigates(
     screen_id, maze = calls[0]
     assert screen_id == ScreenId.PLAYER
     assert maze.kind == MazeKind.GENERATED
-    assert not dialog.winfo_exists()
+
+
+# -- Story 2.10: gated browse/jump surfaces ---------------------------------------------
+
+
+def test_next_opens_a_confirm_dialog_when_confirm_switch_maze_is_on(
+    tk_root, seeded_maze_repository, navigate_stub, fake_settings_repository
+):
+    write_confirm_switch_maze(fake_settings_repository, True)
+    navigate, _ = navigate_stub
+    gallery = _gallery(tk_root, seeded_maze_repository, navigate, fake_settings_repository)
+
+    gallery._on_next()
+
+    dialogs = [c for c in gallery.winfo_children() if isinstance(c, ConfirmDialog)]
+    assert len(dialogs) == 1
+    assert gallery._confirm_dialog is dialogs[0]
+    assert gallery._index == 0
+
+
+def test_confirming_the_switch_dialog_moves_to_the_next_maze(
+    tk_root, seeded_maze_repository, navigate_stub, fake_settings_repository
+):
+    write_confirm_switch_maze(fake_settings_repository, True)
+    navigate, _ = navigate_stub
+    gallery = _gallery(tk_root, seeded_maze_repository, navigate, fake_settings_repository)
+
+    gallery._on_next()
+    gallery._confirm_dialog._on_confirm_clicked()
+
+    assert gallery._index == 1
+    assert gallery._position_label.cget("text") == "Classic Maze 2 of 3"
+    assert gallery._confirm_dialog is None
+
+
+def test_cancelling_the_switch_dialog_leaves_the_index_untouched(
+    tk_root, seeded_maze_repository, navigate_stub, fake_settings_repository
+):
+    write_confirm_switch_maze(fake_settings_repository, True)
+    navigate, _ = navigate_stub
+    gallery = _gallery(tk_root, seeded_maze_repository, navigate, fake_settings_repository)
+    gallery._on_next()
+    gallery._on_next()  # first dialog open
+    gallery._confirm_dialog._on_cancel_clicked()
+
+    assert gallery._index == 0
+    assert gallery._position_label.cget("text") == "Classic Maze 1 of 3"
+    assert gallery._confirm_dialog is None
+
+
+def test_a_second_gated_trigger_while_a_dialog_is_open_is_a_no_op(
+    tk_root, seeded_maze_repository, navigate_stub, fake_settings_repository
+):
+    write_confirm_switch_maze(fake_settings_repository, True)
+    navigate, _ = navigate_stub
+    gallery = _gallery(tk_root, seeded_maze_repository, navigate, fake_settings_repository)
+    gallery._on_next()
+    first = gallery._confirm_dialog
+
+    gallery._on_next()
+
+    dialogs = [c for c in gallery.winfo_children() if isinstance(c, ConfirmDialog)]
+    assert len(dialogs) == 1
+    assert gallery._confirm_dialog is first
+    first.destroy()
+
+
+def test_restart_is_gated_behind_confirm_switch_maze(
+    tk_root, seeded_maze_repository, navigate_stub, fake_settings_repository
+):
+    write_confirm_switch_maze(fake_settings_repository, True)
+    navigate, _ = navigate_stub
+    gallery = _gallery(tk_root, seeded_maze_repository, navigate, fake_settings_repository)
+    gallery._index = 2
+    gallery._refresh_display()
+
+    gallery._on_restart()
+
+    assert gallery._index == 2
+    assert gallery._confirm_dialog is not None
+    gallery._confirm_dialog._on_confirm_clicked()
+    assert gallery._index == 0
+
+
+def test_a_valid_jump_is_gated_behind_confirm_switch_maze(
+    tk_root, seeded_maze_repository, navigate_stub, fake_settings_repository
+):
+    write_confirm_switch_maze(fake_settings_repository, True)
+    navigate, _ = navigate_stub
+    gallery = _gallery(tk_root, seeded_maze_repository, navigate, fake_settings_repository)
+    gallery._jump_entry.delete(0, "end")
+    gallery._jump_entry.insert(0, "3")
+
+    gallery._on_jump()
+
+    assert gallery._index == 0
+    assert gallery._confirm_dialog is not None
+    gallery._confirm_dialog._on_confirm_clicked()
+    assert gallery._index == 2
+
+
+def test_invalid_jump_shows_an_ok_only_alert_when_confirm_invalid_input_is_on(
+    tk_root, seeded_maze_repository, navigate_stub, fake_settings_repository
+):
+    write_confirm_invalid_input(fake_settings_repository, True)
+    navigate, _ = navigate_stub
+    gallery = _gallery(tk_root, seeded_maze_repository, navigate, fake_settings_repository)
+    gallery._jump_entry.delete(0, "end")
+    gallery._jump_entry.insert(0, "abc")
+
+    gallery._on_jump()
+
+    assert gallery._index == 0
+    assert gallery._jump_entry.get() == "1"
+    dialog = gallery._confirm_dialog
+    assert dialog is not None
+    assert not hasattr(dialog, "_cancel_button")
+    dialog._on_confirm_clicked()
+    assert gallery._confirm_dialog is None
+
+
+def test_invalid_jump_skips_the_alert_when_confirm_invalid_input_is_off(
+    tk_root, seeded_maze_repository, navigate_stub, fake_settings_repository
+):
+    write_confirm_invalid_input(fake_settings_repository, False)
+    navigate, _ = navigate_stub
+    gallery = _gallery(tk_root, seeded_maze_repository, navigate, fake_settings_repository)
+    gallery._jump_entry.delete(0, "end")
+    gallery._jump_entry.insert(0, "abc")
+
+    gallery._on_jump()
+
+    assert gallery._index == 0
+    assert gallery._jump_entry.get() == "1"
+    assert gallery._confirm_dialog is None
+    assert read_confirm_invalid_input(fake_settings_repository) is False

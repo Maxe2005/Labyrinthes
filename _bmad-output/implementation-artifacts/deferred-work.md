@@ -1,5 +1,31 @@
 # Deferred Work
 
+## Deferred from: code review of spec-2-6-levels-progressive-visibility-1-4-max (2026-08-13)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-6-levels-progressive-visibility-1-4-max.md`
+  summary: Level-4 reveal threshold is degenerate at real maze sizes — `round(total_interior_walls/(d+1))` at D1 requires ~half of a 10×10 grid's ~180 interior walls to be discovered before AC-4's "all discovered walls hide again" fires, so walls effectively accumulate until solve. Spec-pinned placeholder formula; explicitly the Story-2.7 seam (which also wires the Difficulty control that parameterizes it).
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-6-levels-progressive-visibility-1-4-max.md`
+  summary: `reveal_threshold` uses Python's banker's `round()` (`round(0.5)==0`, `round(2.5)==2`) whereas the legacy `arrondi` was half-up; for a maze with 1 interior wall at D1 the threshold is 0, so every discovery immediately resets to just that wall (equivalent rendering, but diverges from legacy semantics at fractional boundaries). Spec-pinned `round(...)`; Story-2.7 finalizes the function.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-6-levels-progressive-visibility-1-4-max.md`
+  summary: `MazeCanvas.redraw_structure` deletes and recreates `"wall"`/`"contour"` items, which stack them above the constructor-drawn entry/exit markers and ball in canvas z-order (constructor order was walls → markers → ball). No geometric overlap today (ball radius is a fraction of a cell and walls sit on cell borders), so visually benign; latent if wall thickness or marker sizing ever changes.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-6-levels-progressive-visibility-1-4-max.md`
+  summary: Wall-segment decoding is duplicated across four independent walkers — `level_visibility._all_walls`, `total_interior_walls`, `visible_walls`, and `MazeCanvas._draw_walls` — each walking the raw grid with subtly different semantics (full grid vs partition-boundary clipping). Drift risk; a single "walls of this grid" primitive would remove it.
+
+## Deferred from: code review of spec-2-5-movement-modes-smooth-vs-discrete-configurable-speed (2026-08-13)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-5-movement-modes-smooth-vs-discrete-configurable-speed.md`
+  summary: The "Movement" sidebar group is built as a plain `Frame` with two `ToolButton`s plus manual active-state sync, not a `ToolButtonGroup` as the Code Map specifies. Functionally fine (only a single boolean toggle exists, so group exclusivity adds nothing); revisit when the sidebar gains more toggle groups.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-5-movement-modes-smooth-vs-discrete-configurable-speed.md`
+  summary: Post-solve, the sidebar `_toggle_mode`/`_cycle_speed` handlers still run: they call the session no-op (`set_mode`/`set_speed` return unchanged once solved), then write the new value to settings and update the button label/active state, so the button can disagree with the frozen session. Cosmetic on a finished run; persisting the preference for the next session is arguably desirable.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-5-movement-modes-smooth-vs-discrete-configurable-speed.md`
+  summary: `movement_settings._read_member` catches only `SettingNotFoundError`/`SettingCorruptError`/`ValueError`/`TypeError`; any other exception from `settings.get` would propagate despite the "Never raises" docstring. Parity with the existing `maze_size_bounds._read_bound` pattern; revisit if a concrete repository can raise other error types.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-5-movement-modes-smooth-vs-discrete-configurable-speed.md`
+  summary: `_SPEED_CYCLE = tuple(MovementSpeed)` depends on enum member declaration order for the Slow→Normal→Fast cycle; a future reorder would silently change the cycle. Enum order is stable today.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-5-movement-modes-smooth-vs-discrete-configurable-speed.md`
+  summary: No screen-level test that a movement key after solving is a no-op (doesn't reschedule an animation job). Domain solved-guard tests cover the underlying behavior.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-5-movement-modes-smooth-vs-discrete-configurable-speed.md`
+  summary: No corrupt-settings-at-mount integration test for the player screen. The never-raise guarantee is covered by `test_movement_settings` unit tests.
+
 ## Deferred from: code review of spec-1-8-home-breadcrumb-navigation-settings-access (2026-08-06)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-8-home-breadcrumb-navigation-settings-access.md`
@@ -223,3 +249,15 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-4-gameplay-screen-foundation-rendering-hud-baseline-movement-win-detection.md`
   summary: `MazeCanvas._cell_size` (`src/labyrinthes/adapters/tkinter/player/maze_canvas.py`) divides by `width`/`height` with no zero-guard -- a domain-legal degenerate `Grid` (playable `width == 0` or `height == 0`, which `Grid.__post_init__` alone permits; only `Grid.filled`'s own separate guard forbids it) crashes `GameplayScreen`/`MazeCanvas` construction with a raw `ZeroDivisionError` instead of a handled error.
   evidence: confirmed by direct inspection -- `_cell_size()` computes `_MAX_CANVAS_SPAN // width` / `// height` unconditionally, and `Grid.__post_init__` only requires `cells` to be non-empty and rectangular (`domain/grid.py`), not `width > 0 and height > 0`; that stronger check lives solely in the separate `Grid.filled()` factory, which a maze loaded straight from a malformed classic-maze CSV (Story 1.4's `read_maze_csv`) never goes through. Same root cause class as this file's adjacent, already-deferred `Maze.__post_init__` entry/exit validation gap (a malformed classic-maze CSV reaching newly-reachable Story 2.4 rendering/movement code) but a distinct symptom (a crash in cell-size computation, not a bad `entry`/`exit` position) -- worth folding into the same future `Maze`/`Grid` construction-time validation pass rather than a narrow one-off guard in `MazeCanvas` alone.
+
+## Deferred from: code review of spec-2-8-hard-mode-invisible-ball-fog-overlay-status-light (2026-08-14)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-8-hard-mode-invisible-ball-fog-overlay-status-light.md`
+  summary: No Settings color-picker UI exists for the two HARD-mode status-light colors -- `SettingsWindow` remains the Story 1.8/1.11 "Appearance coming soon" placeholder, and no story in Epics 1-5 owns a color picker. Story 2.8 ships the `read_hard_mode_*`/`write_hard_mode_*` readers/writers (the `game`-scoped persistence seam) plus read-on-activation (`_hard_mode_colors()`), so AC-4 is exercised at the repository seam by tests; the writers are not yet called by any UI. The future color picker (whichever story first adds real `SettingsWindow` content, e.g. Story 2.11) consumes the writers, and the HARD control's stable sidebar "Mode" group location is kept so Story 5.5's first-activation ⓘ-anchor can attach to it.
+  evidence: confirmed by direct inspection of `src/labyrinthes/adapters/tkinter/common/settings_window.py` (placeholder only) and `src/labyrinthes/application/hard_mode_settings.py` (writers never invoked from `adapters/tkinter/player/gameplay_screen.py`), plus the story's own explicitly-deferred Settings-UI decision. No AC in Story 2.8 requires a picker; exercising it from the repository seam is the documented mechanism.
+
+## Deferred from: code review of spec-2-9-timer-optional-time-limit-timeout-message (2026-08-17)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-9-timer-optional-time-limit-timeout-message.md`
+  summary: No Settings time-limit picker UI exists -- `SettingsWindow` remains the Story 1.8/1.11 "Appearance coming soon" placeholder, and no story in Epics 1-5 owns a time-limit picker. Story 2.9 ships the `read_time_limit`/`write_time_limit` reader/writer (the `game`-scoped persistence seam) plus read-on-mount (`_time_limit`), so AC-3 is exercised at the repository seam by tests that `write_time_limit` a value and drive a fake-elapsed `_on_tick`; the writer is not yet called by any UI. The future time-limit picker (whichever story first adds real `SettingsWindow` content, e.g. Story 2.11) consumes the writer, and the `0`-sentinel on-disk encoding (`write_time_limit(None)` persists `0`) is the documented "no limit" representation.
+  evidence: confirmed by direct inspection of `src/labyrinthes/adapters/tkinter/common/settings_window.py` (placeholder only) and `src/labyrinthes/application/time_limit_settings.py` (writer never invoked from `adapters/tkinter/player/gameplay_screen.py`), plus the story's own explicitly-deferred Settings-UI decision. No AC in Story 2.9 requires a picker; exercising it from the repository seam is the documented mechanism (same pattern as Story 2.8's HARD-color picker deferral).

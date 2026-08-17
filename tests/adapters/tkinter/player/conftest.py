@@ -7,6 +7,10 @@ to exercise the pager/jump/restart/play behavior against a repository.
 `FakeSettingsRepository` (Story 2.2) is the equivalent in-memory
 `SettingsRepository` double, for tests exercising `GenerateRandomDialog`'s
 FR-4 size-bounds reads without a `tmp_path`-backed `JsonSettingsRepository`.
+Story 2.10 hoisted it into `tests/adapters/tkinter/conftest.py` (the shared
+conftest, mirroring the Story 1.7 hoist precedent) -- this module imports
+and re-exports it so the existing `fake_settings_repository` fixture keeps
+resolving for Player tests without a second definition.
 
 `saved_random_maze()` (Story 2.3) is `classic_maze()`'s `SAVED_RANDOM`
 counterpart, for seeding `ClassicMazeGallery`'s combined-listing tests.
@@ -17,13 +21,13 @@ import uuid
 
 import pytest
 
-from labyrinthes.application.errors import MazeNotFoundError, SettingNotFoundError
+from labyrinthes.application.errors import MazeNotFoundError
 from labyrinthes.application.maze_repository import MazeRepository
-from labyrinthes.application.settings_repository import SettingsRepository, SettingsScope
 from labyrinthes.domain.grid import Grid
 from labyrinthes.domain.maze import Maze, MazeKind
 from labyrinthes.domain.maze_id import MazeId
 from labyrinthes.domain.position import Position
+from tests.adapters.tkinter.conftest import FakeSettingsRepository
 
 _ID_ELIGIBLE_KINDS = frozenset({MazeKind.CLASSIC, MazeKind.SAVED_RANDOM})
 
@@ -106,22 +110,6 @@ def seeded_maze_repository_with_saved_random() -> FakeMazeRepository:
     repository.save(saved_random_maze(width=7, height=6), "delta")
     repository.save(saved_random_maze(width=8, height=7), "echo")
     return repository
-
-
-class FakeSettingsRepository(SettingsRepository):
-    """In-memory `SettingsRepository` test double, keyed by `(scope, key)`."""
-
-    def __init__(self) -> None:
-        self._store: dict[tuple[SettingsScope, str], object] = {}
-
-    def get(self, scope: SettingsScope, key: str):
-        try:
-            return self._store[(scope, key)]
-        except KeyError:
-            raise SettingNotFoundError(f"No {scope.value} setting named {key!r}") from None
-
-    def set(self, scope: SettingsScope, key: str, value) -> None:
-        self._store[(scope, key)] = value
 
 
 @pytest.fixture

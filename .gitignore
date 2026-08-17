@@ -27,6 +27,8 @@ _bmad/
 .bmad-loop/cache/
 _bmad/render/
 
+uv.lock
+
 # App
 settings/
 mazes/saved-random/

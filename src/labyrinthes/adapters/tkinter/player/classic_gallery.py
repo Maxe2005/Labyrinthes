@@ -31,19 +31,37 @@ number). This is what makes a maze saved from the gameplay placeholder
 (Story 2.3's `GameplayPlaceholder`) resurface here after an app restart --
 the exact dead end the legacy player's "write but never read back" random
 save reproduced.
+
+Story 2.10 gates the browse/jump surfaces behind per-action confirmation
+settings (`read_confirm_switch_maze` for Previous/Next/Restart and a valid
+jump, `read_confirm_invalid_input` for the invalid-jump alert) via
+`_maybe_confirm`, which opens a non-modal `ConfirmDialog` (parented to this
+gallery, so it cascade-destroys with it on navigate-away) and guards against
+stacking a second dialog while one is open (`_confirm_dialog is not None`
+-> no-op). Each gated action reads its setting *at action time* -- never
+cached at mount -- which is what makes a Settings toggle take effect without
+an app restart (AC-3). `_on_play`/`_on_generate_random` stay ungated:
+committing to the shown maze / opening the generation dialog is not
+"switching mazes".
 """
 
 from __future__ import annotations
 
 import random
 import tkinter as tk
+from collections.abc import Callable
 
+from labyrinthes.adapters.tkinter.common.confirm_dialog import ConfirmDialog
 from labyrinthes.adapters.tkinter.common.icon_btn import IconButton
 from labyrinthes.adapters.tkinter.common.keybindings import bind_shortcut, keybinding
 from labyrinthes.adapters.tkinter.common.navigation import NavigateFn, ScreenId
 from labyrinthes.adapters.tkinter.common.pill_btn import PillButton
 from labyrinthes.adapters.tkinter.common.tokens import SPACING, TYPOGRAPHY, Theme, colors_for
 from labyrinthes.adapters.tkinter.player.generate_random_dialog import GenerateRandomDialog
+from labyrinthes.application.confirmation_settings import (
+    read_confirm_invalid_input,
+    read_confirm_switch_maze,
+)
 from labyrinthes.application.maze_repository import MazeRepository
 from labyrinthes.application.maze_size_bounds import read_maze_size_bounds
 from labyrinthes.application.settings_repository import SettingsRepository
@@ -56,6 +74,8 @@ __all__ = ["ClassicMazeGallery"]
 _EMPTY_STATE_MESSAGE = (
     "No classic or saved mazes were found. Build one in the Builder, or play a random maze now."
 )
+
+_INVALID_JUMP_MESSAGE = "That's not a valid maze number."
 
 
 class ClassicMazeGallery(tk.Frame):
@@ -107,6 +127,12 @@ class ClassicMazeGallery(tk.Frame):
             for name in maze_repository.list_names(MazeKind.SAVED_RANDOM)
         ]
         self._index = 0
+        # Story 2.10: the open `ConfirmDialog`, if any -- `None` when no
+        # prompt is showing. The `_maybe_confirm` guard (`is not None` ->
+        # no-op) is what stops a second gated trigger from stacking a second
+        # dialog on top of the first (the dialog is non-modal, so clicks can
+        # still reach this screen -- see `confirm_dialog.py`'s docstring).
+        self._confirm_dialog: ConfirmDialog | None = None
 
         if self._entries:
             self._build_populated()
@@ -205,19 +231,54 @@ class ClassicMazeGallery(tk.Frame):
 
     def _on_previous(self) -> None:
         # Clamped at the lower bound -- a no-op past index 0, never wraps
-        # (see the story's I/O matrix).
+        # (see the story's I/O matrix). If already at the first maze, apply
+        # immediately (no dialog needed). Gated behind `confirm_switch_maze`
+        # (Story 2.10): when on and not at the bound, the actual index move
+        # waits for the dialog's Confirm.
+        if self._index <= 0:
+            self._apply_previous()
+            return
+        self._maybe_confirm(
+            read_confirm_switch_maze(self._settings_repository),
+            message="Switch to the previous maze?",
+            on_confirm=self._apply_previous,
+        )
+
+    def _apply_previous(self) -> None:
         if self._index > 0:
             self._index -= 1
             self._refresh_display()
 
     def _on_next(self) -> None:
         # Clamped at the upper bound -- a no-op past the last index, never
-        # wraps (see the story's I/O matrix).
+        # wraps (see the story's I/O matrix). If already at the last maze,
+        # apply immediately (no dialog needed). Gated behind
+        # `confirm_switch_maze` (Story 2.10).
+        if self._index >= len(self._entries) - 1:
+            self._apply_next()
+            return
+        self._maybe_confirm(
+            read_confirm_switch_maze(self._settings_repository),
+            message="Switch to the next maze?",
+            on_confirm=self._apply_next,
+        )
+
+    def _apply_next(self) -> None:
         if self._index < len(self._entries) - 1:
             self._index += 1
             self._refresh_display()
 
     def _on_restart(self) -> None:
+        # Gated behind `confirm_switch_maze` like previous/next (Story
+        # 2.10): restarting changes the selected maze, so it prompts under
+        # the same setting.
+        self._maybe_confirm(
+            read_confirm_switch_maze(self._settings_repository),
+            message="Restart at the first maze?",
+            on_confirm=self._apply_restart,
+        )
+
+    def _apply_restart(self) -> None:
         self._index = 0
         self._refresh_display()
 
@@ -230,6 +291,11 @@ class ClassicMazeGallery(tk.Frame):
         else (non-numeric text, out-of-range) leaves the browsed index
         untouched and reverts the entry's displayed text back to it -- no
         exception raised, no state change (see the story's I/O matrix).
+
+        Story 2.10: the valid branch is gated behind `confirm_switch_maze`;
+        the invalid branch reverts immediately (the revert is not a gate)
+        and then shows an OK-only alert when `confirm_invalid_input` is on
+        (the legacy `alerte mauvaise entree`, alert-mode `ConfirmDialog`).
         """
         text = self._jump_entry.get()
         try:
@@ -238,11 +304,62 @@ class ClassicMazeGallery(tk.Frame):
             number = None
 
         if number is not None and 1 <= number <= len(self._entries):
-            self._index = number - 1
-            self._refresh_display()
+            self._maybe_confirm(
+                read_confirm_switch_maze(self._settings_repository),
+                message=f"Jump to maze {number}?",
+                on_confirm=lambda: self._apply_jump(number),
+            )
         else:
             self._jump_entry.delete(0, "end")
             self._jump_entry.insert(0, str(self._index + 1))
+            self._maybe_confirm(
+                read_confirm_invalid_input(self._settings_repository),
+                message=_INVALID_JUMP_MESSAGE,
+                confirm_label="OK",
+                cancel_label=None,
+            )
+
+    def _apply_jump(self, number: int) -> None:
+        self._index = number - 1
+        self._refresh_display()
+
+    def _maybe_confirm(
+        self,
+        enabled: bool,
+        *,
+        message: str,
+        on_confirm: Callable[[], None] | None = None,
+        confirm_label: str = "Confirm",
+        cancel_label: str | None = "Cancel",
+    ) -> None:
+        """Gate an action behind a `ConfirmDialog` when `enabled`.
+
+        Never stacks: a second trigger while a dialog is already open is a
+        no-op (the dialog is non-modal, so a click could otherwise reach
+        this screen behind it). When `enabled`, opens the dialog and stores
+        it so the owning action's `on_confirm` only runs on Confirm; when
+        `enabled` is `False`, applies the action immediately (AC-2). When
+        `enabled` is `True`, checks for an open dialog first (anti-stacking),
+        then opens the ConfirmDialog. `on_close` clears the guard.
+        """
+        if not enabled:
+            if on_confirm is not None:
+                on_confirm()
+            return
+        if self._confirm_dialog is not None:
+            return
+        self._confirm_dialog = ConfirmDialog(
+            self,
+            theme=self._theme,
+            message=message,
+            on_confirm=on_confirm,
+            on_close=self._clear_confirm_dialog,
+            confirm_label=confirm_label,
+            cancel_label=cancel_label,
+        )
+
+    def _clear_confirm_dialog(self) -> None:
+        self._confirm_dialog = None
 
     def _on_play(self) -> None:
         maze = self._current_maze()
