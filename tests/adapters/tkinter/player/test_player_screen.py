@@ -7,6 +7,7 @@ from labyrinthes.adapters.tkinter.common.navigation import ScreenId
 from labyrinthes.adapters.tkinter.player.classic_gallery import ClassicMazeGallery
 from labyrinthes.adapters.tkinter.player.gameplay_screen import GameplayScreen
 from labyrinthes.adapters.tkinter.player.screen import mount
+from labyrinthes.application.confirmation_settings import write_confirm_restart
 from labyrinthes.domain.grid import Grid
 from labyrinthes.domain.maze import Maze, MazeKind
 from labyrinthes.domain.position import Position
@@ -492,3 +493,34 @@ def test_confirming_a_pick_in_the_gallery_hands_the_maze_off_via_navigate(
     screen_id, maze = calls[0]
     assert screen_id == ScreenId.PLAYER
     assert isinstance(maze, Maze)
+
+
+def test_open_settings_from_player_reflects_a_stored_confirmation_value(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    seeded_maze_repository,
+    fake_settings_repository,
+):
+    write_confirm_restart(fake_settings_repository, False)
+    navigate, _ = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(
+        tk_root,
+        None,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        maze_repository=seeded_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+
+    top_bar = find_all(frame, TopBar)[0]
+    top_bar._settings_button._on_click()
+
+    settings_windows = [c for c in tk_root.winfo_children() if isinstance(c, SettingsWindow)]
+    assert len(settings_windows) == 1
+    settings_windows[0]._select_category("Confirmation")
+    assert settings_windows[0]._confirmation_rows["Confirm before restarting"].get() is False
+    settings_windows[0].destroy()

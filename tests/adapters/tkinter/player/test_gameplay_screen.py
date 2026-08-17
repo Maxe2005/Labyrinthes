@@ -8,6 +8,10 @@ from labyrinthes.adapters.tkinter.common.tokens import Theme, colors_for
 from labyrinthes.adapters.tkinter.player.gameplay_screen import GameplayScreen
 from labyrinthes.adapters.tkinter.player.maze_canvas import MazeCanvas
 from labyrinthes.adapters.tkinter.player.save_maze_dialog import SaveMazeDialog
+from labyrinthes.application.confirmation_settings import (
+    write_confirm_level_change,
+    write_confirm_restart,
+)
 from labyrinthes.application.hard_mode_settings import (
     read_hard_mode_moving_color,
     read_hard_mode_ready_color,
@@ -1956,6 +1960,7 @@ def test_restart_from_the_timeout_banner_starts_a_fresh_run(
     tk_root, fake_maze_repository, fake_settings_repository
 ):
     write_time_limit(fake_settings_repository, Duration(milliseconds=5000))
+    write_confirm_restart(fake_settings_repository, False)
     maze = _open_maze(width=3)
     screen = GameplayScreen(
         tk_root,
@@ -1985,6 +1990,7 @@ def test_restart_from_the_timeout_banner_starts_a_fresh_run(
 
 def test_restart_reads_a_fresh_time_limit(tk_root, fake_maze_repository, fake_settings_repository):
     write_time_limit(fake_settings_repository, Duration(milliseconds=5000))
+    write_confirm_restart(fake_settings_repository, False)
     maze = _open_maze(width=3)
     screen = GameplayScreen(
         tk_root,
@@ -2007,6 +2013,7 @@ def test_restart_resets_level_difficulty_chips_and_reapplies_persisted_mode_spee
     tk_root, fake_maze_repository, fake_settings_repository
 ):
     _use_discrete(fake_settings_repository)
+    write_confirm_restart(fake_settings_repository, False)
     write_time_limit(fake_settings_repository, Duration(milliseconds=5000))
     screen = GameplayScreen(
         tk_root,
@@ -2040,6 +2047,7 @@ def test_restart_resets_level_difficulty_chips_and_reapplies_persisted_mode_spee
 def test_restart_with_a_solved_win_banner_destroys_it_and_resets_the_run(
     tk_root, fake_maze_repository, fake_settings_repository
 ):
+    write_confirm_restart(fake_settings_repository, False)
     maze = _open_maze(width=2)
     screen = GameplayScreen(
         tk_root,
@@ -2167,6 +2175,7 @@ def test_restart_resets_the_hard_mode_visual_state(
     tk_root, fake_maze_repository, fake_settings_repository
 ):
     write_time_limit(fake_settings_repository, Duration(milliseconds=5000))
+    write_confirm_restart(fake_settings_repository, False)
     maze = _open_maze(width=3)
     screen = GameplayScreen(
         tk_root,
@@ -2191,3 +2200,111 @@ def test_restart_resets_the_hard_mode_visual_state(
     assert screen._maze_canvas.itemcget(ball, "state") == "normal"
     assert screen._status_light_frame.winfo_manager() == ""
     assert screen._mode_hard_button.active is False
+
+
+# -- Story 2.10: gated level change and restart -----------------------------------------
+
+
+def test_level_change_opens_a_confirm_dialog_when_confirm_level_change_is_on(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    write_confirm_level_change(fake_settings_repository, True)
+    screen = GameplayScreen(
+        tk_root,
+        _corridor_maze(width=4),
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+
+    screen._cycle_level(1)
+
+    assert screen._confirm_dialog is not None
+    assert screen._session.level is Level.ONE
+    screen._confirm_dialog._on_confirm_clicked()
+    assert screen._session.level is Level.TWO
+    assert screen._confirm_dialog is None
+
+
+def test_level_change_is_immediate_when_confirm_level_change_is_off(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    write_confirm_level_change(fake_settings_repository, False)
+    screen = GameplayScreen(
+        tk_root,
+        _corridor_maze(width=4),
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+
+    screen._cycle_level(1)
+
+    assert screen._confirm_dialog is None
+    assert screen._session.level is Level.TWO
+
+
+def test_cancelling_the_level_change_dialog_leaves_the_level_untouched(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    write_confirm_level_change(fake_settings_repository, True)
+    screen = GameplayScreen(
+        tk_root,
+        _corridor_maze(width=4),
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+
+    screen._cycle_level(1)
+    screen._confirm_dialog._on_cancel_clicked()
+
+    assert screen._session.level is Level.ONE
+    assert screen._confirm_dialog is None
+
+
+def test_restart_opens_a_confirm_dialog_when_confirm_restart_is_on(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    write_confirm_restart(fake_settings_repository, True)
+    maze = _open_maze(width=3)
+    screen = GameplayScreen(
+        tk_root,
+        maze,
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    screen._on_move(Direction.RIGHT)
+    _settle(screen)
+    assert screen._session.solved is True
+
+    screen._restart_run()
+
+    assert screen._confirm_dialog is not None
+    assert screen._session.solved is True
+    screen._confirm_dialog._on_confirm_clicked()
+    assert screen._session.solved is False
+    assert screen._session.position == maze.entry
+    assert screen._confirm_dialog is None
+
+
+def test_a_second_gated_trigger_while_a_dialog_is_open_is_a_no_op(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    write_confirm_level_change(fake_settings_repository, True)
+    screen = GameplayScreen(
+        tk_root,
+        _corridor_maze(width=4),
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    screen._cycle_level(1)
+    first = screen._confirm_dialog
+
+    screen._cycle_level(1)
+
+    assert screen._confirm_dialog is first
+    first.destroy()
+    screen._confirm_dialog = None

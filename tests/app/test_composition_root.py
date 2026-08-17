@@ -43,7 +43,7 @@ def test_build_app_destroys_the_root_if_wiring_fails_partway_through(monkeypatch
         def pack(self, **kwargs) -> None:
             pass
 
-    def failing_mount_home(parent, state, navigate, theme, toggle_theme):
+    def failing_mount_home(parent, state, navigate, theme, toggle_theme, **kwargs):
         raise RuntimeError("boom")
 
     monkeypatch.setattr(composition_root.tk, "Tk", FakeRoot)
@@ -59,7 +59,7 @@ def test_build_app_destroys_the_root_if_wiring_fails_partway_through(monkeypatch
 def test_navigate_closure_bound_into_a_screens_mount_drives_the_real_router(monkeypatch, tmp_path):
     captured_navigate = {}
 
-    def capturing_mount_home(parent, state, navigate, theme, toggle_theme):
+    def capturing_mount_home(parent, state, navigate, theme, toggle_theme, **kwargs):
         captured_navigate["navigate"] = navigate
         return tk.Frame(parent)
 
@@ -97,7 +97,7 @@ def test_toggling_theme_bound_into_a_screens_mount_rerenders_the_current_screen(
 ):
     captured = []
 
-    def capturing_mount_home(parent, state, navigate, theme, toggle_theme):
+    def capturing_mount_home(parent, state, navigate, theme, toggle_theme, **kwargs):
         frame = tk.Frame(parent)
         captured.append({"theme": theme, "toggle_theme": toggle_theme, "frame": frame})
         return frame
@@ -136,7 +136,7 @@ def test_theme_persisted_by_one_build_app_call_is_seen_by_a_second_build_app_cal
     repository = JsonSettingsRepository(root=tmp_path)
     captured_toggle_theme = {}
 
-    def capturing_mount_home(parent, state, navigate, theme, toggle_theme):
+    def capturing_mount_home(parent, state, navigate, theme, toggle_theme, **kwargs):
         captured_toggle_theme["toggle_theme"] = toggle_theme
         return tk.Frame(parent)
 
@@ -150,7 +150,7 @@ def test_theme_persisted_by_one_build_app_call_is_seen_by_a_second_build_app_cal
 
     captured_theme = {}
 
-    def capturing_mount_home_2(parent, state, navigate, theme, toggle_theme):
+    def capturing_mount_home_2(parent, state, navigate, theme, toggle_theme, **kwargs):
         captured_theme["theme"] = theme
         return tk.Frame(parent)
 

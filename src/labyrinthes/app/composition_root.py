@@ -27,6 +27,12 @@ maze_repository=...)` *before* it reaches the untouched `_bind_screen()`
 one more keyword-only port, `settings_repository` (already a `build_app()`
 parameter for `ThemeController`, just not yet threaded to Player) -- for
 reading the FR-4 random-maze size bounds.
+
+Story 2.10 widens the same partial pattern to Home and Builder: their
+`mount()`s now also take a required, keyword-only `settings_repository`
+(for `SettingsWindow`'s confirmation toggles, reachable from every screen's
+top bar), so `mount_home`/`mount_builder` are each `partial`-bound with it
+here, mirroring Player's Story 2.2 binding below.
 """
 
 from __future__ import annotations
@@ -126,8 +132,22 @@ def build_app(
 
         theme_controller.subscribe(on_theme_change)
 
-        router.register(ScreenId.HOME, _bind_screen(mount_home, navigate, theme_controller))
-        router.register(ScreenId.BUILDER, _bind_screen(mount_builder, navigate, theme_controller))
+        router.register(
+            ScreenId.HOME,
+            _bind_screen(
+                partial(mount_home, settings_repository=settings_repository),
+                navigate,
+                theme_controller,
+            ),
+        )
+        router.register(
+            ScreenId.BUILDER,
+            _bind_screen(
+                partial(mount_builder, settings_repository=settings_repository),
+                navigate,
+                theme_controller,
+            ),
+        )
         router.register(
             ScreenId.PLAYER,
             _bind_screen(

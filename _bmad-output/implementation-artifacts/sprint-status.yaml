@@ -1,57 +1,9 @@
-# generated: 2026-08-05
-# last_updated: 2026-08-17
-# project: Labyrinthes
-# project_key: NOKEY
-# tracking_system: file-system
-# story_location: _bmad-output/implementation-artifacts
-
-# STATUS DEFINITIONS:
-# ==================
-# Epic Status:
-#   - backlog: Epic not yet started
-#   - in-progress: Epic actively being worked on
-#   - done: All stories in epic completed
-#
-# Epic Status Transitions:
-#   - backlog → in-progress: Automatically when first story is created (via create-story)
-#   - in-progress → done: Manually when all stories reach 'done' status
-#
-# Story Status:
-#   - backlog: Story only exists in epic file
-#   - ready-for-dev: Story file created in stories folder
-#   - in-progress: Developer actively working on implementation
-#   - review: Ready for code review (via Dev's code-review workflow)
-#   - done: Story completed
-#
-# Retrospective Status:
-#   - optional: Can be completed but not required
-#   - done: Retrospective has been completed
-#
-# Action Item Status:
-#   - open: Committed during a retrospective, not yet addressed
-#   - in-progress: Actively being worked on
-#   - done: Completed
-#
-# WORKFLOW NOTES:
-# ===============
-# - Epic transitions to 'in-progress' automatically when first story is created
-# - Stories can be worked in parallel if team capacity allows
-# - Developer typically creates next story after previous one is 'done' to incorporate learnings
-# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
-# - Retrospective appends its action items to action_items; sprint-status surfaces open ones
-#
-# NOTE — Epic 6 (New Play Modes: Water Chase & Exploration) is deferred, P2, and
-# intentionally carries no stories yet (epics.md explicitly leaves it a placeholder,
-# per the readiness assessment). It is tracked here as an epic with zero stories;
-# re-run this workflow once a dedicated epics/stories pass gives it real stories.
-
 generated: 2026-08-05
-last_updated: 2026-08-17
+last_updated: '2026-08-17'
 project: Labyrinthes
 project_key: NOKEY
 tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
-
 development_status:
   epic-1: in-progress
   1-1-domain-model-foundation: done
@@ -67,7 +19,6 @@ development_status:
   1-11-settings-dialog-survives-screen-navigation: done
   1-12-persistence-hardening-atomic-writes-typed-errors: done
   epic-1-retrospective: done
-
   epic-2: in-progress
   2-1-player-maze-selection-screen-classic-maze-browsing: done
   2-2-random-maze-generation-with-validation: done
@@ -78,10 +29,9 @@ development_status:
   2-7-difficulty-unified-threshold-formula: done
   2-8-hard-mode-invisible-ball-fog-overlay-status-light: done
   2-9-timer-optional-time-limit-timeout-message: done
-  2-10-confirmation-prompts-per-action: backlog
+  2-10-confirmation-prompts-per-action: in-progress
   2-11-appearance-theme-logo: backlog
   epic-2-retrospective: optional
-
   epic-3: backlog
   3-1-new-maze-open-a-sketch: backlog
   3-2-wall-editing-break-restore: backlog
@@ -93,13 +43,11 @@ development_status:
   3-8-test-in-player-launch-the-game-from-the-builder: backlog
   3-9-edit-in-builder-launch-the-builder-from-the-game: backlog
   epic-3-retrospective: optional
-
   epic-4: backlog
   4-1-migration-script-folder-file-renaming: backlog
   4-2-migration-script-settings-csv-header-renaming: backlog
   4-3-migration-script-mazeid-backfill: backlog
   epic-4-retrospective: optional
-
   epic-5: backlog
   5-1-recordsrepository-recordsservice: backlog
   5-2-player-records-a-completion-on-win: backlog
@@ -107,20 +55,20 @@ development_status:
   5-4-first-activation-explainer-level-and-difficulty-tiers: backlog
   5-5-first-activation-explainer-hard-mode-tier: backlog
   epic-5-retrospective: optional
-
   epic-6: backlog
   epic-6-retrospective: optional
-
 action_items:
-  - epic: 1
-    action: "Fix Router.navigate() silently closing an open SettingsWindow on frame-teardown"
-    owner: "Amelia (dev)"
-    status: done
-  - epic: 1
-    action: "Add a persistence-hardening story: atomic writes (temp-file-plus-rename) + typed LabyrinthesError for malformed content in MazeRepository/SettingsRepository"
-    owner: "Amelia (dev)"
-    status: done
-  - epic: 1
-    action: "When a deferred-work.md item is re-deferred a 2nd time by a later story's review, flag it explicitly for scheduling instead of deferring a 3rd time silently"
-    owner: "Amelia (dev/process)"
-    status: open
+- epic: 1
+  action: Fix Router.navigate() silently closing an open SettingsWindow on frame-teardown
+  owner: Amelia (dev)
+  status: done
+- epic: 1
+  action: 'Add a persistence-hardening story: atomic writes (temp-file-plus-rename)
+    + typed LabyrinthesError for malformed content in MazeRepository/SettingsRepository'
+  owner: Amelia (dev)
+  status: done
+- epic: 1
+  action: When a deferred-work.md item is re-deferred a 2nd time by a later story's
+    review, flag it explicitly for scheduling instead of deferring a 3rd time silently
+  owner: Amelia (dev/process)
+  status: open
