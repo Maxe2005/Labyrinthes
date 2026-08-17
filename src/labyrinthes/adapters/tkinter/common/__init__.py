@@ -10,6 +10,7 @@ three screen packages (AD-1, AD-9, enforced by
 """
 
 from labyrinthes.adapters.tkinter.common.breadcrumb import Breadcrumb, BreadcrumbSegment
+from labyrinthes.adapters.tkinter.common.confirm_dialog import ConfirmDialog
 from labyrinthes.adapters.tkinter.common.hud_chip import HudChip
 from labyrinthes.adapters.tkinter.common.icon_btn import IconButton
 from labyrinthes.adapters.tkinter.common.kbd_tag import KbdTag
@@ -53,6 +54,7 @@ __all__ = [
     "Breadcrumb",
     "BreadcrumbSegment",
     "ColorTokens",
+    "ConfirmDialog",
     "FontSpec",
     "HudChip",
     "IconButton",

@@ -2,14 +2,14 @@
 title: 'Story 2.10: Confirmation prompts per action'
 type: 'feature'
 created: '2026-08-17'
-status: 'ready-for-dev'
+status: 'review'
 baseline_commit: '5ce301d'
 context: ['_bmad-output/implementation-artifacts/epic-2-context.md']
 ---
 
 # Story 2.10: Confirmation prompts per action
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -132,28 +132,28 @@ Four layers, mirroring the established per-story seams:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `src/labyrinthes/application/settings_keys.py` — add the 4 `CONFIRM_*` keys
-- [ ] `src/labyrinthes/application/confirmation_settings.py` — never-raises `read_confirm_*`/`write_confirm_*` (NEW)
-- [ ] `src/labyrinthes/adapters/tkinter/common/confirm_dialog.py` — `ConfirmDialog` (NEW) + `common/__init__.py` export
-- [ ] `src/labyrinthes/adapters/tkinter/common/settings_window.py` — `settings_repository` port, clickable category nav, Confirmation category with 4 persisted toggles
-- [ ] `src/labyrinthes/adapters/tkinter/home/screen.py` + `builder/screen.py` — required keyword-only `settings_repository`; `player/screen.py` passes it to `SettingsWindow`
-- [ ] `src/labyrinthes/app/composition_root.py` — partial-bind Home/Builder with `settings_repository`; extend the docstring
-- [ ] `src/labyrinthes/adapters/tkinter/player/classic_gallery.py` — `_maybe_confirm`/`_clear_confirm_dialog`, gate the 4 browse/jump surfaces + invalid-input alert
-- [ ] `src/labyrinthes/adapters/tkinter/player/gameplay_screen.py` — gate `_cycle_level` and `_restart_run` via `_apply_*` split
-- [ ] `tests/adapters/tkinter/conftest.py` — hoist `FakeSettingsRepository`; `player/conftest.py` imports/re-exports it
-- [ ] `tests/app/test_composition_root.py` — widen the stub `mount_home` signatures for the partial
-- [ ] `tests/application/test_confirmation_settings.py` — reader/writer matrix (NEW)
-- [ ] `tests/application/test_settings_keys.py` — add the 4 names
-- [ ] `tests/adapters/tkinter/common/test_confirm_dialog.py` — dialog close/keys/alert-mode coverage (NEW)
-- [ ] `tests/adapters/tkinter/common/test_settings_window.py` — repo port + Confirmation category coverage
-- [ ] `tests/adapters/tkinter/home/test_home_screen.py` + `builder/test_builder_screen.py` — repo port + AC-3-from-Settings tests
-- [ ] `tests/adapters/tkinter/player/test_classic_gallery.py` + `test_gameplay_screen.py` — gating/guard/AC-3 coverage, update the default-ON restart tests
-- [ ] `_bmad-output/implementation-artifacts/sprint-status.yaml` — 2-10 → ready-for-dev
+- [x] `src/labyrinthes/application/settings_keys.py` — add the 4 `CONFIRM_*` keys
+- [x] `src/labyrinthes/application/confirmation_settings.py` — never-raises `read_confirm_*`/`write_confirm_*` (NEW)
+- [x] `src/labyrinthes/adapters/tkinter/common/confirm_dialog.py` — `ConfirmDialog` (NEW) + `common/__init__.py` export
+- [x] `src/labyrinthes/adapters/tkinter/common/settings_window.py` — `settings_repository` port, clickable category nav, Confirmation category with 4 persisted toggles
+- [x] `src/labyrinthes/adapters/tkinter/home/screen.py` + `builder/screen.py` — required keyword-only `settings_repository`; `player/screen.py` passes it to `SettingsWindow`
+- [x] `src/labyrinthes/app/composition_root.py` — partial-bind Home/Builder with `settings_repository`; extend the docstring
+- [x] `src/labyrinthes/adapters/tkinter/player/classic_gallery.py` — `_maybe_confirm`/`_clear_confirm_dialog`, gate the 4 browse/jump surfaces + invalid-input alert
+- [x] `src/labyrinthes/adapters/tkinter/player/gameplay_screen.py` — gate `_cycle_level` and `_restart_run` via `_apply_*` split
+- [x] `tests/adapters/tkinter/conftest.py` — hoist `FakeSettingsRepository`; `player/conftest.py` imports/re-exports it
+- [x] `tests/app/test_composition_root.py` — widen the stub `mount_home` signatures for the partial
+- [x] `tests/application/test_confirmation_settings.py` — reader/writer matrix (NEW)
+- [x] `tests/application/test_settings_keys.py` — add the 4 names
+- [x] `tests/adapters/tkinter/common/test_confirm_dialog.py` — dialog close/keys/alert-mode coverage (NEW)
+- [x] `tests/adapters/tkinter/common/test_settings_window.py` — repo port + Confirmation category coverage
+- [x] `tests/adapters/tkinter/home/test_home_screen.py` + `builder/test_builder_screen.py` — repo port + AC-3-from-Settings tests
+- [x] `tests/adapters/tkinter/player/test_classic_gallery.py` + `test_gameplay_screen.py` — gating/guard/AC-3 coverage, update the default-ON restart tests
+- [x] `_bmad-output/implementation-artifacts/sprint-status.yaml` — 2-10 → ready-for-dev
 
 **Acceptance Criteria:**
-- [ ] AC-1: each of the 4 actions, setting on → a confirm prompt appears before the action applies
-- [ ] AC-2: each of the 4 actions, setting off → immediate, no prompt (existing default behavior preserved where the default is off)
-- [ ] AC-3: toggling any confirmation setting in the Settings window persists via the game-scoped repo and affects the next action without an app restart
+- [x] AC-1: each of the 4 actions, setting on → a confirm prompt appears before the action applies
+- [x] AC-2: each of the 4 actions, setting off → immediate, no prompt (existing default behavior preserved where the default is off)
+- [x] AC-3: toggling any confirmation setting in the Settings window persists via the game-scoped repo and affects the next action without an app restart
 
 ## Design Notes
 
@@ -229,13 +229,31 @@ opencode/deepseek-v4-flash-free
 
 ### Completion Notes List
 
-_(Not implemented yet — this section is filled by the story's Dev Agent Record on implementation.)_
+- 2026-08-17: Implemented on branch `story-2-10-confirmation-prompts-per-action`. All 4 confirmation settings added (`settings_keys.py`) with never-raises bool readers/writers (`confirmation_settings.py`); `ConfirmDialog` (non-modal Toplevel, Confirm/Cancel pills, `<Return>`/`<Escape>`/WM-delete, OK-only alert mode) added to `common/` and exported; `SettingsWindow` gained the required keyword-only `settings_repository` port, focusable clickable category nav (Appearance placeholder + Confirmation with 4 persisted `tk.Checkbutton` rows); Home/Builder `mount()` widened with the same required port and partial-bound in `composition_root.py`; gallery browse/jump/restart gated behind `confirm_switch_maze` and invalid-jump alert behind `confirm_invalid_input`; `_cycle_level`/`_restart_run` split into gate + `_apply_*`. Story 2.9 restart tests updated to write `confirm_restart=False` to keep exercising the fresh-run semantics. Full suite: 732 passed; `ruff check src tests` and `ruff format --check` clean. (The 284 remaining `ruff check .` findings are pre-existing committed third-party skill files under `.agents/`/`.claude/` — not part of this story.)
 
 ### File List
 
 - This spec: `_bmad-output/implementation-artifacts/spec-2-10-confirmation-prompts-per-action.md`
-- `_bmad-output/implementation-artifacts/sprint-status.yaml` — 2-10: backlog → ready-for-dev
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — 2-10: ready-for-dev → in-progress (later review)
+- `src/labyrinthes/application/settings_keys.py` — added `CONFIRM_SWITCH_MAZE`, `CONFIRM_RESTART`, `CONFIRM_LEVEL_CHANGE`, `CONFIRM_INVALID_INPUT`
+- `src/labyrinthes/application/confirmation_settings.py` — NEW never-raises readers/writers
+- `src/labyrinthes/adapters/tkinter/common/confirm_dialog.py` — NEW `ConfirmDialog`
+- `src/labyrinthes/adapters/tkinter/common/__init__.py` — export `ConfirmDialog`
+- `src/labyrinthes/adapters/tkinter/common/settings_window.py` — repo port, clickable nav, Confirmation category
+- `src/labyrinthes/adapters/tkinter/home/screen.py`, `builder/screen.py` — required keyword-only `settings_repository`
+- `src/labyrinthes/adapters/tkinter/player/screen.py` — pass `settings_repository` to `SettingsWindow`
+- `src/labyrinthes/app/composition_root.py` — partial-bind Home/Builder with `settings_repository`
+- `src/labyrinthes/adapters/tkinter/player/classic_gallery.py` — `_maybe_confirm`/`_clear_confirm_dialog`, gated browse/jump/restart + invalid-input alert
+- `src/labyrinthes/adapters/tkinter/player/gameplay_screen.py` — gated `_cycle_level`/`_restart_run` via `_apply_*` split
+- `tests/adapters/tkinter/conftest.py` — hoisted `FakeSettingsRepository` + `fake_settings_repository` fixture
+- `tests/adapters/tkinter/player/conftest.py` — re-exports the shared fake
+- `tests/application/test_confirmation_settings.py`, `test_settings_keys.py` — NEW/updated
+- `tests/adapters/tkinter/common/test_confirm_dialog.py`, `test_settings_window.py` — NEW/rewritten
+- `tests/adapters/tkinter/home/test_home_screen.py`, `builder/test_builder_screen.py`, `player/test_player_screen.py` — repo port + AC-3-from-Settings tests
+- `tests/adapters/tkinter/player/test_classic_gallery.py`, `test_gameplay_screen.py` — gating/guard coverage + updated restart tests
+- `tests/app/test_composition_root.py` — widened stub `mount_home` signatures
 
 ## Change Log
 
 - 2026-08-17: Created Story 2.10 spec (status ready-for-dev) on branch `epic-2-play-a-maze-game-player` (baseline `5ce301d`), marking `2-10-confirmation-prompts-per-action` ready-for-dev in `sprint-status.yaml`.
+- 2026-08-17: Implemented Story 2.10 on branch `story-2-10-confirmation-prompts-per-action` (status → review). 732 tests pass; `ruff check src tests` + `ruff format --check` clean. See Dev Agent Record → Completion Notes.

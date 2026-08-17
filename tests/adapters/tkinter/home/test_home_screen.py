@@ -4,57 +4,95 @@ from labyrinthes.adapters.tkinter.common import PillButton, SettingsWindow, Them
 from labyrinthes.adapters.tkinter.common.keybindings import keybinding
 from labyrinthes.adapters.tkinter.common.navigation import ScreenId
 from labyrinthes.adapters.tkinter.home.screen import mount
+from labyrinthes.application.confirmation_settings import write_confirm_switch_maze
 
 
 def test_mount_returns_a_frame_parented_under_the_given_parent(
-    tk_root, navigate_stub, toggle_theme_stub
+    tk_root, navigate_stub, toggle_theme_stub, fake_settings_repository
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
-    frame = mount(tk_root, None, navigate, Theme.LIGHT, toggle_theme)
+    frame = mount(
+        tk_root,
+        None,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+    )
 
     assert isinstance(frame, tk.Frame)
     assert frame.master is tk_root
 
 
 def test_mount_renders_a_top_bar_with_no_breadcrumb(
-    tk_root, navigate_stub, toggle_theme_stub, find_all
+    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
-    frame = mount(tk_root, None, navigate, Theme.LIGHT, toggle_theme)
+    frame = mount(
+        tk_root,
+        None,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+    )
 
     top_bars = find_all(frame, TopBar)
     assert len(top_bars) == 1
     assert top_bars[0]._breadcrumb is None
 
 
-def test_mount_renders_the_brand_mark(tk_root, navigate_stub, toggle_theme_stub, find_all):
+def test_mount_renders_the_brand_mark(
+    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
-    frame = mount(tk_root, None, navigate, Theme.LIGHT, toggle_theme)
+    frame = mount(
+        tk_root,
+        None,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+    )
 
     labels = {label.cget("text") for label in find_all(frame, tk.Label)}
     assert "Labyrinthes" in labels
 
 
 def test_mount_renders_open_builder_and_open_player_entry_points(
-    tk_root, navigate_stub, toggle_theme_stub, find_all
+    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
-    frame = mount(tk_root, None, navigate, Theme.LIGHT, toggle_theme)
+    frame = mount(
+        tk_root,
+        None,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+    )
 
     labels = {button._label.cget("text") for button in find_all(frame, PillButton)}
     assert labels == {"Open Builder", "Open Player"}
 
 
 def test_open_builder_button_navigates_to_builder_with_no_state(
-    tk_root, navigate_stub, toggle_theme_stub, find_all
+    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
 ):
     navigate, calls = navigate_stub
     toggle_theme, _ = toggle_theme_stub
-    frame = mount(tk_root, None, navigate, Theme.LIGHT, toggle_theme)
+    frame = mount(
+        tk_root,
+        None,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+    )
 
     open_builder = next(
         b for b in find_all(frame, PillButton) if b._label.cget("text") == "Open Builder"
@@ -67,11 +105,18 @@ def test_open_builder_button_navigates_to_builder_with_no_state(
 
 
 def test_open_player_button_navigates_to_player_with_no_state(
-    tk_root, navigate_stub, toggle_theme_stub, find_all
+    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
 ):
     navigate, calls = navigate_stub
     toggle_theme, _ = toggle_theme_stub
-    frame = mount(tk_root, None, navigate, Theme.LIGHT, toggle_theme)
+    frame = mount(
+        tk_root,
+        None,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+    )
 
     open_player = next(
         b for b in find_all(frame, PillButton) if b._label.cget("text") == "Open Player"
@@ -82,11 +127,18 @@ def test_open_player_button_navigates_to_player_with_no_state(
 
 
 def test_settings_icon_click_opens_a_non_modal_settings_window_leaving_home_mounted(
-    tk_root, navigate_stub, toggle_theme_stub, find_all
+    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
-    frame = mount(tk_root, None, navigate, Theme.LIGHT, toggle_theme)
+    frame = mount(
+        tk_root,
+        None,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+    )
 
     top_bar = find_all(frame, TopBar)[0]
     top_bar._settings_button._on_click()
@@ -101,11 +153,18 @@ def test_settings_icon_click_opens_a_non_modal_settings_window_leaving_home_moun
 
 
 def test_destroying_the_screens_frame_leaves_an_open_settings_window_open(
-    tk_root, navigate_stub, toggle_theme_stub, find_all
+    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
-    frame = mount(tk_root, None, navigate, Theme.LIGHT, toggle_theme)
+    frame = mount(
+        tk_root,
+        None,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+    )
 
     top_bar = find_all(frame, TopBar)[0]
     top_bar._settings_button._on_click()
@@ -125,11 +184,18 @@ def test_destroying_the_screens_frame_leaves_an_open_settings_window_open(
 
 
 def test_theme_toggle_icon_click_invokes_the_passed_in_toggle_theme_callable(
-    tk_root, navigate_stub, toggle_theme_stub, find_all
+    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
 ):
     navigate, _ = navigate_stub
     toggle_theme, calls = toggle_theme_stub
-    frame = mount(tk_root, None, navigate, Theme.LIGHT, toggle_theme)
+    frame = mount(
+        tk_root,
+        None,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+    )
 
     top_bar = find_all(frame, TopBar)[0]
     top_bar._theme_toggle_button._on_click()
@@ -138,11 +204,18 @@ def test_theme_toggle_icon_click_invokes_the_passed_in_toggle_theme_callable(
 
 
 def test_open_builder_kbd_tag_matches_the_canonical_keybinding_table(
-    tk_root, navigate_stub, toggle_theme_stub, find_all
+    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
-    frame = mount(tk_root, None, navigate, Theme.LIGHT, toggle_theme)
+    frame = mount(
+        tk_root,
+        None,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+    )
 
     open_builder = next(
         b for b in find_all(frame, PillButton) if b._label.cget("text") == "Open Builder"
@@ -153,11 +226,18 @@ def test_open_builder_kbd_tag_matches_the_canonical_keybinding_table(
 
 
 def test_open_player_kbd_tag_matches_the_canonical_keybinding_table(
-    tk_root, navigate_stub, toggle_theme_stub, find_all
+    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
-    frame = mount(tk_root, None, navigate, Theme.LIGHT, toggle_theme)
+    frame = mount(
+        tk_root,
+        None,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+    )
 
     open_player = next(
         b for b in find_all(frame, PillButton) if b._label.cget("text") == "Open Player"
@@ -168,20 +248,59 @@ def test_open_player_kbd_tag_matches_the_canonical_keybinding_table(
 
 
 def test_mount_registers_the_open_builder_shortcut(
-    tk_root, navigate_stub, toggle_theme_stub, find_all
+    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
-    frame = mount(tk_root, None, navigate, Theme.LIGHT, toggle_theme)
+    frame = mount(
+        tk_root,
+        None,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+    )
 
     assert frame.bind_all(keybinding("open_builder").event) != ""
 
 
 def test_mount_registers_the_open_player_shortcut(
-    tk_root, navigate_stub, toggle_theme_stub, find_all
+    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
-    frame = mount(tk_root, None, navigate, Theme.LIGHT, toggle_theme)
+    frame = mount(
+        tk_root,
+        None,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+    )
 
     assert frame.bind_all(keybinding("open_player").event) != ""
+
+
+def test_open_settings_from_home_reflects_a_stored_confirmation_value(
+    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+):
+    write_confirm_switch_maze(fake_settings_repository, True)
+    navigate, _ = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(
+        tk_root,
+        None,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+    )
+
+    top_bar = find_all(frame, TopBar)[0]
+    top_bar._settings_button._on_click()
+
+    settings_windows = [c for c in tk_root.winfo_children() if isinstance(c, SettingsWindow)]
+    assert len(settings_windows) == 1
+    settings_windows[0]._select_category("Confirmation")
+    assert settings_windows[0]._confirmation_rows["Confirm before switching mazes"].get() is True
+    settings_windows[0].destroy()

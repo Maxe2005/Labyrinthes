@@ -10,6 +10,12 @@ Story 1.10 wires those two entry points to the canonical keybinding table
 `bind_shortcut()` registration both derive from the same `Keybinding`, and
 each navigate action is a single named function passed to both, so the
 `command=` click path and the "B"/"P" key-press path can never diverge.
+
+Story 2.10 threads a required, keyword-only `settings_repository` port
+through `mount()` (same shape Player already had, Story 2.1/2.2) so Home's
+`open_settings()` can hand it to `SettingsWindow` -- the Settings dialog is
+reachable from any screen's top bar, so its confirmation toggles must work
+from Home too (AC-3). `composition_root.build_app()` partial-binds it in.
 """
 
 from __future__ import annotations
@@ -28,6 +34,7 @@ from labyrinthes.adapters.tkinter.common import (
     bind_shortcut,
     keybinding,
 )
+from labyrinthes.application.settings_repository import SettingsRepository
 from labyrinthes.domain.maze import Maze
 
 __all__ = ["mount"]
@@ -39,12 +46,15 @@ def mount(
     navigate: NavigateFn,
     theme: Theme,
     toggle_theme: ToggleThemeFn,
+    *,
+    settings_repository: SettingsRepository,
 ) -> tk.Frame:
     """Build the Home screen `Frame`, parented under `parent`.
 
     `state` is accepted per the shared `mount(parent, state, navigate,
     theme, toggle_theme)` interface (AD-10) but unused here -- Home has no
-    maze state to receive.
+    maze state to receive. `settings_repository` (Story 2.10) is required
+    and keyword-only, bound by `composition_root` via `functools.partial`.
     """
     frame = tk.Frame(parent)
 
@@ -54,7 +64,7 @@ def mount(
         # `Router.navigate()`, so `SettingsWindow` survives navigating away
         # from Home instead of being torn down as a cascade side effect of
         # `frame.destroy()`. See `SettingsWindow`'s module docstring.
-        SettingsWindow(parent, theme=theme)
+        SettingsWindow(parent, theme=theme, settings_repository=settings_repository)
 
     top_bar = TopBar(
         frame,

@@ -61,6 +61,19 @@ the Time chip, and shows an inline non-modal banner). The banner offers
 Restart (`_restart_run`, a fresh run for the same maze with persisted
 mode/speed/limit re-applied and the session defaults restored) and Continue
 (dismisses the message; the run stays stopped).
+
+Story 2.10 gates the level-change and restart actions behind per-action
+confirmation settings. The `−`/`+` Level buttons (`_cycle_level`) and the
+Restart button / timeout-banner Restart (`_restart_run`) read
+`read_confirm_level_change` / `read_confirm_restart` at action time and,
+when enabled, open a non-modal `ConfirmDialog` (parented to this screen, so
+it cascade-destroys with it) instead of applying directly; the actual
+mutation moves into `_apply_level_cycle` / `_apply_restart_run`, which the
+dialog's Confirm invokes. `_confirm_dialog is not None` guards against a
+second gated trigger stacking a second dialog (the dialog is non-modal, so
+clicks can still reach this screen). Each action reads its setting at
+action time -- never cached at mount -- so a Settings toggle takes effect
+without an app restart (AC-3).
 """
 
 from __future__ import annotations
@@ -71,6 +84,7 @@ import time
 import tkinter as tk
 from collections.abc import Callable
 
+from labyrinthes.adapters.tkinter.common.confirm_dialog import ConfirmDialog
 from labyrinthes.adapters.tkinter.common.hud_chip import HudChip
 from labyrinthes.adapters.tkinter.common.keybindings import bind_shortcut, keybinding
 from labyrinthes.adapters.tkinter.common.pill_btn import PillButton
@@ -84,6 +98,10 @@ from labyrinthes.adapters.tkinter.common.tokens import (
 from labyrinthes.adapters.tkinter.common.tool_btn import ToolButton
 from labyrinthes.adapters.tkinter.player.maze_canvas import MazeCanvas
 from labyrinthes.adapters.tkinter.player.save_maze_dialog import SaveMazeDialog
+from labyrinthes.application.confirmation_settings import (
+    read_confirm_level_change,
+    read_confirm_restart,
+)
 from labyrinthes.application.hard_mode_settings import (
     read_hard_mode_moving_color,
     read_hard_mode_ready_color,
@@ -217,6 +235,12 @@ class GameplayScreen(tk.Frame):
         self._animation_job: str | None = None
         self._win_banner: tk.Frame | None = None
         self._timeout_banner: tk.Frame | None = None
+        # Story 2.10: the open `ConfirmDialog`, if any -- `None` when no
+        # prompt is showing. `_maybe_confirm`'s guard (`is not None` ->
+        # no-op) stops a second gated trigger from stacking a second dialog
+        # on top of the first (the dialog is non-modal, so clicks can still
+        # reach this screen -- see `confirm_dialog.py`'s docstring).
+        self._confirm_dialog: ConfirmDialog | None = None
         # `(hard_mode, moving)` of the last `_sync_hard_mode_visuals()` that
         # actually did work -- lets per-tick calls skip redundant canvas
         # toggles / repository color reads when nothing changed (Story 2.8).
@@ -570,6 +594,16 @@ class GameplayScreen(tk.Frame):
     def _cycle_level(self, delta: int) -> None:
         if not self._toplevel_has_focus():
             return
+        # Story 2.10: the level change is gated behind
+        # `confirm_level_change` (read at action time). When on, the actual
+        # `session_set_level` waits for the dialog's Confirm.
+        self._maybe_confirm(
+            read_confirm_level_change(self._settings_repository),
+            message="Change the level?",
+            on_confirm=functools.partial(self._apply_level_cycle, delta),
+        )
+
+    def _apply_level_cycle(self, delta: int) -> None:
         new_level = _LEVEL_CYCLE[
             (_LEVEL_CYCLE.index(self._session.level) + delta) % len(_LEVEL_CYCLE)
         ]
@@ -577,6 +611,38 @@ class GameplayScreen(tk.Frame):
         self._sync_level_widgets()
         self._sync_difficulty_widgets()
         self._sync_visibility()
+
+    def _maybe_confirm(
+        self,
+        enabled: bool,
+        *,
+        message: str,
+        on_confirm: Callable[[], None] | None = None,
+    ) -> None:
+        """Gate an action behind a `ConfirmDialog` when `enabled`.
+
+        Never stacks: a second trigger while a dialog is already open is a
+        no-op (the dialog is non-modal, so a click could otherwise reach
+        this screen behind it). When `enabled`, opens the dialog and stores
+        it so the owning action's `on_confirm` only runs on Confirm; when
+        `enabled` is `False`, runs `on_confirm` immediately (the action
+        applies with no prompt -- AC-2). `on_close` clears the guard.
+        """
+        if self._confirm_dialog is not None:
+            return
+        if enabled:
+            self._confirm_dialog = ConfirmDialog(
+                self,
+                theme=self._theme,
+                message=message,
+                on_confirm=on_confirm,
+                on_close=self._clear_confirm_dialog,
+            )
+        elif on_confirm is not None:
+            on_confirm()
+
+    def _clear_confirm_dialog(self) -> None:
+        self._confirm_dialog = None
 
     def _sync_level_widgets(self) -> None:
         label = _level_label(self._session.level)
@@ -788,6 +854,16 @@ class GameplayScreen(tk.Frame):
             self._timeout_banner = None
 
     def _restart_run(self) -> None:
+        # Story 2.10: the restart is gated behind `confirm_restart` (read
+        # at action time -- AC-3). When on, the actual fresh run waits for
+        # the dialog's Confirm.
+        self._maybe_confirm(
+            read_confirm_restart(self._settings_repository),
+            message="Restart the maze?",
+            on_confirm=self._apply_restart_run,
+        )
+
+    def _apply_restart_run(self) -> None:
         # A fresh run for the same maze, exactly what a re-mount would build:
         # `start_session` defaults (Level ONE, Difficulty ONE, HARD off --
         # all session-scoped, never persisted) plus re-applied persisted

@@ -3,11 +3,41 @@
 Hoisted here per Story 1.7's precedent (the shared `tk_root` fixture in
 `tests/conftest.py`), replacing three identical `_navigate_stub`/`_find_all`
 copies across `tests/adapters/tkinter/{home,builder,player}/`.
+
+Story 2.10 hoists `FakeSettingsRepository` here too (from
+`player/conftest.py`, where it had lived since Story 2.2) so Home/Builder/
+common settings tests can share the one in-memory `SettingsRepository`
+double -- `player/conftest.py` imports and re-exports it.
 """
 
 import tkinter as tk
 
 import pytest
+
+from labyrinthes.application.errors import SettingNotFoundError
+from labyrinthes.application.settings_repository import SettingsRepository, SettingsScope
+
+
+class FakeSettingsRepository(SettingsRepository):
+    """In-memory `SettingsRepository` test double, keyed by `(scope, key)`."""
+
+    def __init__(self) -> None:
+        self._store: dict[tuple[SettingsScope, str], object] = {}
+
+    def get(self, scope: SettingsScope, key: str):
+        try:
+            return self._store[(scope, key)]
+        except KeyError:
+            raise SettingNotFoundError(f"No {scope.value} setting named {key!r}") from None
+
+    def set(self, scope: SettingsScope, key: str, value) -> None:
+        self._store[(scope, key)] = value
+
+
+@pytest.fixture
+def fake_settings_repository() -> FakeSettingsRepository:
+    """A bare `FakeSettingsRepository`, nothing seeded -- the FR-4 defaults apply."""
+    return FakeSettingsRepository()
 
 
 @pytest.fixture
