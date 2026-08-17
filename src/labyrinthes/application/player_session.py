@@ -23,6 +23,14 @@ are all no-ops -- return `session` unchanged -- once `session.solved` is
 rest where applicable), which is what lets `GameplayScreen` keep calling
 them after a win without any special casing of its own.
 
+Story 2.9 adds the optional time limit's terminal state: `timed_out` is the
+"run stopped by the timer" parallel to `solved`, and every one of those
+operations is likewise a no-op once `timed_out` is `True`. `set_timed_out`
+mirrors `set_hard_mode` -- session-scoped, never persisted, a no-op once
+solved, and a fresh `start_session` starts not-timed-out. The timeout check
+itself is wall-clock-driven and lives in `GameplayScreen`'s tick loop, never
+here: this module only records the terminal state.
+
 Story 2.6 threads the play level through the session. Every leg commit
 advances `visibility` via `advance_visibility`; a blocked direction at rest
 -- and Smooth's stop-at-boundary -- feeds `note_collision` instead, and the
@@ -72,6 +80,7 @@ __all__ = [
     "set_level",
     "set_mode",
     "set_speed",
+    "set_timed_out",
     "start_session",
     "tick",
 ]
@@ -91,6 +100,7 @@ class PlayerSession:
     position: Position
     elapsed: Duration
     solved: bool
+    timed_out: bool
     mode: MovementMode
     speed: MovementSpeed
     moving_direction: Direction | None
@@ -117,6 +127,7 @@ def start_session(maze: Maze) -> PlayerSession:
         position=maze.entry,
         elapsed=Duration(milliseconds=0),
         solved=False,
+        timed_out=False,
         mode=MovementMode.SMOOTH,
         speed=MovementSpeed.NORMAL,
         moving_direction=None,
@@ -148,9 +159,9 @@ def request_move(session: PlayerSession, direction: Direction) -> PlayerSession:
     Discrete's leg is exactly one cell). Mid-leg, Discrete silently ignores
     the press (one press = one cell, no queuing), while Smooth banks
     `pending_direction` for resolution at the next cell boundary. A blocked
-    direction at rest is a silent no-op. A no-op once solved.
+    direction at rest is a silent no-op. A no-op once solved or timed out.
     """
-    if session.solved:
+    if session.solved or session.timed_out:
         return session
 
     if session.moving_direction is None:
@@ -174,7 +185,7 @@ def advance_step(session: PlayerSession) -> PlayerSession:
 
     A pure, fixed-duration tick: it never reads elapsed time, it simply
     advances the in-flight leg by one of `STEPS_PER_CELL` uniform sub-steps.
-    A no-op once solved and a no-op when at rest. On the final sub-step the
+    A no-op once solved or timed out and a no-op when at rest. On the final sub-step the
     leg commits (`position = leg_target`), advances `visibility`, checks the
     win, and -- for Smooth only -- resolves the next heading at the boundary:
     redirect into an open `pending_direction`, else continue straight, else
@@ -182,7 +193,7 @@ def advance_step(session: PlayerSession) -> PlayerSession:
     at the following boundary (legacy "banked turn" semantics);
     `pending_direction` never applies in Discrete.
     """
-    if session.solved or session.moving_direction is None:
+    if session.solved or session.timed_out or session.moving_direction is None:
         return session
 
     new_step = session.step + 1
@@ -248,58 +259,71 @@ def _resolve_smooth_next(session: PlayerSession) -> PlayerSession:
 
 
 def set_mode(session: PlayerSession, mode: MovementMode) -> PlayerSession:
-    """`session` with `mode` replaced. A no-op once solved.
+    """`session` with `mode` replaced. A no-op once solved or timed out.
 
     Mid-leg behavior is the *engine's* choice, not this function's: an
     in-flight leg keeps its `moving_direction`/`leg_target`; the next
     `request_move`/`advance_step` behaves per the new `mode`.
     """
-    if session.solved:
+    if session.solved or session.timed_out:
         return session
     return replace(session, mode=mode)
 
 
 def set_speed(session: PlayerSession, speed: MovementSpeed) -> PlayerSession:
-    """`session` with `speed` replaced. A no-op once solved.
+    """`session` with `speed` replaced. A no-op once solved or timed out.
 
     The in-flight leg's geometry is unaffected; the screen recomputes the
     per-step delay from the new `cell_crossing_duration(speed)` on its next
     reschedule, so the change applies to both modes immediately.
     """
-    if session.solved:
+    if session.solved or session.timed_out:
         return session
     return replace(session, speed=speed)
 
 
 def set_hard_mode(session: PlayerSession, enabled: bool) -> PlayerSession:
-    """`session` with `hard_mode` replaced. A no-op once solved.
+    """`session` with `hard_mode` replaced. A no-op once solved or timed out.
 
     HARD is purely presentational -- the screen hides the ball and draws a
     fog scrim while the ball moves -- and never changes movement math, so
     unlike `set_level`/`set_difficulty` there is no visibility re-init. The
     flag is session-scoped and not persisted; a fresh mount starts HARD off.
     """
-    if session.solved:
+    if session.solved or session.timed_out:
         return session
     return replace(session, hard_mode=enabled)
 
 
+def set_timed_out(session: PlayerSession, timed_out: bool) -> PlayerSession:
+    """`session` with `timed_out` replaced. A no-op once solved.
+
+    Mirrors `set_hard_mode`: the flag is session-scoped and never persisted;
+    a fresh `start_session` starts not-timed-out. The wall-clock check that
+    *sets* it lives in `GameplayScreen`'s tick loop -- this module only
+    records the terminal state.
+    """
+    if session.solved:
+        return session
+    return replace(session, timed_out=timed_out)
+
+
 def set_level(session: PlayerSession, level: Level) -> PlayerSession:
-    """`session` with `level` replaced; a no-op once solved.
+    """`session` with `level` replaced; a no-op once solved or timed out.
 
     The session's difficulty is left untouched -- the persistence grid keeps
     the create-time difficulty, only the *played* level changes. The level
     change re-initializes `visibility` from the current position, so the
     structure re-renders per the new level without restarting the run.
     """
-    if session.solved:
+    if session.solved or session.timed_out:
         return session
     visibility = initial_level_visibility(session.maze, level, session.difficulty, session.position)
     return replace(session, level=level, visibility=visibility)
 
 
 def set_difficulty(session: PlayerSession, difficulty: Difficulty) -> PlayerSession:
-    """`session` with `difficulty` replaced; a no-op once solved.
+    """`session` with `difficulty` replaced; a no-op once solved or timed out.
 
     Mirrors `set_level`: the difficulty change re-initializes `visibility`
     from the current position, so the structure re-renders with the new
@@ -307,14 +331,17 @@ def set_difficulty(session: PlayerSession, difficulty: Difficulty) -> PlayerSess
     in-flight leg's geometry is unaffected -- the next commit re-applies
     against the freshly re-initialized visibility.
     """
-    if session.solved:
+    if session.solved or session.timed_out:
         return session
     visibility = initial_level_visibility(session.maze, session.level, difficulty, session.position)
     return replace(session, difficulty=difficulty, visibility=visibility)
 
 
 def tick(session: PlayerSession, elapsed: Duration) -> PlayerSession:
-    """`session` with `elapsed` replacing its current elapsed time; a no-op once solved."""
-    if session.solved:
+    """`session` with `elapsed` replacing its current elapsed time.
+
+    A no-op once solved or timed out.
+    """
+    if session.solved or session.timed_out:
         return session
     return replace(session, elapsed=elapsed)

@@ -8,6 +8,7 @@ _KEY_NAMES = [
     "THEME",
     "HARD_MODE_READY_COLOR",
     "HARD_MODE_MOVING_COLOR",
+    "TIME_LIMIT_SECONDS",
 ]
 
 
