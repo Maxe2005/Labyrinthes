@@ -83,7 +83,7 @@ _APPEARANCE_PLACEHOLDER = "Appearance settings are coming soon."
 # `(row text, reader, writer)` for the four Confirmation toggles -- one per
 # Player action, in the order the spec's AC-1 action list names them.
 _CONFIRMATION_TOGGLES = (
-    ("Confirm before switching mazes", read_confirm_switch_maze, write_confirm_switch_maze),
+    ("Confirm before switching/restarting mazes", read_confirm_switch_maze, write_confirm_switch_maze),
     ("Confirm before restarting", read_confirm_restart, write_confirm_restart),
     ("Confirm before changing level", read_confirm_level_change, write_confirm_level_change),
     ("Alert me about invalid input", read_confirm_invalid_input, write_confirm_invalid_input),

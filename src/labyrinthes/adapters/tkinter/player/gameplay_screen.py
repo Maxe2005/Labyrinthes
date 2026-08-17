@@ -597,9 +597,12 @@ class GameplayScreen(tk.Frame):
         # Story 2.10: the level change is gated behind
         # `confirm_level_change` (read at action time). When on, the actual
         # `session_set_level` waits for the dialog's Confirm.
+        new_level = _LEVEL_CYCLE[
+            (_LEVEL_CYCLE.index(self._session.level) + delta) % len(_LEVEL_CYCLE)
+        ]
         self._maybe_confirm(
             read_confirm_level_change(self._settings_repository),
-            message="Change the level?",
+            message=f"Change the level to {_level_label(new_level)}?",
             on_confirm=functools.partial(self._apply_level_cycle, delta),
         )
 
@@ -625,21 +628,23 @@ class GameplayScreen(tk.Frame):
         no-op (the dialog is non-modal, so a click could otherwise reach
         this screen behind it). When `enabled`, opens the dialog and stores
         it so the owning action's `on_confirm` only runs on Confirm; when
-        `enabled` is `False`, runs `on_confirm` immediately (the action
-        applies with no prompt -- AC-2). `on_close` clears the guard.
+        `enabled` is `False`, applies the action immediately (AC-2). When
+        `enabled` is `True`, checks for an open dialog first (anti-stacking),
+        then opens the ConfirmDialog. `on_close` clears the guard.
         """
+        if not enabled:
+            if on_confirm is not None:
+                on_confirm()
+            return
         if self._confirm_dialog is not None:
             return
-        if enabled:
-            self._confirm_dialog = ConfirmDialog(
-                self,
-                theme=self._theme,
-                message=message,
-                on_confirm=on_confirm,
-                on_close=self._clear_confirm_dialog,
-            )
-        elif on_confirm is not None:
-            on_confirm()
+        self._confirm_dialog = ConfirmDialog(
+            self,
+            theme=self._theme,
+            message=message,
+            on_confirm=on_confirm,
+            on_close=self._clear_confirm_dialog,
+        )
 
     def _clear_confirm_dialog(self) -> None:
         self._confirm_dialog = None
@@ -859,7 +864,7 @@ class GameplayScreen(tk.Frame):
         # the dialog's Confirm.
         self._maybe_confirm(
             read_confirm_restart(self._settings_repository),
-            message="Restart the maze?",
+            message="Restart the run for this maze?",
             on_confirm=self._apply_restart_run,
         )
 

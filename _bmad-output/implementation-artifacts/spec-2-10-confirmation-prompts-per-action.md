@@ -9,7 +9,7 @@ context: ['_bmad-output/implementation-artifacts/epic-2-context.md']
 
 # Story 2.10: Confirmation prompts per action
 
-Status: review
+Status: in-progress
 
 ## Story
 
@@ -154,6 +154,21 @@ Four layers, mirroring the established per-story seams:
 - [x] AC-1: each of the 4 actions, setting on → a confirm prompt appears before the action applies
 - [x] AC-2: each of the 4 actions, setting off → immediate, no prompt (existing default behavior preserved where the default is off)
 - [x] AC-3: toggling any confirmation setting in the Settings window persists via the game-scoped repo and affects the next action without an app restart
+
+### Review Findings
+
+- [ ] [Review][Decision] Settings toggle "Confirm before restarting" does not govern the gallery's restart — `ClassicMazeGallery._on_restart` is gated by `confirm_switch_maze` (default off), so a player who enables "Confirm before restarting" is never prompted for the gallery restart button; the label/behavior mismatch is documented in the spec but not the UI or code [`src/labyrinthes/adapters/tkinter/player/classic_gallery.py:263`]
+- [ ] [Review][Decision] Open-dialog guard blocks actions whose confirmation setting is OFF — `_maybe_confirm` checks `_confirm_dialog is not None` before `enabled`, so while any dialog is open a different action with its setting off also no-ops, contradicting AC-2's "applies immediately"; the spec's Design Notes accepted the residual, but the sharper case (actions that would not stack a dialog) is unaddressed [`src/labyrinthes/adapters/tkinter/player/classic_gallery.py:336`]
+- [ ] [Review][Patch] Level-change confirm message omits the target level — `message="Change the level?"` instead of the spec's `f"Change the level to {_level_label(new_level)}?"`; the dialog gives the player no information about where the change goes [`src/labyrinthes/adapters/tkinter/player/gameplay_screen.py:602`]
+- [ ] [Review][Patch] Gameplay restart confirm message differs from the spec copy — `"Restart the maze?"` vs the spec's `"Restart the run for this maze?"`; the new test uses a third phrasing [`src/labyrinthes/adapters/tkinter/player/gameplay_screen.py:862`]
+- [ ] [Review][Patch] Boundary no-op still prompts — `_on_previous` at index 0 / `_on_next` at the last index opens "Switch to the previous/next maze?" even though the clamped action is a no-op [`src/labyrinthes/adapters/tkinter/player/classic_gallery.py:232`]
+- [ ] [Review][Patch] Timeout-banner Restart pill's default-ON prompt is never exercised through the actual pill — the delivered prompt test and the Story 2.9 fresh-run tests call `_restart_run()` directly; the banner pill's `command` (the only real click surface) is never fired, so the headline behavior change could silently regress there [`tests/adapters/tkinter/player/test_gameplay_screen.py:2266`]
+- [ ] [Review][Patch] Missing specified gallery tests — no gated `_on_previous` dialog test, no `_on_play`-navigates-immediately-with-setting-on test, and no AC-3 "toggle through a SettingsWindow sharing the repo, then act" test (AC-3 is covered piecewise instead) [`tests/adapters/tkinter/player/test_classic_gallery.py`]
+- [ ] [Review][Patch] Key-binding tests never exercise the real event path — `test_return_binding_confirms_and_escape_cancels` calls `_on_confirm_clicked()`/`_on_cancel_clicked()` directly and the name is misleading; no test synthesizes a Return/Escape press, so the `<Return>`/`<Escape>` bindings could silently break uncaught (verified live: no double-fire today) [`tests/adapters/tkinter/common/test_confirm_dialog.py:81`]
+- [ ] [Review][Patch] No test asserts the dialog `message` text in the screens — every gallery/gameplay gating test checks only `_confirm_dialog is not None`, so the spec-divergent strings above are unguarded [`tests/adapters/tkinter/player/test_classic_gallery.py`]
+- [ ] [Review][Patch] The `TypeError` branch of `_read_bool` is untested — the reader catches `TypeError` (`confirmation_settings.py:42`) but no test repository raises it [`tests/application/test_confirmation_settings.py:69`]
+- [ ] [Review][Patch] `_maybe_confirm`/`_clear_confirm_dialog` are duplicated across `classic_gallery.py` and `gameplay_screen.py` (with already-diverged signatures/messages) — AD-11 dialog logic belongs in a single shared `common/` helper or mixin [`src/labyrinthes/adapters/tkinter/player/gameplay_screen.py:615`]
+- [ ] [Review][Patch] `test_cancelling_the_switch_dialog_leaves_the_index_untouched` conflates the guard no-op with the cancel path by calling `_on_next()` twice before cancelling [`tests/adapters/tkinter/player/test_classic_gallery.py:421`]
 
 ## Design Notes
 

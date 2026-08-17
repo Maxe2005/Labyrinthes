@@ -231,9 +231,13 @@ class ClassicMazeGallery(tk.Frame):
 
     def _on_previous(self) -> None:
         # Clamped at the lower bound -- a no-op past index 0, never wraps
-        # (see the story's I/O matrix). Gated behind `confirm_switch_maze`
-        # (Story 2.10): when on, the actual index move waits for the
-        # dialog's Confirm.
+        # (see the story's I/O matrix). If already at the first maze, apply
+        # immediately (no dialog needed). Gated behind `confirm_switch_maze`
+        # (Story 2.10): when on and not at the bound, the actual index move
+        # waits for the dialog's Confirm.
+        if self._index <= 0:
+            self._apply_previous()
+            return
         self._maybe_confirm(
             read_confirm_switch_maze(self._settings_repository),
             message="Switch to the previous maze?",
@@ -247,8 +251,12 @@ class ClassicMazeGallery(tk.Frame):
 
     def _on_next(self) -> None:
         # Clamped at the upper bound -- a no-op past the last index, never
-        # wraps (see the story's I/O matrix). Gated behind
+        # wraps (see the story's I/O matrix). If already at the last maze,
+        # apply immediately (no dialog needed). Gated behind
         # `confirm_switch_maze` (Story 2.10).
+        if self._index >= len(self._entries) - 1:
+            self._apply_next()
+            return
         self._maybe_confirm(
             read_confirm_switch_maze(self._settings_repository),
             message="Switch to the next maze?",
@@ -330,23 +338,25 @@ class ClassicMazeGallery(tk.Frame):
         no-op (the dialog is non-modal, so a click could otherwise reach
         this screen behind it). When `enabled`, opens the dialog and stores
         it so the owning action's `on_confirm` only runs on Confirm; when
-        `enabled` is `False`, runs `on_confirm` immediately (the action
-        applies with no prompt -- AC-2). `on_close` clears the guard.
+        `enabled` is `False`, applies the action immediately (AC-2). When
+        `enabled` is `True`, checks for an open dialog first (anti-stacking),
+        then opens the ConfirmDialog. `on_close` clears the guard.
         """
+        if not enabled:
+            if on_confirm is not None:
+                on_confirm()
+            return
         if self._confirm_dialog is not None:
             return
-        if enabled:
-            self._confirm_dialog = ConfirmDialog(
-                self,
-                theme=self._theme,
-                message=message,
-                on_confirm=on_confirm,
-                on_close=self._clear_confirm_dialog,
-                confirm_label=confirm_label,
-                cancel_label=cancel_label,
-            )
-        elif on_confirm is not None:
-            on_confirm()
+        self._confirm_dialog = ConfirmDialog(
+            self,
+            theme=self._theme,
+            message=message,
+            on_confirm=on_confirm,
+            on_close=self._clear_confirm_dialog,
+            confirm_label=confirm_label,
+            cancel_label=cancel_label,
+        )
 
     def _clear_confirm_dialog(self) -> None:
         self._confirm_dialog = None
