@@ -5,7 +5,7 @@ created: '2026-08-06'
 status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
-context: ['_bmad-output/implementation-artifacts/epic-1-context.md']
+context: ['_bmad-output/implementation-artifacts/epic-1/epic-1-context.md']
 warnings: [oversized]
 baseline_revision: '02362f3707352555a5a6ea98deda35307ae6cd7b'
 final_revision: '02787aee5a7d009d68725a229e425c5ce9fe195f'

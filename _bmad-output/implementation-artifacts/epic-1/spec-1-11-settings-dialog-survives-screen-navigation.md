@@ -7,7 +7,7 @@ baseline_commit: a757ec25552eaed6d0f257b90450f4d6a92c4728
 Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
-<!-- Added by the Epic 1 retrospective (_bmad-output/implementation-artifacts/epic-1-retro-2026-08-09.md) -- closes a gap independently deferred three times (Stories 1.8, 1.9, 1.10) without ever being fixed. Not derived from an epics.md FR; a hardening story on Epic 1's own architecture (AD-10). -->
+<!-- Added by the Epic 1 retrospective (_bmad-output/implementation-artifacts/epic-1/epic-1-retro-2026-08-09.md) -- closes a gap independently deferred three times (Stories 1.8, 1.9, 1.10) without ever being fixed. Not derived from an epics.md FR; a hardening story on Epic 1's own architecture (AD-10). -->
 
 ## Story
 
@@ -70,7 +70,7 @@ so that closing Settings is always something I chose, not something that happene
 
 ### References
 
-- [Source: _bmad-output/implementation-artifacts/epic-1-retro-2026-08-09.md#Decisions Made in This Retrospective, #Action Items]
+- [Source: _bmad-output/implementation-artifacts/epic-1/epic-1-retro-2026-08-09.md#Decisions Made in This Retrospective, #Action Items]
 - [Source: _bmad-output/implementation-artifacts/deferred-work.md#Deferred from: code review of spec-1-8-home-breadcrumb-navigation-settings-access (2026-08-06)]
 - [Source: _bmad-output/implementation-artifacts/deferred-work.md#Deferred from: code review of spec-1-10-accessibility-floor-keyboard-shortcut-consistency (2026-08-09)]
 - [Source: _bmad-output/planning-artifacts/epics.md#Story 1.11: Settings dialog survives screen navigation]

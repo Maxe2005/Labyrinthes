@@ -5,7 +5,7 @@ created: '2026-08-06'
 status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false # judged after review pass: 7 low-severity, cosmetic/test-infra patches only -- localized, no behavior/API/security/data impact
-context: ['_bmad-output/implementation-artifacts/epic-1-context.md']
+context: ['_bmad-output/implementation-artifacts/epic-1/epic-1-context.md']
 warnings: [oversized]
 baseline_revision: 'b171dd57f24932c51803a4ea3964c7d9ddb7766c'
 final_revision: '1a10b2adb55c9337f379ba5e0aa68207722f2252'

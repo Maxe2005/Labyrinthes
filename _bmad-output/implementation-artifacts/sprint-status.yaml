@@ -80,25 +80,25 @@ action_items:
     action: "Fix Router.navigate() silently closing an open SettingsWindow on frame-teardown"
     owner: "Amelia (dev)"
     status: open
-    ref: "_bmad-output/implementation-artifacts/epic-2-retrospective-2026-08-17.md"
+    ref: "_bmad-output/implementation-artifacts/epic-2/epic-2-retrospective-2026-08-17.md"
   - id: "epic-2-retro-item-2-persistence-hardening"
     epic: 2
     action: "Add a persistence-hardening story: atomic writes (temp-file-plus-rename)
       + typed LabyrinthesError for malformed content in MazeRepository/SettingsRepository"
     owner: "Amelia (dev)"
     status: open
-    ref: "_bmad-output/implementation-artifacts/epic-2-retrospective-2026-08-17.md"
+    ref: "_bmad-output/implementation-artifacts/epic-2/epic-2-retrospective-2026-08-17.md"
   - id: "epic-2-retro-item-3-redefer-flag"
     epic: 2
     action: "When a deferred-work.md item is re-deferred a 2nd time by a later story's
       review, flag it explicitly for scheduling instead of deferring a 3rd time silently"
     owner: "Amelia (dev/process)"
     status: open
-    ref: "_bmad-output/implementation-artifacts/epic-2-retrospective-2026-08-17.md"
+    ref: "_bmad-output/implementation-artifacts/epic-2/epic-2-retrospective-2026-08-17.md"
   - id: "epic-2-retro-item-4-hardmode-toggle"
     epic: 2
     action: "Verify HARD-mode ready/moving color toggle is not hardcoded; confirm
       ready color derives from configurable HARD-mode color setting"
     owner: "Winston (arch)"
     status: open
-    ref: "_bmad-output/implementation-artifacts/epic-2-retrospective-2026-08-17.md"
+    ref: "_bmad-output/implementation-artifacts/epic-2/epic-2-retrospective-2026-08-17.md"

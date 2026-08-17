@@ -4,7 +4,7 @@ type: 'feature'
 created: '2026-08-14'
 status: 'done'
 baseline_commit: 'd4d6a25'
-context: ['_bmad-output/implementation-artifacts/epic-2-context.md']
+context: ['_bmad-output/implementation-artifacts/epic-2/epic-2-context.md']
 ---
 
 # Story 2.8: HARD mode — invisible ball, fog overlay, status light

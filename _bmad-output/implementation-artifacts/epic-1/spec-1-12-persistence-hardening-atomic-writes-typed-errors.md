@@ -7,7 +7,7 @@ baseline_commit: a757ec25552eaed6d0f257b90450f4d6a92c4728
 Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
-<!-- Added by the Epic 1 retrospective (_bmad-output/implementation-artifacts/epic-1-retro-2026-08-09.md) -- closes gaps deferred in Stories 1.4/1.5 and escalated by Story 1.9, where `ThemeController` became the first unconditional, every-launch consumer of `SettingsRepository.get()`. Not derived from an epics.md FR; a hardening story on the persistence adapters AD-5/AD-7 already require. -->
+<!-- Added by the Epic 1 retrospective (_bmad-output/implementation-artifacts/epic-1/epic-1-retro-2026-08-09.md) -- closes gaps deferred in Stories 1.4/1.5 and escalated by Story 1.9, where `ThemeController` became the first unconditional, every-launch consumer of `SettingsRepository.get()`. Not derived from an epics.md FR; a hardening story on the persistence adapters AD-5/AD-7 already require. -->
 
 ## Story
 
@@ -85,7 +85,7 @@ so that an interrupted write or a corrupted file never destroys existing data or
 
 ### References
 
-- [Source: _bmad-output/implementation-artifacts/epic-1-retro-2026-08-09.md#Decisions Made in This Retrospective, #Action Items]
+- [Source: _bmad-output/implementation-artifacts/epic-1/epic-1-retro-2026-08-09.md#Decisions Made in This Retrospective, #Action Items]
 - [Source: _bmad-output/implementation-artifacts/deferred-work.md#Deferred from: code review of spec-1-4-concrete-mazerepository-single-shared-csv-read-write-implementation (2026-08-06)] (non-atomic `write_maze_csv`; raw `IndexError`/`ValueError` on malformed CSV)
 - [Source: _bmad-output/implementation-artifacts/deferred-work.md#Deferred from: code review of spec-1-5-concrete-settingsrepository-scoped-persistence (2026-08-06)] (non-atomic `write_setting_value`; raw `json.JSONDecodeError`/`FileNotFoundError` on malformed/TOCTOU settings read)
 - [Source: _bmad-output/implementation-artifacts/deferred-work.md#Deferred from: code review of spec-1-9-light-dark-theme-toggle-wired-end-to-end (2026-08-06)] (escalation: `ThemeController` is the first unconditional every-launch consumer)

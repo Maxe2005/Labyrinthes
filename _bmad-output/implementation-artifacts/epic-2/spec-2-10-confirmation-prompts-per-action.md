@@ -4,7 +4,7 @@ type: 'feature'
 created: '2026-08-17'
 status: 'review'
 baseline_commit: '5ce301d'
-context: ['_bmad-output/implementation-artifacts/epic-2-context.md']
+context: ['_bmad-output/implementation-artifacts/epic-2/epic-2-context.md']
 ---
 
 # Story 2.10: Confirmation prompts per action

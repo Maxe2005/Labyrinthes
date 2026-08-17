@@ -5,7 +5,7 @@ status: 'ready-for-dev'
 created: '2026-08-17'
 baseline_commit: '1a68cd6'
 review_loop_iteration: 0
-context: ['_bmad-output/implementation-artifacts/epic-2-context.md']
+context: ['_bmad-output/implementation-artifacts/epic-2/epic-2-context.md']
 ---
 
 ## Intent

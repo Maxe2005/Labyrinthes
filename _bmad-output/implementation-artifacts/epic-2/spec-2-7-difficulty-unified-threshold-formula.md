@@ -6,7 +6,7 @@ status: 'done'
 baseline_commit: 'd716269'
 review_loop_iteration: 1
 followup_review_recommended: false
-context: ['_bmad-output/implementation-artifacts/epic-2-context.md']
+context: ['_bmad-output/implementation-artifacts/epic-2/epic-2-context.md']
 baseline_revision: 'd716269'
 ---
 

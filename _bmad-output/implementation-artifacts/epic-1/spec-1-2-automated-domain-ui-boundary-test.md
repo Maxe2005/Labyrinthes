@@ -5,7 +5,7 @@ created: '2026-08-05'
 status: 'done'
 baseline_commit: f6d4df8e9b31ecaee43968f5019d277cff3d919d
 review_loop_iteration: 2
-context: ['_bmad-output/implementation-artifacts/epic-1-context.md']
+context: ['_bmad-output/implementation-artifacts/epic-1/epic-1-context.md']
 ---
 
 <frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">

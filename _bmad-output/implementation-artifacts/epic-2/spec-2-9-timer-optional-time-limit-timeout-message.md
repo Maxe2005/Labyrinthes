@@ -4,7 +4,7 @@ type: 'feature'
 created: '2026-08-17'
 status: 'done'
 baseline_commit: '0f7cbbd'
-context: ['_bmad-output/implementation-artifacts/epic-2-context.md']
+context: ['_bmad-output/implementation-artifacts/epic-2/epic-2-context.md']
 ---
 
 # Story 2.9: Timer — optional time limit, timeout message
