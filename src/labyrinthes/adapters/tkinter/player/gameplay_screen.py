@@ -212,6 +212,7 @@ class GameplayScreen(tk.Frame):
         *,
         maze_repository: MazeRepository,
         settings_repository: SettingsRepository,
+        toggle_theme: Callable[[], None],
         on_kind_changed: Callable[[MazeKind], None] | None = None,
     ) -> None:
         colors = colors_for(theme)
@@ -219,6 +220,7 @@ class GameplayScreen(tk.Frame):
         self._theme = theme
         self._maze_repository = maze_repository
         self._settings_repository = settings_repository
+        self._toggle_theme = toggle_theme
         self._maze = maze  # tracks kind/id across a save -- see `_build_save_zone()`
         self._on_kind_changed = on_kind_changed
         self._session = start_session(maze)
