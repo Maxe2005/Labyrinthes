@@ -64,7 +64,7 @@ development_status:
   2-7-difficulty-unified-threshold-formula: done
   2-8-hard-mode-invisible-ball-fog-overlay-status-light: done
   2-9-timer-optional-time-limit-timeout-message: done
-  3-1-new-maze-open-a-sketch: review
+  3-1-new-maze-open-a-sketch: done
   3-2-wall-editing-break-restore: backlog
   3-3-zone-editing-destroy-restore-a-rectangular-zone: backlog
   3-4-entry-and-exit-marking: backlog
@@ -94,7 +94,7 @@ development_status:
   epic-6: backlog
   epic-6-retrospective: optional
 generated: 2026-08-05
-last_updated: 08-17-2026 18:40
+last_updated: 08-17-2026 19:30
 project: Labyrinthes
 project_key: NOKEY
 story_location: _bmad-output/implementation-artifacts

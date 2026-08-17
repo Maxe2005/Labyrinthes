@@ -285,3 +285,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/epic-3/spec-3-1-new-maze-open-a-sketch.md`
   summary: `NewMazeDialog`'s two `tk.Entry` fields only re-validate on `<KeyRelease>`; a mouse-driven paste (middle-click or right-click "Paste") into either field doesn't fire `<KeyRelease>`, so the inline error label stays stale until the next keystroke or a Create click.
   evidence: confirmed by direct inspection -- `_add_field` binds only `<KeyRelease>`/`<Return>`, no `<<Paste>>`. Mirrors `GenerateRandomDialog`'s identical `<KeyRelease>`-only binding (Story 2.2) -- a pre-existing, systemic pattern across every field-validated dialog in `common`/`player`, not novel to this story.
+
+## Deferred from: code review of spec-3-1-new-maze-open-a-sketch (2026-08-17)
+
+- source_spec: `_bmad-output/implementation-artifacts/epic-3/spec-3-1-new-maze-open-a-sketch.md`
+  summary: The spec's Iteration 1 Spec Change Log justifies omitting `transient()`/`grab_set()` from `NewMazeDialog` by citing `confirm_dialog.py`'s module docstring as evidence that non-modal dialogs in this codebase never call `transient()` -- but `confirm_dialog.py` only documents non-modal as "no `grab_set()`", and its `__init__` does call `self.transient(parent)`. `NewMazeDialog`'s actual behavior is not wrong -- it correctly mirrors its real declared model, `GenerateRandomDialog`, which also omits `transient()` -- so no code change is needed here, only the spec's citation is inaccurate.
+  evidence: confirmed by direct inspection of `src/labyrinthes/adapters/tkinter/common/confirm_dialog.py:113` (`self.transient(parent)` present) versus `src/labyrinthes/adapters/tkinter/player/generate_random_dialog.py` and `src/labyrinthes/adapters/tkinter/common/new_maze_dialog.py` (neither calls `transient()`). Pre-existing inconsistency across this codebase's dialogs (`ConfirmDialog` alone calls `transient()`), not introduced by this story.
+- source_spec: `_bmad-output/implementation-artifacts/epic-3/spec-3-1-new-maze-open-a-sketch.md`
+  summary: `final_revision` is left blank (`''`) in this spec's frontmatter even though the Spec Change Log documents two completed review iterations with concrete patches applied.
+  evidence: confirmed by direct inspection of the frontmatter (`final_revision: ''`) versus the two dated, resolved iterations recorded in the same file's Spec Change Log section. Cosmetic bookkeeping gap, not a functional issue.
