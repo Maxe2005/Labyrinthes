@@ -50,6 +50,17 @@ from the `game`-scoped settings on every activation/state sync
 (`_hard_mode_colors()`), so a color change recolors ready *and* moving and
 can never break the ready<->moving toggle (the legacy `"blue"` hardcode bug
 is fixed by construction -- no color literal lives in this module).
+
+Story 2.9 adds the optional time limit. The screen reads the `game`-scoped
+`TIME_LIMIT_SECONDS` once at mount into `_time_limit`; `_on_tick()` checks
+the wall clock against it after updating the Time chip and, once the limit
+is reached on an unsolved run, stops the run via `_on_timeout()` (cancels
+both `.after()` loops, marks the session `timed_out` -- freezing movement,
+since every `PlayerSession` operation is a no-op once `timed_out` -- freezes
+the Time chip, and shows an inline non-modal banner). The banner offers
+Restart (`_restart_run`, a fresh run for the same maze with persisted
+mode/speed/limit re-applied and the session defaults restored) and Continue
+(dismisses the message; the run stays stopped).
 """
 
 from __future__ import annotations
@@ -110,9 +121,13 @@ from labyrinthes.application.player_session import (
     set_speed as session_set_speed,
 )
 from labyrinthes.application.player_session import (
+    set_timed_out as session_set_timed_out,
+)
+from labyrinthes.application.player_session import (
     tick as session_tick,
 )
 from labyrinthes.application.settings_repository import SettingsRepository
+from labyrinthes.application.time_limit_settings import read_time_limit
 from labyrinthes.domain.difficulty import Difficulty
 from labyrinthes.domain.duration import Duration
 from labyrinthes.domain.level import Level
@@ -193,10 +208,15 @@ class GameplayScreen(tk.Frame):
         # screen is rebuilt on re-navigate, so settings loaded here are fresh.
         self._session = session_set_mode(self._session, read_movement_mode(settings_repository))
         self._session = session_set_speed(self._session, read_movement_speed(settings_repository))
+        # The optional time limit is read once at mount, like mode/speed --
+        # a mid-run settings change applies to the next mount/restart, not
+        # the active run (`_restart_run` re-reads it).
+        self._time_limit: Duration | None = read_time_limit(settings_repository)
         self._start_time = time.monotonic()
         self._tick_job: str | None = None
         self._animation_job: str | None = None
         self._win_banner: tk.Frame | None = None
+        self._timeout_banner: tk.Frame | None = None
         # `(hard_mode, moving)` of the last `_sync_hard_mode_visuals()` that
         # actually did work -- lets per-tick calls skip redundant canvas
         # toggles / repository color reads when nothing changed (Story 2.8).
@@ -680,6 +700,18 @@ class GameplayScreen(tk.Frame):
         elapsed_ms = int((time.monotonic() - self._start_time) * 1000)
         self._session = session_tick(self._session, Duration(milliseconds=elapsed_ms))
         self._time_chip.set_value(self._session.elapsed.to_clock_string())
+        # The timeout check sits after the chip update, before the
+        # reschedule: the timeout branch fires once the limit is reached on
+        # an unsolved run and stops the loop here (no reschedule). The
+        # `not solved` guard resolves the solve/timeout race in favor of the
+        # win -- whichever `.after()` callback runs first wins.
+        if (
+            not self._session.solved
+            and self._time_limit is not None
+            and elapsed_ms >= self._time_limit.milliseconds
+        ):
+            self._on_timeout()
+            return
         self._tick_job = self.after(_TICK_INTERVAL_MS, self._on_tick)
 
     def _cancel_tick_job(self) -> None:
@@ -690,6 +722,108 @@ class GameplayScreen(tk.Frame):
     def _on_destroy(self, _event: tk.Event | None = None) -> None:
         self._cancel_tick_job()
         self._cancel_animation_job()
+
+    # -- time limit / timeout (Story 2.9) ------------------------------
+
+    def _on_timeout(self) -> None:
+        # "Run stops": cancel both loops, mark the session timed out (which
+        # freezes movement -- every `PlayerSession` operation is a no-op once
+        # `timed_out`), freeze the Time chip at the timeout value, and show
+        # the inline message. No work is scheduled here; `_restart_run` is
+        # the only place that rebuilds state.
+        self._cancel_tick_job()
+        self._cancel_animation_job()
+        self._session = session_set_timed_out(self._session, True)
+        self._time_chip.set_value(self._session.elapsed.to_clock_string())
+        self._show_timeout_banner()
+
+    def _show_timeout_banner(self) -> None:
+        # Mirrors `_show_win_banner` (UX-DR9): the same accent-bg frame, the
+        # same `before=self._maze_frame` placement, non-modal inline -- never
+        # a `messagebox`.
+        colors = colors_for(self._theme)
+        self._timeout_banner = tk.Frame(
+            self,
+            background=colors.accent_bg,
+            highlightthickness=1,
+            highlightbackground=colors.accent,
+            highlightcolor=colors.accent,
+        )
+        self._timeout_banner.pack(fill="x", pady=(0, SPACING["lg"]), before=self._maze_frame)
+
+        tk.Label(
+            self._timeout_banner,
+            text="Time's up — the exit wasn't reached.",
+            font=TYPOGRAPHY.body.to_tk_font(),
+            background=colors.accent_bg,
+            foreground=colors.ink,
+        ).pack(side="left", padx=SPACING["lg"], pady=SPACING["sm"])
+
+        # Both `primary=False`: a `GENERATED` maze's Save pill can still be
+        # showing below this banner (timeout doesn't hide it), and the
+        # at-most-one-primary rule (`PillButton` docstring, Story 2.4)
+        # forbids a second one. The pills are click-only local targets --
+        # no global shortcut, so no `_toplevel_has_focus()` guard needed.
+        PillButton(
+            self._timeout_banner,
+            "Restart",
+            theme=self._theme,
+            primary=False,
+            command=self._restart_run,
+        ).pack(side="right", padx=SPACING["lg"], pady=SPACING["sm"])
+        PillButton(
+            self._timeout_banner,
+            "Continue",
+            theme=self._theme,
+            primary=False,
+            command=self._on_timeout_continue_clicked,
+        ).pack(side="right", pady=SPACING["sm"])
+
+    def _on_timeout_continue_clicked(self) -> None:
+        # Only dismisses the banner -- `timed_out` stays `True`, the run
+        # stays stopped, and the breadcrumb/selection navigation remains
+        # available (mirrors `_on_continue_clicked` for the win banner).
+        if self._timeout_banner is not None:
+            self._timeout_banner.destroy()
+            self._timeout_banner = None
+
+    def _restart_run(self) -> None:
+        # A fresh run for the same maze, exactly what a re-mount would build:
+        # `start_session` defaults (Level ONE, Difficulty ONE, HARD off --
+        # all session-scoped, never persisted) plus re-applied persisted
+        # mode/speed and a fresh `read_time_limit`. Leaves the screen fully
+        # interactive again (a `_tick_job` is rescheduled).
+        self._cancel_tick_job()
+        self._cancel_animation_job()
+        self._session = start_session(self._maze)
+        self._session = session_set_mode(
+            self._session, read_movement_mode(self._settings_repository)
+        )
+        self._session = session_set_speed(
+            self._session, read_movement_speed(self._settings_repository)
+        )
+        self._time_limit = read_time_limit(self._settings_repository)
+        self._start_time = time.monotonic()
+        self._maze_canvas.redraw_structure(self._session.visibility)
+        self._rendered_visibility = self._session.visibility
+        self._maze_canvas.set_ball_position(self._session.position)
+        self._sync_level_widgets()
+        self._sync_difficulty_widgets()
+        self._sync_mode_button()
+        self._time_chip.set_value("00:00")
+        self._pos_chip.set_value(_pos_text(self._session.position))
+        if self._timeout_banner is not None:
+            self._timeout_banner.destroy()
+            self._timeout_banner = None
+        if self._win_banner is not None:
+            self._win_banner.destroy()
+            self._win_banner = None
+        # The fresh session has HARD off, so the status light hides and the
+        # ball shows again; resetting `_last_hard_sync_state` forces the sync
+        # to actually run (Story 2.8).
+        self._last_hard_sync_state = None
+        self._sync_hard_mode_visuals()
+        self._tick_job = self.after(_TICK_INTERVAL_MS, self._on_tick)
 
     # -- win banner ------------------------------------------------------
 
