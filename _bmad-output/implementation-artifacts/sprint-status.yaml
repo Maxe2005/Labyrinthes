@@ -1,5 +1,5 @@
 generated: 2026-08-05
-last_updated: '2026-08-17'
+last_updated: '08-17-2026 16:47'
 project: Labyrinthes
 project_key: NOKEY
 tracking_system: file-system
@@ -23,7 +23,8 @@ development_status:
   2-1-player-maze-selection-screen-classic-maze-browsing: done
   2-2-random-maze-generation-with-validation: done
   2-3-random-maze-saving-reappears-after-restart: done
-  2-4-gameplay-screen-foundation-rendering-hud-baseline-movement-win-detection: done
+  2-4-gameplay-screen-foundation-rendering-hud-baseline-movement-win-detection: 
+    done
   2-5-movement-modes-smooth-vs-discrete-configurable-speed: done
   2-6-levels-progressive-visibility-1-4-max: done
   2-7-difficulty-unified-threshold-formula: done
@@ -31,7 +32,7 @@ development_status:
   2-9-timer-optional-time-limit-timeout-message: done
   2-10-confirmation-prompts-per-action: done
   2-11-appearance-theme-logo: done
-  epic-2-retrospective: optional
+  epic-2-retrospective: done
   epic-3: backlog
   3-1-new-maze-open-a-sketch: backlog
   3-2-wall-editing-break-restore: backlog
@@ -58,17 +59,46 @@ development_status:
   epic-6: backlog
   epic-6-retrospective: optional
 action_items:
-- epic: 1
-  action: Fix Router.navigate() silently closing an open SettingsWindow on frame-teardown
-  owner: Amelia (dev)
-  status: done
-- epic: 1
-  action: 'Add a persistence-hardening story: atomic writes (temp-file-plus-rename)
-    + typed LabyrinthesError for malformed content in MazeRepository/SettingsRepository'
-  owner: Amelia (dev)
-  status: done
-- epic: 1
-  action: When a deferred-work.md item is re-deferred a 2nd time by a later story's
-    review, flag it explicitly for scheduling instead of deferring a 3rd time silently
-  owner: Amelia (dev/process)
-  status: open
+  - epic: 1
+    action: Fix Router.navigate() silently closing an open SettingsWindow on 
+      frame-teardown
+    owner: Amelia (dev)
+    status: done
+  - epic: 1
+    action: 'Add a persistence-hardening story: atomic writes (temp-file-plus-rename)
+      + typed LabyrinthesError for malformed content in MazeRepository/SettingsRepository'
+    owner: Amelia (dev)
+    status: done
+  - epic: 1
+    action: When a deferred-work.md item is re-deferred a 2nd time by a later 
+      story's review, flag it explicitly for scheduling instead of deferring a 
+      3rd time silently
+    owner: Amelia (dev/process)
+    status: open
+  - id: "epic-2-retro-item-1-router-cascade"
+    epic: 2
+    action: "Fix Router.navigate() silently closing an open SettingsWindow on frame-teardown"
+    owner: "Amelia (dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-2-retrospective-2026-08-17.md"
+  - id: "epic-2-retro-item-2-persistence-hardening"
+    epic: 2
+    action: "Add a persistence-hardening story: atomic writes (temp-file-plus-rename)
+      + typed LabyrinthesError for malformed content in MazeRepository/SettingsRepository"
+    owner: "Amelia (dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-2-retrospective-2026-08-17.md"
+  - id: "epic-2-retro-item-3-redefer-flag"
+    epic: 2
+    action: "When a deferred-work.md item is re-deferred a 2nd time by a later story's
+      review, flag it explicitly for scheduling instead of deferring a 3rd time silently"
+    owner: "Amelia (dev/process)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-2-retrospective-2026-08-17.md"
+  - id: "epic-2-retro-item-4-hardmode-toggle"
+    epic: 2
+    action: "Verify HARD-mode ready/moving color toggle is not hardcoded; confirm
+      ready color derives from configurable HARD-mode color setting"
+    owner: "Winston (arch)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-2-retrospective-2026-08-17.md"
