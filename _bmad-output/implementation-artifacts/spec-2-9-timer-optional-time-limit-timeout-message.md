@@ -2,14 +2,14 @@
 title: 'Story 2.9: Timer — optional time limit, timeout message'
 type: 'feature'
 created: '2026-08-17'
-status: 'ready-for-dev'
+status: 'review'
 baseline_commit: '0f7cbbd'
 context: ['_bmad-output/implementation-artifacts/epic-2-context.md']
 ---
 
 # Story 2.9: Timer — optional time limit, timeout message
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -110,21 +110,21 @@ Four layers, mirroring the established per-story seams:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `src/labyrinthes/application/settings_keys.py` — add `TIME_LIMIT_SECONDS`
-- [ ] `src/labyrinthes/application/time_limit_settings.py` — never-raises `read_time_limit`/`write_time_limit` (NEW)
-- [ ] `src/labyrinthes/application/player_session.py` — `timed_out` field + `set_timed_out`; extend every solved-guard with `or session.timed_out`
-- [ ] `src/labyrinthes/adapters/tkinter/player/gameplay_screen.py` — `self._time_limit` at mount, `_on_tick` timeout check, `_on_timeout`, `_show_timeout_banner`, `_on_timeout_continue_clicked`, `_restart_run`
-- [ ] `tests/application/test_player_session.py` — `set_timed_out` + timed-out guards coverage
-- [ ] `tests/application/test_time_limit_settings.py` — readers/writers coverage (NEW)
-- [ ] `tests/application/test_settings_keys.py` — add `TIME_LIMIT_SECONDS`
-- [ ] `tests/adapters/tkinter/player/test_gameplay_screen.py` — mount-read, timeout, restart/continue, race, save-pill coverage
-- [ ] `_bmad-output/implementation-artifacts/deferred-work.md` — append the no-Settings-UI time-limit picker deferral note
+- [x] `src/labyrinthes/application/settings_keys.py` — add `TIME_LIMIT_SECONDS`
+- [x] `src/labyrinthes/application/time_limit_settings.py` — never-raises `read_time_limit`/`write_time_limit` (NEW)
+- [x] `src/labyrinthes/application/player_session.py` — `timed_out` field + `set_timed_out`; extend every solved-guard with `or session.timed_out`
+- [x] `src/labyrinthes/adapters/tkinter/player/gameplay_screen.py` — `self._time_limit` at mount, `_on_tick` timeout check, `_on_timeout`, `_show_timeout_banner`, `_on_timeout_continue_clicked`, `_restart_run`
+- [x] `tests/application/test_player_session.py` — `set_timed_out` + timed-out guards coverage
+- [x] `tests/application/test_time_limit_settings.py` — readers/writers coverage (NEW)
+- [x] `tests/application/test_settings_keys.py` — add `TIME_LIMIT_SECONDS`
+- [x] `tests/adapters/tkinter/player/test_gameplay_screen.py` — mount-read, timeout, restart/continue, race, save-pill coverage
+- [x] `_bmad-output/implementation-artifacts/deferred-work.md` — append the no-Settings-UI time-limit picker deferral note
 
 **Acceptance Criteria:**
-- [ ] Given a run in progress → Time HUD chip updates continuously (already green via Story 2.4's `_on_tick`; keep it green — no regression)
-- [ ] Given no limit → win banner shows "Solved in MM:SS." (already green via Story 2.4; keep it green — no regression)
-- [ ] Given a limit reached before the exit → inline non-modal "Time's up — the exit wasn't reached." banner, run stopped, Restart/Continue reachable from it
-- [ ] Given the timer → `Duration` is the only time type (session `elapsed` and the limit are both `Duration`)
+- [x] Given a run in progress → Time HUD chip updates continuously (already green via Story 2.4's `_on_tick`; keep it green — no regression)
+- [x] Given no limit → win banner shows "Solved in MM:SS." (already green via Story 2.4; keep it green — no regression)
+- [x] Given a limit reached before the exit → inline non-modal "Time's up — the exit wasn't reached." banner, run stopped, Restart/Continue reachable from it
+- [x] Given the timer → `Duration` is the only time type (session `elapsed` and the limit are both `Duration`)
 
 ## Design Notes
 
@@ -196,12 +196,28 @@ opencode/deepseek-v4-flash-free
 ### Debug Log References
 
 - 2026-08-17: Story 2.9 spec created on branch `epic-2-play-a-maze-game-player` (HEAD `0f7cbbd`) via the `bmad-create-story` workflow. Full-artifact analysis confirmed AC-1/AC-2/AC-4 are already green from Stories 2.4/2.5/2.8 (Time chip tick loop, win-banner elapsed text, `Duration`-typed session elapsed); the story's new scope is AC-3 only: the `game`-scoped time-limit setting, the session `timed_out` terminal state, the tick-loop timeout trigger, the inline timeout banner, and the in-place restart capability. Legacy `Chrono` (lines 1479-1524) verified as the disabled/buggy baseline; its modal `messagebox` timeout is rejected per UX-DR9.
+- 2026-08-17: Implemented on branch `story-2-9-timer-optional-time-limit-timeout-message` (baseline `0f7cbbd`). Added `TIME_LIMIT_SECONDS` to `settings_keys.py`; new `application/time_limit_settings.py` with never-raises `read_time_limit`/`write_time_limit` (strict `type(value) is int` reader, `0`-sentinel writer); `PlayerSession.timed_out` field + `set_timed_out`, extended every `if session.solved` guard with `or session.timed_out`; `GameplayScreen` reads the limit once at mount into `self._time_limit`, `_on_tick()` fires `_on_timeout()` once `elapsed_ms >= limit` on an unsolved run (solve wins the race), `_on_timeout` cancels both jobs + freezes the chip + shows the inline non-modal banner, `_on_timeout_continue_clicked` dismisses only, `_restart_run` rebuilds a fresh run (session defaults + re-applied persisted mode/speed + fresh `read_time_limit`, destroys win/timeout banners, resets `_last_hard_sync_state`). No Settings UI, no global restart shortcut, no `advance_step` timeout polling, no modal (per spec Boundaries). Deferred-work note appended (no time-limit picker UI).
 
 ### Completion Notes List
 
-- To be filled by the implementing dev agent (story status set to `ready-for-dev`; no code written by the create-story workflow).
+- Implemented Story 2.9 end-to-end. AC-3 now green: a configured time limit stops the run with an inline, non-modal `"Time's up — the exit wasn't reached."` banner (UX-DR9) and Restart/Continue pills; AC-1/AC-2/AC-4 kept green (no regression in the tick loop, win banner, or `Duration` usage).
+- Test coverage: `tests/application/test_time_limit_settings.py` (new — reader/writer matrix: absent/corrupt/non-int/`0`/negative → `None`, positive int → `Duration`, `0`-sentinel write, never-writes-on-read, GAME scope); `tests/application/test_player_session.py` (+12: `set_timed_out` sets/clears/preserves fields, no-op once solved, and every operation is a no-op once timed out); `tests/application/test_settings_keys.py` (+`TIME_LIMIT_SECONDS`); `tests/adapters/tkinter/player/test_gameplay_screen.py` (+13: mount-read of the limit, corrupt-stored → `None`, timeout at the limit freezes chip + cancels tick job + shows the exact message, no-limit keeps rescheduling, timeout cancels an in-flight animation job, movement after timeout is a no-op, solve wins the race, restart produces a fresh run (entry/elapsed 0/`"00:00"`/banner gone/`_tick_job` rescheduled/movement works again), restart re-reads the limit, restart with a win banner destroys it, continue keeps the run stopped, banner pills not primary with a `GENERATED` maze, restart resets HARD fog/ball/light).
+- `ruff check src/ tests/` clean, `ruff format --check` clean, full suite 680 passed. `.agents/` lint noise is pre-existing third-party skill code, untouched.
 
 ### File List
 
 - This spec: `_bmad-output/implementation-artifacts/spec-2-9-timer-optional-time-limit-timeout-message.md`
-- `_bmad-output/implementation-artifacts/sprint-status.yaml` — 2-9: backlog -> ready-for-dev
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — 2-9: ready-for-dev -> in-progress -> review
+- `_bmad-output/implementation-artifacts/deferred-work.md` — appended the no-Settings time-limit-picker deferral note
+- `src/labyrinthes/application/settings_keys.py` — added `TIME_LIMIT_SECONDS`
+- `src/labyrinthes/application/time_limit_settings.py` — NEW: `read_time_limit`/`write_time_limit`
+- `src/labyrinthes/application/player_session.py` — `timed_out` field, `set_timed_out`, extended solved-guards
+- `src/labyrinthes/adapters/tkinter/player/gameplay_screen.py` — `_time_limit` at mount, `_on_tick` timeout check, `_on_timeout`, `_show_timeout_banner`, `_on_timeout_continue_clicked`, `_restart_run`
+- `tests/application/test_time_limit_settings.py` — NEW
+- `tests/application/test_player_session.py` — `set_timed_out` + timed-out guard tests
+- `tests/application/test_settings_keys.py` — added `TIME_LIMIT_SECONDS`
+- `tests/adapters/tkinter/player/test_gameplay_screen.py` — mount-read/timeout/restart/continue/race/save-pill/HARD-reset tests
+
+## Change Log
+
+- 2026-08-17: Implemented Story 2.9 (AC-3): time-limit settings seam (`application/time_limit_settings.py` + `TIME_LIMIT_SECONDS`), session `timed_out` terminal state with `set_timed_out`, tick-loop timeout trigger, inline non-modal timeout banner with Restart/Continue, and in-place fresh-run restart. Added 26 new/updated tests; full suite green (680 passed); lint/format clean. Logged the no-Settings-UI time-limit-picker deferral.
