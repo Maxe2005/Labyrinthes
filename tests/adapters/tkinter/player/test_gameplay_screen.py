@@ -17,8 +17,10 @@ from labyrinthes.application.hard_mode_settings import (
 from labyrinthes.application.player_session import STEPS_PER_CELL
 from labyrinthes.application.settings_keys import MOVEMENT_MODE, MOVEMENT_SPEED
 from labyrinthes.application.settings_repository import SettingsScope
+from labyrinthes.application.time_limit_settings import write_time_limit
 from labyrinthes.domain.cell import Cell
 from labyrinthes.domain.difficulty import Difficulty
+from labyrinthes.domain.duration import Duration
 from labyrinthes.domain.grid import Grid
 from labyrinthes.domain.level import Level
 from labyrinthes.domain.level_visibility import Wall, visible_walls
@@ -1755,3 +1757,318 @@ def test_enabling_hard_mode_mid_leg_hides_the_ball_and_shows_the_fog_immediately
     assert screen._maze_canvas.itemcget(ball, "state") == "hidden"
     assert screen._maze_canvas.itemcget("fog", "state") == "normal"
     assert screen._status_label.cget("text") == "Moving"
+
+
+# -- time limit / timeout (Story 2.9) ----------------------------------
+
+
+def test_mount_reads_the_time_limit_from_settings(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    write_time_limit(fake_settings_repository, Duration(milliseconds=90000))
+    screen = GameplayScreen(
+        tk_root,
+        _classic_maze(),
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+
+    assert screen._time_limit == Duration(milliseconds=90000)
+
+
+def test_mount_with_no_limit_stored_reads_none(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    screen = GameplayScreen(
+        tk_root,
+        _classic_maze(),
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+
+    assert screen._time_limit is None
+
+
+def test_mount_reads_none_for_a_corrupt_stored_limit(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    fake_settings_repository.set(SettingsScope.GAME, "time_limit_seconds", "garbage")
+    screen = GameplayScreen(
+        tk_root,
+        _classic_maze(),
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+
+    assert screen._time_limit is None
+
+
+def test_on_tick_times_out_the_run_at_the_limit(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    write_time_limit(fake_settings_repository, Duration(milliseconds=5000))
+    screen = GameplayScreen(
+        tk_root,
+        _classic_maze(),
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    screen._start_time = time.monotonic() - 5.0
+
+    screen._on_tick()
+
+    assert screen._session.timed_out is True
+    assert screen._tick_job is None
+    assert screen._timeout_banner is not None
+    labels = [
+        child.cget("text")
+        for child in screen._timeout_banner.winfo_children()
+        if isinstance(child, tk.Label)
+    ]
+    assert any(text == "Time's up — the exit wasn't reached." for text in labels)
+    assert screen._time_chip._value_label.cget("text") == "00:05"
+
+
+def test_on_tick_with_no_limit_keeps_rescheduling_forever(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    screen = GameplayScreen(
+        tk_root,
+        _classic_maze(),
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    screen._start_time = time.monotonic() - 5.0
+
+    screen._on_tick()
+
+    assert screen._session.timed_out is False
+    assert screen._tick_job is not None
+    assert screen._timeout_banner is None
+
+
+def test_timeout_cancels_an_in_flight_animation_job(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    write_time_limit(fake_settings_repository, Duration(milliseconds=5000))
+    maze = _open_maze(width=3)
+    screen = GameplayScreen(
+        tk_root,
+        maze,
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    screen._on_move(Direction.RIGHT)  # starts a leg without settling
+    assert screen._animation_job is not None
+    screen._start_time = time.monotonic() - 5.0
+
+    screen._on_tick()
+
+    assert screen._session.timed_out is True
+    assert screen._animation_job is None
+    assert screen._tick_job is None
+
+
+def test_movement_after_timeout_is_a_no_op_at_the_screen_level(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    maze = _open_maze(width=3)
+    screen = GameplayScreen(
+        tk_root,
+        maze,
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    screen._time_limit = Duration(milliseconds=5000)
+    screen._start_time = time.monotonic() - 5.0
+    screen._on_tick()
+    assert screen._session.timed_out is True
+
+    screen._on_move(Direction.RIGHT)
+
+    assert screen._session.moving_direction is None
+    assert screen._animation_job is None
+
+
+def test_solve_wins_the_race_against_a_timeout(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    write_time_limit(fake_settings_repository, Duration(milliseconds=5000))
+    maze = _open_maze(width=2)
+    screen = GameplayScreen(
+        tk_root,
+        maze,
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    screen._on_move(Direction.RIGHT)
+    _settle(screen)
+    assert screen._session.solved is True
+    screen._start_time = time.monotonic() - 5.0
+
+    screen._on_tick()
+
+    assert screen._session.timed_out is False
+    assert screen._timeout_banner is None
+    assert screen._win_banner is not None
+
+
+def test_restart_from_the_timeout_banner_starts_a_fresh_run(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    write_time_limit(fake_settings_repository, Duration(milliseconds=5000))
+    maze = _open_maze(width=3)
+    screen = GameplayScreen(
+        tk_root,
+        maze,
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    screen._start_time = time.monotonic() - 5.0
+    screen._on_tick()
+    assert screen._session.timed_out is True
+    banner = screen._timeout_banner
+
+    screen._restart_run()
+
+    assert screen._session.timed_out is False
+    assert screen._session.solved is False
+    assert screen._session.position == maze.entry
+    assert screen._session.elapsed == Duration(milliseconds=0)
+    assert screen._time_chip._value_label.cget("text") == "00:00"
+    assert screen._timeout_banner is None
+    assert not banner.winfo_exists()
+    assert screen._tick_job is not None
+    screen._on_move(Direction.RIGHT)
+    assert screen._session.moving_direction is not None
+
+
+def test_restart_reads_a_fresh_time_limit(tk_root, fake_maze_repository, fake_settings_repository):
+    write_time_limit(fake_settings_repository, Duration(milliseconds=5000))
+    maze = _open_maze(width=3)
+    screen = GameplayScreen(
+        tk_root,
+        maze,
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    screen._start_time = time.monotonic() - 5.0
+    screen._on_tick()
+    assert screen._session.timed_out is True
+    write_time_limit(fake_settings_repository, Duration(milliseconds=30000))
+
+    screen._restart_run()
+
+    assert screen._time_limit == Duration(milliseconds=30000)
+
+
+def test_restart_with_a_solved_win_banner_destroys_it_and_resets_the_run(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    maze = _open_maze(width=2)
+    screen = GameplayScreen(
+        tk_root,
+        maze,
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    screen._on_move(Direction.RIGHT)
+    _settle(screen)
+    assert screen._session.solved is True
+    banner = screen._win_banner
+
+    screen._restart_run()
+
+    assert screen._win_banner is None
+    assert not banner.winfo_exists()
+    assert screen._session.solved is False
+    assert screen._session.timed_out is False
+    assert screen._session.position == maze.entry
+
+
+def test_continue_from_the_timeout_banner_keeps_the_run_stopped(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    write_time_limit(fake_settings_repository, Duration(milliseconds=5000))
+    screen = GameplayScreen(
+        tk_root,
+        _classic_maze(),
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    screen._start_time = time.monotonic() - 5.0
+    screen._on_tick()
+    assert screen._session.timed_out is True
+    banner = screen._timeout_banner
+
+    screen._on_timeout_continue_clicked()
+
+    assert screen._timeout_banner is None
+    assert not banner.winfo_exists()
+    assert screen._session.timed_out is True
+    assert screen._tick_job is None
+
+
+def test_timeout_banner_pills_are_not_primary_with_a_generated_maze(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    # Regression (mirrors `test_continue_button_is_not_a_primary_pill`): a
+    # `GENERATED` maze's Save pill can still be showing below the banner, so
+    # neither Restart nor Continue may be `primary=True` -- at most one
+    # primary pill per screen.
+    write_time_limit(fake_settings_repository, Duration(milliseconds=5000))
+    screen = GameplayScreen(
+        tk_root,
+        dataclasses.replace(_open_maze(width=3), kind=MazeKind.GENERATED),
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    screen._start_time = time.monotonic() - 5.0
+    screen._on_tick()
+    assert screen._timeout_banner is not None
+
+    pills = [c for c in screen._timeout_banner.winfo_children() if isinstance(c, PillButton)]
+    assert len(pills) == 2
+    assert all(pill._primary is False for pill in pills)
+
+
+def test_restart_resets_the_hard_mode_visual_state(
+    tk_root, fake_maze_repository, fake_settings_repository
+):
+    write_time_limit(fake_settings_repository, Duration(milliseconds=5000))
+    maze = _open_maze(width=3)
+    screen = GameplayScreen(
+        tk_root,
+        maze,
+        Theme.LIGHT,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    screen._toggle_hard_mode()
+    screen._on_move(Direction.RIGHT)
+    assert screen._maze_canvas.itemcget("fog", "state") == "normal"
+    screen._start_time = time.monotonic() - 5.0
+    screen._on_tick()
+    assert screen._session.timed_out is True
+
+    screen._restart_run()
+
+    assert screen._session.hard_mode is False
+    assert screen._session.timed_out is False
+    assert screen._maze_canvas.itemcget("fog", "state") == "hidden"
+    ball = screen._maze_canvas.find_withtag("ball")[0]
+    assert screen._maze_canvas.itemcget(ball, "state") == "normal"
+    assert screen._status_light_frame.winfo_manager() == ""

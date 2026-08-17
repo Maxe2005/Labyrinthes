@@ -7,6 +7,7 @@ from labyrinthes.application.player_session import (
     set_level,
     set_mode,
     set_speed,
+    set_timed_out,
     start_session,
     tick,
 )
@@ -698,6 +699,145 @@ def test_set_hard_mode_is_a_no_op_once_solved():
     session = request_move(session, Direction.RIGHT)
     session = _settle(session)
     assert session.solved is True
+
+    result = set_hard_mode(session, True)
+
+    assert result is session
+    assert session.hard_mode is False
+
+
+# -- time limit / timed out (Story 2.9) -------------------------------
+
+
+def test_start_session_starts_not_timed_out():
+    maze = _walled_maze()
+
+    session = start_session(maze)
+
+    assert session.timed_out is False
+
+
+def test_set_timed_out_sets_the_flag():
+    maze = _walled_maze()
+
+    session = set_timed_out(start_session(maze), True)
+
+    assert session.timed_out is True
+
+
+def test_set_timed_out_false_clears_the_flag():
+    maze = _walled_maze()
+
+    session = set_timed_out(set_timed_out(start_session(maze), True), False)
+
+    assert session.timed_out is False
+
+
+def test_set_timed_out_preserves_the_other_run_fields():
+    maze = _open_maze(width=3)
+    session = request_move(start_session(maze), Direction.RIGHT)
+    session = set_speed(session, MovementSpeed.FAST)
+    assert session.moving_direction is Direction.RIGHT
+    assert session.leg_target == Position(row=0, col=1)
+    assert session.step == 0
+
+    session = set_timed_out(session, True)
+
+    assert session.timed_out is True
+    assert session.moving_direction is Direction.RIGHT
+    assert session.leg_target == Position(row=0, col=1)
+    assert session.step == 0
+    assert session.speed is MovementSpeed.FAST
+
+
+def test_set_timed_out_is_a_no_op_once_solved():
+    maze = _open_maze(width=2)
+    session = _discrete(maze)
+    session = request_move(session, Direction.RIGHT)
+    session = _settle(session)
+    assert session.solved is True
+
+    result = set_timed_out(session, True)
+
+    assert result is session
+    assert session.timed_out is False
+
+
+def test_request_move_is_a_no_op_once_timed_out():
+    maze = _open_maze(width=3)
+    session = set_timed_out(start_session(maze), True)
+
+    result = request_move(session, Direction.RIGHT)
+
+    assert result is session
+    assert session.moving_direction is None
+
+
+def test_advance_step_is_a_no_op_once_timed_out():
+    maze = _open_maze(width=3)
+    session = request_move(start_session(maze), Direction.RIGHT)
+    assert session.moving_direction is Direction.RIGHT
+
+    session = set_timed_out(session, True)
+    result = advance_step(session)
+
+    assert result is session
+    assert session.step == 0
+
+
+def test_tick_is_a_no_op_once_timed_out():
+    maze = _walled_maze()
+    session = set_timed_out(start_session(maze), True)
+
+    result = tick(session, Duration(milliseconds=5000))
+
+    assert result is session
+    assert session.elapsed == Duration(milliseconds=0)
+
+
+def test_set_mode_is_a_no_op_once_timed_out():
+    maze = _walled_maze()
+    session = set_timed_out(start_session(maze), True)
+
+    result = set_mode(session, MovementMode.DISCRETE)
+
+    assert result is session
+    assert session.mode is MovementMode.SMOOTH
+
+
+def test_set_speed_is_a_no_op_once_timed_out():
+    maze = _walled_maze()
+    session = set_timed_out(start_session(maze), True)
+
+    result = set_speed(session, MovementSpeed.FAST)
+
+    assert result is session
+    assert session.speed is MovementSpeed.NORMAL
+
+
+def test_set_level_is_a_no_op_once_timed_out():
+    maze = _walled_maze()
+    session = set_timed_out(start_session(maze), True)
+
+    result = set_level(session, Level.MAX)
+
+    assert result is session
+    assert session.level is Level.ONE
+
+
+def test_set_difficulty_is_a_no_op_once_timed_out():
+    maze = _walled_maze(width=8, height=6)
+    session = set_timed_out(set_level(start_session(maze), Level.TWO), True)
+
+    result = set_difficulty(session, Difficulty.TWO)
+
+    assert result is session
+    assert session.difficulty is Difficulty.ONE
+
+
+def test_set_hard_mode_is_a_no_op_once_timed_out():
+    maze = _walled_maze()
+    session = set_timed_out(start_session(maze), True)
 
     result = set_hard_mode(session, True)
 
