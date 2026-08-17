@@ -9,7 +9,7 @@ context: ['_bmad-output/implementation-artifacts/epic-2-context.md']
 
 # Story 2.10: Confirmation prompts per action
 
-Status: in-progress
+Status: done
 
 ## Story
 
