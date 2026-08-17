@@ -208,3 +208,20 @@ def test_a_non_numeric_rows_field_does_not_mask_an_out_of_bounds_columns_error(
     assert dialog._error_labels["columns"].cget("text") == "Columns must be between 3 and 50."
     assert dialog._error_labels["rows"].cget("text") == "Enter a whole number."
     assert calls == []
+
+
+def test_every_entry_locally_consumes_b_c_p_before_the_global_home_shortcuts(
+    tk_root, fake_settings_repository
+):
+    # `NewMazeDialog` is opened from Home while Home's frame -- and its
+    # `open_builder`/`open_new_maze`/`open_player` ("b"/"c"/"p") global
+    # `bind_all()` shortcuts -- are still live. Without a local guard,
+    # typing any of those letters into a field (e.g. the "abc" non-numeric
+    # scenario) would stack a second dialog or navigate away mid-edit.
+    # Mirrors `GenerateRandomDialog`'s identical `<KeyPress-n>` guard test.
+    on_confirm, _ = _confirm_stub()
+    dialog = _dialog(tk_root, on_confirm, fake_settings_repository)
+
+    for entry in dialog._entries.values():
+        for letter in ("b", "B", "c", "C", "p", "P"):
+            assert entry.bind(f"<KeyPress-{letter}>") != ""

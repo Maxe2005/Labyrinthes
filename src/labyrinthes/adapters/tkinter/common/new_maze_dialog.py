@@ -114,6 +114,16 @@ class NewMazeDialog(tk.Toplevel):
         entry.pack(side="left")
         entry.bind("<KeyRelease>", self._on_field_changed)
         entry.bind("<Return>", self._on_confirm_clicked)
+        # Consume "b"/"B", "c"/"C", "p"/"P" locally before they reach the
+        # global `open_builder`/`open_new_maze`/`open_player` shortcuts'
+        # `bind_all()` handlers -- this dialog is opened from Home while
+        # Home's frame (and its shortcuts) are still live, so typing any of
+        # these letters (e.g. the "abc" non-numeric-field scenario) would
+        # otherwise stack a second dialog or navigate away mid-edit.
+        # Mirrors `GenerateRandomDialog`'s identical `<KeyPress-n>` guard
+        # (Story 2.2) and `ClassicMazeGallery._jump_entry`'s (Story 2.1).
+        for letter in ("b", "B", "c", "C", "p", "P"):
+            entry.bind(f"<KeyPress-{letter}>", lambda _event: "break")
         self._entries[key] = entry
 
         error_label = tk.Label(
