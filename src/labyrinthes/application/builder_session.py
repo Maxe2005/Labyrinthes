@@ -20,9 +20,15 @@ Four tools:
   cell; a border wall stops the cursor without breaking anything (FR-2's
   closed-border invariant always wins).
 - `BuilderTool.DESTROY_ZONE` / `BuilderTool.RESTORE_ZONE` (Story 3.3) --
-  `apply_zone_operation(session, corner_a, corner_b)` batches
+  `apply_zone_operation(session, tool, corner_a, corner_b)` batches
   `domain.zone_editing.destroy_zone`/`restore_zone` over the rectangle the
-  adapter's click-and-drag spanned; the cursor never moves.
+  adapter's click-and-drag spanned; the cursor never moves. `tool` is
+  taken as an explicit argument, not read off `session.tool`, so a caller
+  can pass the tool captured at *press* time -- the tool that governs the
+  whole press-to-release gesture -- even if the user switched tools (e.g.
+  via a keybinding) while still holding the mouse button down. A live
+  re-read of `session.tool` at release time would let a single continuous
+  gesture be interpreted under two different tools.
 """
 
 from __future__ import annotations
@@ -100,23 +106,25 @@ def apply_wall_toggle(session: BuilderSession, wall: Wall) -> BuilderSession:
 
 
 def apply_zone_operation(
-    session: BuilderSession, corner_a: Position, corner_b: Position
+    session: BuilderSession, tool: BuilderTool, corner_a: Position, corner_b: Position
 ) -> BuilderSession:
     """Destroy or restore the rectangular zone spanning `corner_a`/`corner_b`,
-    per `session.tool`.
+    per the given `tool` -- not `session.tool`.
 
     `BuilderTool.DESTROY_ZONE` calls `domain.zone_editing.destroy_zone`,
     `BuilderTool.RESTORE_ZONE` calls `restore_zone`; the cursor is left
-    unchanged (mirrors `apply_wall_toggle`). Border walls within the span
-    are silently skipped by the domain functions themselves, never raised
-    (Story 3.3's Boundaries). Callers are expected to gate on `session.tool`
-    being one of the two zone tools before calling this -- passing neither
-    is a no-op, since the adapter's own drag-release gating is what decides
-    whether a zone operation happens at all.
+    unchanged (mirrors `apply_wall_toggle`), and `session.tool` itself is
+    also left unchanged -- `tool` only decides *this* dispatch, it never
+    overwrites the session's live active tool. Border walls within the
+    span are silently skipped by the domain functions themselves, never
+    raised (Story 3.3's Boundaries). `tool` being neither zone tool is a
+    no-op returning `session` unchanged (the adapter's own drag-release
+    gating is what normally decides whether a zone operation happens at
+    all; this is a defensive fallback, not the primary gate).
     """
-    if session.tool is BuilderTool.DESTROY_ZONE:
+    if tool is BuilderTool.DESTROY_ZONE:
         new_grid = destroy_zone(session.maze.grid, corner_a, corner_b)
-    elif session.tool is BuilderTool.RESTORE_ZONE:
+    elif tool is BuilderTool.RESTORE_ZONE:
         new_grid = restore_zone(session.maze.grid, corner_a, corner_b)
     else:
         return session
