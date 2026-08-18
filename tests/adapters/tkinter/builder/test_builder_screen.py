@@ -21,6 +21,8 @@ from labyrinthes.domain.level_visibility import Wall
 from labyrinthes.domain.maze import Maze, MazeKind
 from labyrinthes.domain.movement import Direction
 from labyrinthes.domain.position import Position
+from labyrinthes.domain.wall_editing import count_broken_walls
+from labyrinthes.domain.zone_editing import destroy_zone
 
 
 class _FakeEvent:
@@ -47,6 +49,14 @@ def _click_wall(canvas: _BuilderMazeCanvas, wall: Wall) -> None:
     """Simulate a click on `wall`'s bar/gap: the midpoint of its canvas item."""
     x0, y0, x1, y1 = canvas.coords(canvas._wall_items[wall])
     canvas._on_click(_FakeEvent(int((x0 + x1) / 2), int((y0 + y1) / 2)))
+
+
+def _drag_zone(canvas: _BuilderMazeCanvas, anchor: Position, end: Position) -> None:
+    """Simulate a press-drag-release gesture: press at `anchor`'s cell center,
+    release at `end`'s cell center."""
+    size = canvas._cell_size
+    canvas._on_click(_FakeEvent(anchor.col * size + size // 2, anchor.row * size + size // 2))
+    canvas._on_release(_FakeEvent(end.col * size + size // 2, end.row * size + size // 2))
 
 
 def test_mount_returns_a_frame_parented_under_the_given_parent(
@@ -532,6 +542,141 @@ def test_wall_bar_canvas_color_reflects_present_vs_broken_state(
     _click_wall(canvas, Wall(1, 1, "top"))
 
     assert canvas.itemcget(item, "fill") == colors.wall
+
+
+# -- zone editing: destroy/restore a rectangular zone (Story 3.3) ----------
+
+
+def test_destroy_zone_drag_destroys_the_rectangle_in_one_operation(
+    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+):
+    navigate, _ = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+
+    frame = mount(
+        tk_root,
+        _sketch_maze(4, 3),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+    )
+
+    edit_area = find_all(frame, _BuilderEditArea)[0]
+    destroy_button = next(
+        b for b in find_all(frame, ToolButton) if b._label.cget("text") == "Destroy Zone"
+    )
+    destroy_button._on_click()
+    assert destroy_button.active is True
+
+    canvas = find_all(frame, tk.Canvas)[0]
+    walls_chip = next(
+        c for c in find_all(frame, HudChip) if c._caption.cget("text") == "WALLS BROKEN"
+    )
+
+    _drag_zone(canvas, Position(0, 0), Position(1, 1))
+
+    expected_grid = destroy_zone(_sketch_maze(4, 3).grid, Position(0, 0), Position(1, 1))
+    assert edit_area._session.maze.grid == expected_grid
+    assert walls_chip._value_label.cget("text") == str(count_broken_walls(expected_grid))
+
+
+def test_restore_zone_drag_over_a_just_destroyed_zone_returns_it_to_its_initial_state(
+    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+):
+    # AC2: restoring the same rectangle just destroyed returns every wall in
+    # it exactly to its initial (present) state.
+    navigate, _ = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+
+    frame = mount(
+        tk_root,
+        _sketch_maze(4, 3),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+    )
+
+    edit_area = find_all(frame, _BuilderEditArea)[0]
+    canvas = find_all(frame, tk.Canvas)[0]
+    walls_chip = next(
+        c for c in find_all(frame, HudChip) if c._caption.cget("text") == "WALLS BROKEN"
+    )
+    original_grid = edit_area._session.maze.grid
+
+    edit_area._activate_destroy_zone()
+    _drag_zone(canvas, Position(0, 0), Position(1, 1))
+    assert walls_chip._value_label.cget("text") != "0"
+
+    edit_area._activate_restore_zone()
+    _drag_zone(canvas, Position(0, 0), Position(1, 1))
+
+    assert edit_area._session.maze.grid == original_grid
+    assert walls_chip._value_label.cget("text") == "0"
+
+
+def test_zone_tool_active_press_and_release_on_the_same_cell_is_a_no_op(
+    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+):
+    navigate, _ = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+
+    frame = mount(
+        tk_root,
+        _sketch_maze(4, 3),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+    )
+
+    edit_area = find_all(frame, _BuilderEditArea)[0]
+    canvas = find_all(frame, tk.Canvas)[0]
+    walls_chip = next(
+        c for c in find_all(frame, HudChip) if c._caption.cget("text") == "WALLS BROKEN"
+    )
+    original_grid = edit_area._session.maze.grid
+    edit_area._activate_destroy_zone()
+
+    _drag_zone(canvas, Position(1, 1), Position(1, 1))
+
+    assert edit_area._session.maze.grid == original_grid
+    assert walls_chip._value_label.cget("text") == "0"
+
+
+def test_break_mode_click_and_drag_only_toggles_the_directly_clicked_wall(
+    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+):
+    # Break mode is active by default: the press itself still behaves like
+    # Story 3.2's single-click wall toggle, but the drag/release never
+    # triggers a zone operation -- zone dispatch gates on
+    # DESTROY_ZONE/RESTORE_ZONE, so a Break-mode drag is ignored.
+    navigate, _ = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+
+    frame = mount(
+        tk_root,
+        _sketch_maze(4, 3),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+    )
+
+    edit_area = find_all(frame, _BuilderEditArea)[0]
+    canvas = find_all(frame, tk.Canvas)[0]
+    walls_chip = next(
+        c for c in find_all(frame, HudChip) if c._caption.cget("text") == "WALLS BROKEN"
+    )
+
+    wall = Wall(1, 1, "top")
+    x0, y0, x1, y1 = canvas.coords(canvas._wall_items[wall])
+    canvas._on_click(_FakeEvent(int((x0 + x1) / 2), int((y0 + y1) / 2)))
+    canvas._on_release(_FakeEvent(3 * canvas._cell_size, 2 * canvas._cell_size))
+
+    assert walls_chip._value_label.cget("text") == "1"
+    assert edit_area._session.maze.grid.cell_at(Position(1, 1)).has_top_wall is False
 
 
 def test_cancelling_the_new_maze_dialog_destroys_it_and_leaves_the_frame_empty(

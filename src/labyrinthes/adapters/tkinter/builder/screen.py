@@ -11,9 +11,10 @@ the freshly-built `Maze` to `navigate(ScreenId.BUILDER, maze)`, re-running
 `_BuilderEditArea` owns one adapter-local `BuilderSession` (Epic 3
 Technical Decisions' "adapter-local mutable session wrapper... around the
 immutable `Maze` value") and wires:
-- A left `ToolButtonGroup` side bar: Break Wall / Pass-through, mutually
-  exclusive, mirrored by the `break_wall`/`pass_through` keybindings
-  (`ScreenId.BUILDER`-scoped, so 'b'/'p' can also mean Home's
+- A left `ToolButtonGroup` side bar: Break Wall / Pass-through / Destroy
+  Zone / Restore Zone, mutually exclusive, mirrored by the
+  `break_wall`/`pass_through`/`destroy_zone`/`restore_zone` keybindings
+  (`ScreenId.BUILDER`-scoped, so 'b'/'p'/'d'/'r' can also mean Home's
   `open_builder`/`open_player` without collision -- see
   `common/keybindings.py`'s `scope` field).
 - A center column: `HudChip`s for grid size + live "Walls broken", above
@@ -21,6 +22,14 @@ immutable `Maze` value") and wires:
 - Arrow-key cursor movement, reusing the existing (scope-less)
   `move_up`/`move_down`/`move_left`/`move_right` entries -- Builder and
   Player are never mounted simultaneously, so no scope is needed there.
+- Click-and-drag zone editing (Story 3.3): `_BuilderMazeCanvas` compares
+  the press cell to the release cell (both cell-quantized via
+  `_pixel_to_cell`) and fires `on_zone_dragged` only when they differ --
+  a same-cell click is never a zone operation, no separate pixel-distance
+  threshold. `_on_zone_dragged` gates on `session.tool` being
+  `DESTROY_ZONE`/`RESTORE_ZONE` before dispatching to
+  `apply_zone_operation`, so a drag while Break/Pass-through is active is
+  ignored.
 
 Never imports `home`/`player` or `adapters/storage/` (AD-1, AD-9).
 """
@@ -52,6 +61,7 @@ from labyrinthes.application.builder_session import (
     BuilderSession,
     BuilderTool,
     apply_wall_toggle,
+    apply_zone_operation,
     broken_wall_count,
     move_cursor,
     set_tool,
@@ -175,6 +185,8 @@ class _BuilderEditArea(tk.Frame):
             bind_shortcut(self, keybinding(action_id), functools.partial(self._on_move, direction))
         bind_shortcut(self, keybinding("break_wall"), self._activate_break)
         bind_shortcut(self, keybinding("pass_through"), self._activate_pass_through)
+        bind_shortcut(self, keybinding("destroy_zone"), self._activate_destroy_zone)
+        bind_shortcut(self, keybinding("restore_zone"), self._activate_restore_zone)
 
     # -- construction --------------------------------------------------
 
@@ -208,6 +220,31 @@ class _BuilderEditArea(tk.Frame):
         )
         self._pass_through_button.pack(fill="x")
 
+        destroy_kb = keybinding("destroy_zone")
+        restore_kb = keybinding("restore_zone")
+
+        self._destroy_zone_button = ToolButton(
+            sidebar,
+            destroy_kb.label,
+            theme=self._theme,
+            shortcut=destroy_kb.display,
+            tooltip="Click-and-drag across a rectangle to break every wall inside it",
+            group=group,
+            command=self._activate_destroy_zone,
+        )
+        self._destroy_zone_button.pack(fill="x", pady=(SPACING["sm"], 0))
+
+        self._restore_zone_button = ToolButton(
+            sidebar,
+            restore_kb.label,
+            theme=self._theme,
+            shortcut=restore_kb.display,
+            tooltip="Click-and-drag across a rectangle to restore every wall inside it",
+            group=group,
+            command=self._activate_restore_zone,
+        )
+        self._restore_zone_button.pack(fill="x", pady=(SPACING["sm"], 0))
+
         # `start_builder_session()` defaults to `BuilderTool.BREAK` -- reflect
         # that in the initial button styling.
         self._break_button.set_active(True)
@@ -236,6 +273,7 @@ class _BuilderEditArea(tk.Frame):
             cursor=self._session.cursor,
             theme=self._theme,
             on_wall_clicked=self._on_wall_clicked,
+            on_zone_dragged=self._on_zone_dragged,
         )
         self._canvas.pack(fill="both", expand=True)
 
@@ -249,6 +287,14 @@ class _BuilderEditArea(tk.Frame):
         self._session = set_tool(self._session, BuilderTool.PASS_THROUGH)
         self._pass_through_button.set_active(True)
 
+    def _activate_destroy_zone(self) -> None:
+        self._session = set_tool(self._session, BuilderTool.DESTROY_ZONE)
+        self._destroy_zone_button.set_active(True)
+
+    def _activate_restore_zone(self) -> None:
+        self._session = set_tool(self._session, BuilderTool.RESTORE_ZONE)
+        self._restore_zone_button.set_active(True)
+
     # -- editing -----------------------------------------------------
 
     def _on_wall_clicked(self, wall: Wall) -> None:
@@ -261,6 +307,15 @@ class _BuilderEditArea(tk.Frame):
         except DomainValidationError:
             # Border wall: refused, no-op (FR-2's closed-border invariant).
             return
+        self._sync_after_wall_change()
+
+    def _on_zone_dragged(self, anchor: Position, end: Position) -> None:
+        # Zone-tool-only: a Break/Pass-through drag never triggers a zone
+        # operation (Story 3.3's Boundaries -- zone dispatch gates on the
+        # active tool, same as `_on_wall_clicked` gates on `BREAK`).
+        if self._session.tool not in (BuilderTool.DESTROY_ZONE, BuilderTool.RESTORE_ZONE):
+            return
+        self._session = apply_zone_operation(self._session, anchor, end)
         self._sync_after_wall_change()
 
     def _on_move(self, direction: Direction) -> None:
@@ -294,11 +349,16 @@ class _BuilderMazeCanvas(tk.Canvas):
         cursor: Position,
         theme: Theme,
         on_wall_clicked: Callable[[Wall], None],
+        on_zone_dragged: Callable[[Position, Position], None],
     ) -> None:
         self._theme = theme
         self._on_wall_clicked = on_wall_clicked
+        self._on_zone_dragged = on_zone_dragged
         grid = maze.grid
+        self._grid_width = grid.width
+        self._grid_height = grid.height
         self._cell_size = _cell_size(grid.width, grid.height)
+        self._drag_anchor: Position | None = None
         colors = colors_for(theme)
 
         super().__init__(
@@ -319,6 +379,7 @@ class _BuilderMazeCanvas(tk.Canvas):
         self._cursor_id = self._draw_cursor(cursor, colors)
 
         self.bind("<Button-1>", self._on_click)
+        self.bind("<ButtonRelease-1>", self._on_release)
 
     def _draw_walls(self, grid: Grid, colors: ColorTokens) -> None:
         # Only genuine wall positions: a "top" bit is only meaningful for a
@@ -380,7 +441,17 @@ class _BuilderMazeCanvas(tk.Canvas):
         x0, y0 = position.col * size, position.row * size
         self.coords(self._cursor_id, x0, y0, x0 + size, y0 + size)
 
+    def _pixel_to_cell(self, x: int, y: int) -> Position:
+        """The grid cell containing pixel `(x, y)`, clamped to the grid's
+        bounds -- a drag that ends (or starts) outside the canvas still
+        resolves to the nearest edge cell rather than raising."""
+        size = self._cell_size
+        col = max(0, min(self._grid_width - 1, x // size))
+        row = max(0, min(self._grid_height - 1, y // size))
+        return Position(row=row, col=col)
+
     def _on_click(self, event: tk.Event) -> None:
+        self._drag_anchor = self._pixel_to_cell(event.x, event.y)
         hit = self.find_closest(event.x, event.y, halo=_CLICK_HALO)
         if not hit:
             return
@@ -389,3 +460,15 @@ class _BuilderMazeCanvas(tk.Canvas):
             # Closest item was the cursor rectangle, not a wall bar/gap.
             return
         self._on_wall_clicked(wall)
+
+    def _on_release(self, event: tk.Event) -> None:
+        # The click-vs-drag split is decided purely by comparing the press
+        # cell to the release cell -- a release on the same cell as the
+        # press is never a zone operation, with no separate pixel-distance
+        # threshold (Story 3.3's Boundaries).
+        if self._drag_anchor is None:
+            return
+        anchor = self._drag_anchor
+        end = self._pixel_to_cell(event.x, event.y)
+        if end != anchor:
+            self._on_zone_dragged(anchor, end)
