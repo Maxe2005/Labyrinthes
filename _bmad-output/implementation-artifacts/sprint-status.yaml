@@ -66,7 +66,7 @@ development_status:
   2-9-timer-optional-time-limit-timeout-message: done
   3-1-new-maze-open-a-sketch: done
   3-2-wall-editing-break-restore: done
-  3-3-zone-editing-destroy-restore-a-rectangular-zone: backlog
+  3-3-zone-editing-destroy-restore-a-rectangular-zone: done
   3-4-entry-and-exit-marking: backlog
   3-5-direct-navigation-go-to: backlog
   3-6-sketch-maze-save: backlog
@@ -94,7 +94,7 @@ development_status:
   epic-6: backlog
   epic-6-retrospective: optional
 generated: 2026-08-05
-last_updated: 08-18-2026 13:23
+last_updated: 08-18-2026 14:30
 project: Labyrinthes
 project_key: NOKEY
 story_location: _bmad-output/implementation-artifacts

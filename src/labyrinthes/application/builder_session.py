@@ -10,7 +10,7 @@ Technical Decisions call this "an adapter-local mutable session wrapper
 `application/`-layer half of that wrapper lives (only rendering/input
 wiring stays in `adapters/tkinter/builder/`).
 
-Two tools:
+Four tools:
 - `BuilderTool.BREAK` -- `apply_wall_toggle(session, wall)` toggles the
   wall the adapter hit-tested from a click (breaks if present, restores
   if absent); the cursor never moves. `move_cursor` just moves the cursor,
@@ -19,6 +19,16 @@ Two tools:
   wall blocks the requested move, then moves the cursor into the target
   cell; a border wall stops the cursor without breaking anything (FR-2's
   closed-border invariant always wins).
+- `BuilderTool.DESTROY_ZONE` / `BuilderTool.RESTORE_ZONE` (Story 3.3) --
+  `apply_zone_operation(session, tool, corner_a, corner_b)` batches
+  `domain.zone_editing.destroy_zone`/`restore_zone` over the rectangle the
+  adapter's click-and-drag spanned; the cursor never moves. `tool` is
+  taken as an explicit argument, not read off `session.tool`, so a caller
+  can pass the tool captured at *press* time -- the tool that governs the
+  whole press-to-release gesture -- even if the user switched tools (e.g.
+  via a keybinding) while still holding the mouse button down. A live
+  re-read of `session.tool` at release time would let a single continuous
+  gesture be interpreted under two different tools.
 """
 
 from __future__ import annotations
@@ -37,11 +47,13 @@ from labyrinthes.domain.wall_editing import (
     toggle_wall,
     wall_between,
 )
+from labyrinthes.domain.zone_editing import destroy_zone, restore_zone
 
 __all__ = [
     "BuilderSession",
     "BuilderTool",
     "apply_wall_toggle",
+    "apply_zone_operation",
     "broken_wall_count",
     "move_cursor",
     "set_tool",
@@ -54,6 +66,8 @@ class BuilderTool(enum.Enum):
 
     BREAK = "break"
     PASS_THROUGH = "pass-through"
+    DESTROY_ZONE = "destroy-zone"
+    RESTORE_ZONE = "restore-zone"
 
 
 @dataclass(frozen=True)
@@ -87,6 +101,33 @@ def apply_wall_toggle(session: BuilderSession, wall: Wall) -> BuilderSession:
     clicking, so this only fires for interior walls in practice.
     """
     new_grid = toggle_wall(session.maze.grid, wall)
+    new_maze = dataclasses.replace(session.maze, grid=new_grid)
+    return replace(session, maze=new_maze)
+
+
+def apply_zone_operation(
+    session: BuilderSession, tool: BuilderTool, corner_a: Position, corner_b: Position
+) -> BuilderSession:
+    """Destroy or restore the rectangular zone spanning `corner_a`/`corner_b`,
+    per the given `tool` -- not `session.tool`.
+
+    `BuilderTool.DESTROY_ZONE` calls `domain.zone_editing.destroy_zone`,
+    `BuilderTool.RESTORE_ZONE` calls `restore_zone`; the cursor is left
+    unchanged (mirrors `apply_wall_toggle`), and `session.tool` itself is
+    also left unchanged -- `tool` only decides *this* dispatch, it never
+    overwrites the session's live active tool. Border walls within the
+    span are silently skipped by the domain functions themselves, never
+    raised (Story 3.3's Boundaries). `tool` being neither zone tool is a
+    no-op returning `session` unchanged (the adapter's own drag-release
+    gating is what normally decides whether a zone operation happens at
+    all; this is a defensive fallback, not the primary gate).
+    """
+    if tool is BuilderTool.DESTROY_ZONE:
+        new_grid = destroy_zone(session.maze.grid, corner_a, corner_b)
+    elif tool is BuilderTool.RESTORE_ZONE:
+        new_grid = restore_zone(session.maze.grid, corner_a, corner_b)
+    else:
+        return session
     new_maze = dataclasses.replace(session.maze, grid=new_grid)
     return replace(session, maze=new_maze)
 
