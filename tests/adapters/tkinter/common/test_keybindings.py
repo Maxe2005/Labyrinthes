@@ -16,8 +16,17 @@ def test_every_action_id_in_the_table_is_unique():
 
 
 def test_every_key_in_the_table_is_unique_case_insensitively():
-    keys = [kb.key.lower() for kb in KEYBINDINGS]
-    assert len(keys) == len(set(keys))
+    # Keys are unique *within* each scope group, not globally (Story 3.2):
+    # `scope=None` entries are one group, each explicit `ScreenId` scope is
+    # its own separate group -- e.g. Home's 'b' (open_builder, scope=None)
+    # and Builder's 'b' (break_wall, scope=BUILDER) share a key but never
+    # collide, since Home and Builder are never mounted simultaneously.
+    by_scope: dict[object, list[str]] = {}
+    for kb in KEYBINDINGS:
+        by_scope.setdefault(kb.scope, []).append(kb.key.lower())
+
+    for scope, keys in by_scope.items():
+        assert len(keys) == len(set(keys)), f"duplicate key(s) in scope {scope!r}: {keys}"
 
 
 def test_display_is_the_uppercased_key():
