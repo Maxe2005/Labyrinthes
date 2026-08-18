@@ -26,9 +26,11 @@ surviving a navigate-away, so it is torn down along with `frame` if the
 user navigates away from Home while it's still open (see
 `new_maze_dialog.py`'s module docstring). On confirm, the dialog hands
 back a fully-formed `Maze` (`kind=MazeKind.SKETCH`, `id=None`,
-`grid=Grid.filled(columns, rows)`) that Home simply forwards to
-`navigate(ScreenId.PLAYER, maze)` -- Home never constructs the `Maze`
-itself, keeping that domain-shaping logic inside the dialog.
+`grid=Grid.filled(columns, rows)`) that Home forwards to
+`navigate(ScreenId.BUILDER, maze)` (Story 3.2 re-routed this from
+`ScreenId.PLAYER`: a fresh sketch is edited in the Builder, not played) --
+Home never constructs the `Maze` itself, keeping that domain-shaping logic
+inside the dialog.
 """
 
 from __future__ import annotations
@@ -103,7 +105,7 @@ def mount(
             frame,
             theme=theme,
             settings_repository=settings_repository,
-            on_confirm=lambda maze: navigate(ScreenId.PLAYER, maze),
+            on_confirm=lambda maze: navigate(ScreenId.BUILDER, maze),
         )
 
     # Looked up once each so the printed button text, the printed kbd-tag,

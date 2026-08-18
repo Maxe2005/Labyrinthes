@@ -378,7 +378,7 @@ def test_new_maze_dialog_confirm_navigates_to_player_with_the_new_sketch(
 
     assert len(calls) == 1
     screen_id, maze = calls[0]
-    assert screen_id is ScreenId.PLAYER
+    assert screen_id is ScreenId.BUILDER
     assert maze.kind is MazeKind.SKETCH
     assert maze.id is None
     assert maze.grid.width == 20
