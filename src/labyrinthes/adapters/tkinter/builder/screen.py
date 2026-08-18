@@ -26,10 +26,15 @@ immutable `Maze` value") and wires:
   the press cell to the release cell (both cell-quantized via
   `_pixel_to_cell`) and fires `on_zone_dragged` only when they differ --
   a same-cell click is never a zone operation, no separate pixel-distance
-  threshold. `_on_zone_dragged` gates on `session.tool` being
-  `DESTROY_ZONE`/`RESTORE_ZONE` before dispatching to
-  `apply_zone_operation`, so a drag while Break/Pass-through is active is
-  ignored.
+  threshold. The active tool is captured at *press* time (via
+  `capture_tool`) and threaded through to `on_zone_dragged`/
+  `apply_zone_operation` unchanged, rather than re-read live at release
+  time -- so switching tools mid-drag (e.g. a keybinding fired while the
+  button is still held) can never compound a press-time action under one
+  tool with a release-time zone operation under a different one.
+  `_on_zone_dragged` gates on the captured tool being
+  `DESTROY_ZONE`/`RESTORE_ZONE`, so a drag while Break/Pass-through was
+  active at press time is ignored.
 
 Never imports `home`/`player` or `adapters/storage/` (AD-1, AD-9).
 """
@@ -274,6 +279,7 @@ class _BuilderEditArea(tk.Frame):
             theme=self._theme,
             on_wall_clicked=self._on_wall_clicked,
             on_zone_dragged=self._on_zone_dragged,
+            capture_tool=lambda: self._session.tool,
         )
         self._canvas.pack(fill="both", expand=True)
 
@@ -309,13 +315,16 @@ class _BuilderEditArea(tk.Frame):
             return
         self._sync_after_wall_change()
 
-    def _on_zone_dragged(self, anchor: Position, end: Position) -> None:
+    def _on_zone_dragged(self, tool: BuilderTool, anchor: Position, end: Position) -> None:
         # Zone-tool-only: a Break/Pass-through drag never triggers a zone
         # operation (Story 3.3's Boundaries -- zone dispatch gates on the
         # active tool, same as `_on_wall_clicked` gates on `BREAK`).
-        if self._session.tool not in (BuilderTool.DESTROY_ZONE, BuilderTool.RESTORE_ZONE):
+        # `tool` is the tool captured at press time (`_BuilderMazeCanvas`'s
+        # `capture_tool`), not a live re-read of `self._session.tool` --
+        # see the module docstring's "switching tools mid-drag" note.
+        if tool not in (BuilderTool.DESTROY_ZONE, BuilderTool.RESTORE_ZONE):
             return
-        self._session = apply_zone_operation(self._session, anchor, end)
+        self._session = apply_zone_operation(self._session, tool, anchor, end)
         self._sync_after_wall_change()
 
     def _on_move(self, direction: Direction) -> None:
@@ -349,16 +358,19 @@ class _BuilderMazeCanvas(tk.Canvas):
         cursor: Position,
         theme: Theme,
         on_wall_clicked: Callable[[Wall], None],
-        on_zone_dragged: Callable[[Position, Position], None],
+        on_zone_dragged: Callable[[BuilderTool, Position, Position], None],
+        capture_tool: Callable[[], BuilderTool],
     ) -> None:
         self._theme = theme
         self._on_wall_clicked = on_wall_clicked
         self._on_zone_dragged = on_zone_dragged
+        self._capture_tool = capture_tool
         grid = maze.grid
         self._grid_width = grid.width
         self._grid_height = grid.height
         self._cell_size = _cell_size(grid.width, grid.height)
         self._drag_anchor: Position | None = None
+        self._drag_tool: BuilderTool | None = None
         colors = colors_for(theme)
 
         super().__init__(
@@ -452,6 +464,10 @@ class _BuilderMazeCanvas(tk.Canvas):
 
     def _on_click(self, event: tk.Event) -> None:
         self._drag_anchor = self._pixel_to_cell(event.x, event.y)
+        # Snapshot the active tool now -- the gesture this press might
+        # start is governed by whichever tool was active at press time,
+        # even if the user switches tools before releasing.
+        self._drag_tool = self._capture_tool()
         hit = self.find_closest(event.x, event.y, halo=_CLICK_HALO)
         if not hit:
             return
@@ -469,6 +485,12 @@ class _BuilderMazeCanvas(tk.Canvas):
         if self._drag_anchor is None:
             return
         anchor = self._drag_anchor
+        tool = self._drag_tool
         end = self._pixel_to_cell(event.x, event.y)
+        # Consumed: reset both before dispatching so a stray/duplicate
+        # <ButtonRelease-1> with no intervening <Button-1> can never replay
+        # a stale anchor/tool as a zone operation.
+        self._drag_anchor = None
+        self._drag_tool = None
         if end != anchor:
-            self._on_zone_dragged(anchor, end)
+            self._on_zone_dragged(tool, anchor, end)
