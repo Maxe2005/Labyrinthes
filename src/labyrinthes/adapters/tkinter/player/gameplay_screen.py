@@ -145,6 +145,8 @@ from labyrinthes.application.player_session import (
     tick as session_tick,
 )
 from labyrinthes.application.settings_repository import SettingsRepository
+from labyrinthes.application.theme_logo_settings import read_theme_logo
+from labyrinthes.application.logos import _logo_path
 from labyrinthes.application.time_limit_settings import read_time_limit
 from labyrinthes.domain.difficulty import Difficulty
 from labyrinthes.domain.duration import Duration
@@ -212,7 +214,6 @@ class GameplayScreen(tk.Frame):
         *,
         maze_repository: MazeRepository,
         settings_repository: SettingsRepository,
-        toggle_theme: Callable[[], None],
         on_kind_changed: Callable[[MazeKind], None] | None = None,
     ) -> None:
         colors = colors_for(theme)
@@ -220,7 +221,6 @@ class GameplayScreen(tk.Frame):
         self._theme = theme
         self._maze_repository = maze_repository
         self._settings_repository = settings_repository
-        self._toggle_theme = toggle_theme
         self._maze = maze  # tracks kind/id across a save -- see `_build_save_zone()`
         self._on_kind_changed = on_kind_changed
         self._session = start_session(maze)
@@ -447,11 +447,56 @@ class GameplayScreen(tk.Frame):
         )
         self._difficulty_plus_button.pack(side="left")
 
+        self._logo_key: str = read_theme_logo(self._settings_repository)
+        self._build_logo_section(colors)
+
         self._sync_difficulty_widgets()
         self._sync_mode_button()
 
     def _sync_mode_button(self) -> None:
         self._mode_button.set_active(self._session.mode is MovementMode.SMOOTH)
+
+    def _build_logo_section(self, colors: ColorTokens) -> None:
+        colors = colors_for(self._theme)
+        logo_frame = tk.Frame(self._sidebar, background=colors.window)
+        logo_frame.pack(anchor="w", pady=(SPACING["lg"], SPACING["sm"]))
+
+        tk.Label(
+            logo_frame,
+            text="Logo",
+            font=TYPOGRAPHY.body.to_tk_font(),
+            background=colors.window,
+            foreground=colors.ink,
+        ).pack(anchor="w")
+
+        try:
+            from PIL import Image, ImageTk
+            img = Image.open(_logo_path(self._logo_key))
+            img = img.resize((64, 64), Image.Resampling.LANCZOS)
+            self._logo_photo = ImageTk.PhotoImage(img)
+            logo_label = tk.Label(
+                logo_frame,
+                image=self._logo_photo,
+                background=colors.window,
+            )
+            logo_label.image = self._logo_photo
+            logo_label.pack(anchor="w", pady=(SPACING["xs"], 0))
+        except Exception:
+            tk.Label(
+                logo_frame,
+                text="—",
+                font=TYPOGRAPHY.body.to_tk_font(),
+                background=colors.window,
+                foreground=colors.ink_soft,
+            ).pack(anchor="w")
+
+        tk.Label(
+            logo_frame,
+            text=self._logo_key,
+            font=TYPOGRAPHY.body.to_tk_font(),
+            background=colors.window,
+            foreground=colors.ink_soft,
+        ).pack(anchor="w")
 
     def _build_maze_frame(self, colors: ColorTokens, theme: Theme) -> None:
         self._maze_frame = tk.Frame(
