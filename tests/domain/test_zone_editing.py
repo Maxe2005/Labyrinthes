@@ -127,3 +127,50 @@ def test_destroy_zone_updates_the_broken_wall_count_for_a_fully_interior_span():
 
     # top: 4 rows x 3 cols = 12; left: 3 rows x 4 cols = 12
     assert count_broken_walls(result) == 24
+
+
+# -- single-row / single-column spans (asymmetric range(r0, r1+2)/range(c0, c1+2)) --
+
+
+def test_destroy_zone_on_a_single_row_span_breaks_the_correct_walls():
+    grid = _filled()
+
+    result = destroy_zone(grid, Position(2, 1), Position(2, 3))
+
+    # top walls: row in [2, 3], col in [1, 3]; left walls: row == 2, col in [1, 4]
+    assert _top_walls(result, range(2, 4), range(1, 4)) == {False}
+    assert _left_walls(result, range(2, 3), range(1, 5)) == {False}
+    # Untouched outside the span.
+    assert result.cell_at(Position(1, 1)).has_top_wall is True  # a different row
+    assert result.cell_at(Position(3, 1)).has_left_wall is True  # left wall outside the row range
+
+
+def test_restore_zone_on_a_single_row_span_round_trips():
+    grid = _filled()
+
+    destroyed = destroy_zone(grid, Position(2, 1), Position(2, 3))
+    restored = restore_zone(destroyed, Position(2, 1), Position(2, 3))
+
+    assert restored == grid
+
+
+def test_destroy_zone_on_a_single_column_span_breaks_the_correct_walls():
+    grid = _filled()
+
+    result = destroy_zone(grid, Position(1, 2), Position(3, 2))
+
+    # top walls: row in [1, 4], col == 2; left walls: row in [1, 3], col in [2, 3]
+    assert _top_walls(result, range(1, 5), range(2, 3)) == {False}
+    assert _left_walls(result, range(1, 4), range(2, 4)) == {False}
+    # Untouched outside the span.
+    assert result.cell_at(Position(2, 1)).has_top_wall is True  # a different column
+    assert result.cell_at(Position(4, 2)).has_left_wall is True  # left wall outside the row range
+
+
+def test_restore_zone_on_a_single_column_span_round_trips():
+    grid = _filled()
+
+    destroyed = destroy_zone(grid, Position(1, 2), Position(3, 2))
+    restored = restore_zone(destroyed, Position(1, 2), Position(3, 2))
+
+    assert restored == grid
