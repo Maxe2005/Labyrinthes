@@ -1,4 +1,4 @@
-"""Builder edit screen (Story 3.2).
+"""Builder edit screen (Stories 3.2/3.3/3.4).
 
 `mount()` dispatches on `state` exactly like `player/screen.py`: `state is
 None` opens `NewMazeDialog` as the entry state (nothing else renders --
@@ -12,11 +12,12 @@ the freshly-built `Maze` to `navigate(ScreenId.BUILDER, maze)`, re-running
 Technical Decisions' "adapter-local mutable session wrapper... around the
 immutable `Maze` value") and wires:
 - A left `ToolButtonGroup` side bar: Break Wall / Pass-through / Destroy
-  Zone / Restore Zone, mutually exclusive, mirrored by the
-  `break_wall`/`pass_through`/`destroy_zone`/`restore_zone` keybindings
-  (`ScreenId.BUILDER`-scoped, so 'b'/'p'/'d'/'r' can also mean Home's
-  `open_builder`/`open_player` without collision -- see
-  `common/keybindings.py`'s `scope` field).
+  Zone / Restore Zone / Set Entry / Set Exit, mutually exclusive, mirrored
+  by the `break_wall`/`pass_through`/`destroy_zone`/`restore_zone`/
+  `set_entry`/`set_exit` keybindings (`ScreenId.BUILDER`-scoped, so
+  'b'/'p' can also mean Home's `open_builder`/`open_player` while
+  'd'/'r'/'e'/'x' are Builder-only -- see `common/keybindings.py`'s
+  `scope` field).
 - A center column: `HudChip`s for grid size + live "Walls broken", above
   `_BuilderMazeCanvas`.
 - Arrow-key cursor movement, reusing the existing (scope-less)
@@ -35,6 +36,24 @@ immutable `Maze` value") and wires:
   `_on_zone_dragged` gates on the captured tool being
   `DESTROY_ZONE`/`RESTORE_ZONE`, so a drag while Break/Pass-through was
   active at press time is ignored.
+- Entry/exit marking (Story 3.4): the Set Entry / Set Exit tools place
+  optional session markers -- entry on any cell, exit on a border cell
+  only (a non-border click is a no-op; `apply_set_exit`'s
+  `DomainValidationError` is swallowed, mirroring `_on_wall_clicked`).
+  Placement reuses the press/release cell comparison: `_on_release` fires
+  `on_cell_clicked` only for a same-cell press-captured marker tool, so a
+  stray drag never misplaces a marker. Redefining an existing marker at a
+  different cell is gated behind the `builder`-scope
+  `read_confirm_redefine_marker` setting (default `True`) via the shared
+  non-modal `ConfirmDialog` (the `_maybe_confirm` guard pattern from
+  `player/gameplay_screen.py`); clicking the marker's own cell is a no-op
+  with no prompt. The `_BuilderMazeCanvas` renders the entry as a filled
+  circle (`colors.entry`), the exit as a filled diamond (`colors.exit`),
+  and, only while Set Exit is active, a dashed-`?` ghost preview
+  (`colors.ghost`) at the cursor cell when that cell is on the border and
+  holds no marker -- `_BuilderEditArea._on_move` re-syncs markers via
+  `_sync_markers` so the ghost tracks the cursor, and it never rests on a
+  placeholder for an unset exit nor on a cell already carrying a marker.
 
 Never imports `home`/`player` or `adapters/storage/` (AD-1, AD-9).
 """
@@ -47,7 +66,10 @@ from collections.abc import Callable
 
 from labyrinthes.adapters.tkinter.common import (
     SPACING,
+    TYPOGRAPHY,
     BreadcrumbSegment,
+    ConfirmDialog,
+    FontSpec,
     HudChip,
     NavigateFn,
     NewMazeDialog,
@@ -65,6 +87,8 @@ from labyrinthes.adapters.tkinter.common.tokens import ColorTokens, colors_for
 from labyrinthes.application.builder_session import (
     BuilderSession,
     BuilderTool,
+    apply_set_entry,
+    apply_set_exit,
     apply_wall_toggle,
     apply_zone_operation,
     broken_wall_count,
@@ -72,10 +96,11 @@ from labyrinthes.application.builder_session import (
     set_tool,
     start_builder_session,
 )
+from labyrinthes.application.confirmation_settings import read_confirm_redefine_marker
 from labyrinthes.application.settings_repository import SettingsRepository
 from labyrinthes.domain.errors import DomainValidationError
 from labyrinthes.domain.grid import Grid
-from labyrinthes.domain.level_visibility import Wall
+from labyrinthes.domain.level_visibility import Wall, is_border_cell
 from labyrinthes.domain.maze import Maze
 from labyrinthes.domain.movement import Direction
 from labyrinthes.domain.position import Position
@@ -86,6 +111,14 @@ _MAX_CANVAS_SPAN = 480
 _MIN_CELL_SIZE = 16
 _MAX_CELL_SIZE = 40
 _WALL_WIDTH = 2
+# Fraction of a cell a marker's radius spans -- same scale as the Player's
+# `maze_canvas._MARKER_SCALE` (Story 3.4's marker geometry reference).
+_MARKER_SCALE = 0.6
+# Fraction of a cell the Set Exit ghost's dashed outline is inset from the
+# cell edge (scales with the cell so it never overflows the smallest cells).
+_GHOST_INSET_SCALE = 0.25
+# Fraction of a cell the ghost's "?" glyph's font size spans.
+_GHOST_FONT_SCALE = 0.55
 # Search radius (px) `find_closest()` accepts around a click -- without it,
 # a click meant for a *broken* (gap) wall would have to land exactly on the
 # invisible hairline drawn there (see `_BuilderMazeCanvas._draw_wall_bar`).
@@ -159,7 +192,7 @@ def mount(
         )
         return frame
 
-    edit_area = _BuilderEditArea(frame, state, theme)
+    edit_area = _BuilderEditArea(frame, state, theme, settings_repository=settings_repository)
     edit_area.pack(
         fill="both",
         expand=True,
@@ -173,11 +206,25 @@ def mount(
 class _BuilderEditArea(tk.Frame):
     """Tool side bar + HUD + maze canvas, wired to one `BuilderSession`."""
 
-    def __init__(self, parent: tk.Widget, maze: Maze, theme: Theme) -> None:
+    def __init__(
+        self,
+        parent: tk.Widget,
+        maze: Maze,
+        theme: Theme,
+        *,
+        settings_repository: SettingsRepository,
+    ) -> None:
         colors = colors_for(theme)
         super().__init__(parent, background=colors.window)
         self._theme = theme
+        self._settings_repository = settings_repository
         self._session: BuilderSession = start_builder_session(maze)
+        # The open marker-redefinition `ConfirmDialog`, if any -- `None`
+        # when no prompt is showing (Story 3.4). `_maybe_confirm`'s guard
+        # (`is not None` -> no-op) stops a second gated trigger from
+        # stacking a second dialog (the dialog is non-modal, so clicks can
+        # still reach this screen -- see `confirm_dialog.py`'s docstring).
+        self._confirm_dialog: ConfirmDialog | None = None
 
         self._build_tool_sidebar(colors)
 
@@ -192,6 +239,8 @@ class _BuilderEditArea(tk.Frame):
         bind_shortcut(self, keybinding("pass_through"), self._activate_pass_through)
         bind_shortcut(self, keybinding("destroy_zone"), self._activate_destroy_zone)
         bind_shortcut(self, keybinding("restore_zone"), self._activate_restore_zone)
+        bind_shortcut(self, keybinding("set_entry"), self._activate_set_entry)
+        bind_shortcut(self, keybinding("set_exit"), self._activate_set_exit)
 
     # -- construction --------------------------------------------------
 
@@ -250,6 +299,31 @@ class _BuilderEditArea(tk.Frame):
         )
         self._restore_zone_button.pack(fill="x", pady=(SPACING["sm"], 0))
 
+        entry_kb = keybinding("set_entry")
+        exit_kb = keybinding("set_exit")
+
+        self._set_entry_button = ToolButton(
+            sidebar,
+            entry_kb.label,
+            theme=self._theme,
+            shortcut=entry_kb.display,
+            tooltip="Click a cell to mark it as the maze entry",
+            group=group,
+            command=self._activate_set_entry,
+        )
+        self._set_entry_button.pack(fill="x", pady=(SPACING["sm"], 0))
+
+        self._set_exit_button = ToolButton(
+            sidebar,
+            exit_kb.label,
+            theme=self._theme,
+            shortcut=exit_kb.display,
+            tooltip="Click a border cell to mark it as the maze exit",
+            group=group,
+            command=self._activate_set_exit,
+        )
+        self._set_exit_button.pack(fill="x", pady=(SPACING["sm"], 0))
+
         # `start_builder_session()` defaults to `BuilderTool.BREAK` -- reflect
         # that in the initial button styling.
         self._break_button.set_active(True)
@@ -279,27 +353,43 @@ class _BuilderEditArea(tk.Frame):
             theme=self._theme,
             on_wall_clicked=self._on_wall_clicked,
             on_zone_dragged=self._on_zone_dragged,
+            on_cell_clicked=self._on_cell_clicked,
             capture_tool=lambda: self._session.tool,
         )
         self._canvas.pack(fill="both", expand=True)
+        self._sync_markers()
 
     # -- tool switching --------------------------------------------------
 
     def _activate_break(self) -> None:
         self._session = set_tool(self._session, BuilderTool.BREAK)
         self._break_button.set_active(True)
+        self._sync_markers()
 
     def _activate_pass_through(self) -> None:
         self._session = set_tool(self._session, BuilderTool.PASS_THROUGH)
         self._pass_through_button.set_active(True)
+        self._sync_markers()
 
     def _activate_destroy_zone(self) -> None:
         self._session = set_tool(self._session, BuilderTool.DESTROY_ZONE)
         self._destroy_zone_button.set_active(True)
+        self._sync_markers()
 
     def _activate_restore_zone(self) -> None:
         self._session = set_tool(self._session, BuilderTool.RESTORE_ZONE)
         self._restore_zone_button.set_active(True)
+        self._sync_markers()
+
+    def _activate_set_entry(self) -> None:
+        self._session = set_tool(self._session, BuilderTool.SET_ENTRY)
+        self._set_entry_button.set_active(True)
+        self._sync_markers()
+
+    def _activate_set_exit(self) -> None:
+        self._session = set_tool(self._session, BuilderTool.SET_EXIT)
+        self._set_exit_button.set_active(True)
+        self._sync_markers()
 
     # -- editing -----------------------------------------------------
 
@@ -331,8 +421,135 @@ class _BuilderEditArea(tk.Frame):
         previous_grid = self._session.maze.grid
         self._session = move_cursor(self._session, direction)
         self._canvas.set_cursor(self._session.cursor)
+        # The Set Exit ghost follows the cursor (border cells only) -- see
+        # `_sync_markers`.
+        self._sync_markers()
         if self._session.maze.grid is not previous_grid:
             self._sync_after_wall_change()
+
+    def _on_cell_clicked(self, tool: BuilderTool, position: Position) -> None:
+        # Marker-tool-only (the canvas only fires `on_cell_clicked` for a
+        # press-captured SET_ENTRY/SET_EXIT); dispatch on the captured
+        # `tool`, not a live re-read of `session.tool`, matching
+        # `_on_zone_dragged`'s press-time-gesture convention.
+        if tool is BuilderTool.SET_ENTRY:
+            self._place_entry(position)
+        elif tool is BuilderTool.SET_EXIT:
+            self._place_exit(position)
+
+    def _place_entry(self, position: Position) -> None:
+        # Clicking the cell already holding the marker, or the one holding
+        # the *other* marker (start and goal never share a cell), is a
+        # no-op with no prompt (I/O matrix). First placement is direct --
+        # only a *redefinition* at a different cell is gated by
+        # `read_confirm_redefine_marker` (default `True`).
+        if self._session.entry == position:
+            return
+        if self._session.exit == position:
+            return
+        on_apply = functools.partial(self._apply_set_entry, position)
+        if self._session.entry is None:
+            on_apply()
+            return
+        self._maybe_confirm(
+            read_confirm_redefine_marker(self._settings_repository),
+            message="Move the entry marker to this cell?",
+            on_confirm=on_apply,
+        )
+
+    def _place_exit(self, position: Position) -> None:
+        # Border-cell-only: a non-border target is a silent no-op, never a
+        # prompt (the ghost only ever previews border cells, so this is the
+        # accidental/exploratory click path). Same-cell is a no-op, and so
+        # is placing on the entry's cell (start and goal never share a
+        # cell); first placement is direct; only a redefinition is gated by
+        # the setting.
+        if not is_border_cell(self._session.maze.grid, position):
+            return
+        if self._session.exit == position:
+            return
+        if self._session.entry == position:
+            return
+        on_apply = functools.partial(self._apply_set_exit, position)
+        if self._session.exit is None:
+            on_apply()
+            return
+        self._maybe_confirm(
+            read_confirm_redefine_marker(self._settings_repository),
+            message="Move the exit marker to this cell?",
+            on_confirm=on_apply,
+        )
+
+    def _apply_set_entry(self, position: Position) -> None:
+        try:
+            self._session = apply_set_entry(self._session, position)
+        except DomainValidationError:
+            # Out-of-bounds, or collides with the exit marker: refused,
+            # silent no-op (mirrors `_apply_set_exit`).
+            return
+        self._sync_markers()
+
+    def _apply_set_exit(self, position: Position) -> None:
+        try:
+            self._session = apply_set_exit(self._session, position)
+        except DomainValidationError:
+            # Non-border target: refused, silent no-op (the I/O matrix's
+            # "adapter swallows" path -- mirrors `_on_wall_clicked`).
+            return
+        self._sync_markers()
+
+    def _maybe_confirm(
+        self,
+        enabled: bool,
+        *,
+        message: str,
+        on_confirm: Callable[[], None] | None = None,
+    ) -> None:
+        """Gate a marker redefinition behind a `ConfirmDialog` when `enabled`.
+
+        Never stacks: a second trigger while a dialog is already open is a
+        no-op (the dialog is non-modal, so a click could otherwise reach
+        this screen behind it). When `enabled`, opens the dialog and stores
+        it so the owning action's `on_confirm` only runs on Confirm; when
+        `enabled` is `False`, applies the action immediately. `on_close`
+        clears the guard. Mirrors `GameplayScreen._maybe_confirm`
+        (`player/gameplay_screen.py:665`).
+        """
+        if not enabled:
+            if on_confirm is not None:
+                on_confirm()
+            return
+        if self._confirm_dialog is not None:
+            return
+        self._confirm_dialog = ConfirmDialog(
+            self,
+            theme=self._theme,
+            message=message,
+            on_confirm=on_confirm,
+            on_close=self._clear_confirm_dialog,
+        )
+
+    def _clear_confirm_dialog(self) -> None:
+        self._confirm_dialog = None
+
+    def _sync_markers(self) -> None:
+        # The ghost preview is rendered only while Set Exit is active, at
+        # the cursor cell if that cell is on the border and holds no
+        # marker -- never a standing default/placeholder position for an
+        # unset exit, and never drawn over the entry/exit it would preview
+        # (the I/O matrix's "filled diamond marker replaces the ghost").
+        # Every session change that could affect markers (tool switch,
+        # cursor move, a placement) re-syncs through this single method.
+        ghost: Position | None = None
+        cursor = self._session.cursor
+        if (
+            self._session.tool is BuilderTool.SET_EXIT
+            and is_border_cell(self._session.maze.grid, cursor)
+            and cursor != self._session.entry
+            and cursor != self._session.exit
+        ):
+            ghost = cursor
+        self._canvas.refresh_markers(self._session.entry, self._session.exit, ghost)
 
     def _sync_after_wall_change(self) -> None:
         self._canvas.refresh_walls(self._session.maze.grid)
@@ -359,11 +576,13 @@ class _BuilderMazeCanvas(tk.Canvas):
         theme: Theme,
         on_wall_clicked: Callable[[Wall], None],
         on_zone_dragged: Callable[[BuilderTool, Position, Position], None],
+        on_cell_clicked: Callable[[BuilderTool, Position], None],
         capture_tool: Callable[[], BuilderTool],
     ) -> None:
         self._theme = theme
         self._on_wall_clicked = on_wall_clicked
         self._on_zone_dragged = on_zone_dragged
+        self._on_cell_clicked = on_cell_clicked
         self._capture_tool = capture_tool
         grid = maze.grid
         self._grid_width = grid.width
@@ -371,6 +590,12 @@ class _BuilderMazeCanvas(tk.Canvas):
         self._cell_size = _cell_size(grid.width, grid.height)
         self._drag_anchor: Position | None = None
         self._drag_tool: BuilderTool | None = None
+        self._marker_radius = int(round(self._cell_size * _MARKER_SCALE / 2))
+        self._ghost_font = FontSpec(
+            family=TYPOGRAPHY.heading.family,
+            size=max(8, int(self._cell_size * _GHOST_FONT_SCALE)),
+            weight="700",
+        ).to_tk_font()
         colors = colors_for(theme)
 
         super().__init__(
@@ -466,8 +691,13 @@ class _BuilderMazeCanvas(tk.Canvas):
         self._drag_anchor = self._pixel_to_cell(event.x, event.y)
         # Snapshot the active tool now -- the gesture this press might
         # start is governed by whichever tool was active at press time,
-        # even if the user switches tools before releasing.
+        # even if the user switches tools before releasing. Wall
+        # hit-testing only matters under the Break tool: marker tools place
+        # via `_on_release`'s same-cell click, so a wall hit under them is
+        # wasted work.
         self._drag_tool = self._capture_tool()
+        if self._drag_tool is not BuilderTool.BREAK:
+            return
         hit = self.find_closest(event.x, event.y, halo=_CLICK_HALO)
         if not hit:
             return
@@ -493,4 +723,107 @@ class _BuilderMazeCanvas(tk.Canvas):
         self._drag_anchor = None
         self._drag_tool = None
         if end != anchor:
-            self._on_zone_dragged(tool, anchor, end)
+            # Zone drag: only a press-captured zone tool fires a zone
+            # operation -- a Break/Pass-through/marker drag never is one
+            # (`_on_zone_dragged`'s own gate is a defensive fallback).
+            if tool in (BuilderTool.DESTROY_ZONE, BuilderTool.RESTORE_ZONE):
+                self._on_zone_dragged(tool, anchor, end)
+        elif tool is BuilderTool.SET_ENTRY or tool is BuilderTool.SET_EXIT:
+            # Same-cell release under a press-captured marker tool = a
+            # cell click (Story 3.4). Fires only for marker tools, so a
+            # same-cell click under Break/Pass-through/zone tools stays a
+            # no-op here -- `_on_click` already handled any wall-bar hit.
+            self._on_cell_clicked(tool, end)
+
+    def _cell_center(self, position: Position) -> tuple[int, int]:
+        size = self._cell_size
+        return (position.col * size + size // 2, position.row * size + size // 2)
+
+    def _cell_bounds(self, position: Position) -> tuple[int, int, int, int]:
+        size = self._cell_size
+        x0, y0 = position.col * size, position.row * size
+        return x0, y0, x0 + size, y0 + size
+
+    def refresh_markers(
+        self,
+        entry: Position | None,
+        exit: Position | None,
+        ghost: Position | None,
+    ) -> None:
+        """Redraw the entry/exit markers and any Set Exit ghost preview.
+
+        Destroys every tagged `marker`/`ghost-marker` item and redraws from
+        scratch, so a stale marker at a previous position can never linger
+        after a placement/undo/redefinition -- this is the single redraw
+        seam `_BuilderEditArea._sync_markers` drives. Colors come from the
+        active theme via `colors_for`; the ghost is dashed + `?`-glyphed
+        and purely informational, never hit-testable as a wall or a marker.
+        """
+        colors = colors_for(self._theme)
+        self.delete("marker", "ghost-marker")
+        if entry is not None:
+            self._draw_entry_marker(entry, colors)
+        if exit is not None:
+            self._draw_exit_marker(exit, colors)
+        if ghost is not None:
+            self._draw_ghost(ghost, colors)
+
+    def _draw_entry_marker(self, position: Position, colors: ColorTokens) -> None:
+        # Filled circle (Stories' shape + color distinction: entry = circle,
+        # exit = diamond), radius `_marker_radius`.
+        cx, cy = self._cell_center(position)
+        r = self._marker_radius
+        self.create_oval(
+            cx - r,
+            cy - r,
+            cx + r,
+            cy + r,
+            outline=colors.entry,
+            fill=colors.entry,
+            tags=("marker",),
+        )
+
+    def _draw_exit_marker(self, position: Position, colors: ColorTokens) -> None:
+        # Filled diamond (see `_draw_entry_marker` for the shape/color split).
+        cx, cy = self._cell_center(position)
+        r = self._marker_radius
+        self.create_polygon(
+            cx,
+            cy - r,
+            cx + r,
+            cy,
+            cx,
+            cy + r,
+            cx - r,
+            cy,
+            outline=colors.exit,
+            fill=colors.exit,
+            tags=("marker",),
+        )
+
+    def _draw_ghost(self, position: Position, colors: ColorTokens) -> None:
+        # Dashed outline + `?` glyph at the cursor cell, `colors.ghost`,
+        # non-interactive (tags `ghost-marker` only -- never hit-testable).
+        # The inset and glyph size scale with the cell size so the preview
+        # stays inside the smallest cells (Story 3.4's marker geometry).
+        x0, y0, x1, y1 = self._cell_bounds(position)
+        inset = max(2, int(self._cell_size * _GHOST_INSET_SCALE))
+        self.create_rectangle(
+            x0 + inset,
+            y0 + inset,
+            x1 - inset,
+            y1 - inset,
+            outline=colors.ghost,
+            dash=(3, 3),
+            width=_WALL_WIDTH,
+            tags=("ghost-marker",),
+        )
+        cx, cy = self._cell_center(position)
+        self.create_text(
+            cx,
+            cy,
+            text="?",
+            fill=colors.ghost,
+            font=self._ghost_font,
+            tags=("ghost-marker",),
+        )

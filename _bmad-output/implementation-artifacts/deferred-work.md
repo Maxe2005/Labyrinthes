@@ -318,3 +318,15 @@
 - source_spec: `_bmad-output/implementation-artifacts/epic-3/spec-3-3-zone-editing-destroy-restore-a-rectangular-zone.md`
   summary: `_BuilderMazeCanvas.refresh_walls()` recolors every wall item on the canvas after a zone operation (cost proportional to total grid size), not just the walls inside the dragged rectangle.
   evidence: confirmed by direct inspection of `refresh_walls()` in `src/labyrinthes/adapters/tkinter/builder/screen.py` -- pre-existing from Story 3.2's `_sync_after_wall_change()` design (unchanged by this story), now also exercised by zone operations where the mismatch between "walls touched" and "walls recolored" is more pronounced than for a single wall toggle.
+
+## Deferred from: code review of spec-3-4-entry-and-exit-marking (2026-08-19)
+
+- source_spec: `_bmad-output/implementation-artifacts/epic-3/spec-3-4-entry-and-exit-marking.md`
+  summary: A reopened/saved maze's previously-saved exit never re-renders on the Builder canvas because `start_builder_session` seeds `exit=None` unconditionally -- the entry renders immediately but the exit only appears once the user re-marks it.
+  evidence: confirmed by direct inspection of `start_builder_session` (`src/labyrinthes/application/builder_session.py`, `exit=None` with no read of `maze.exit`) and the session-seeding I/O matrix row ("Fresh sketch session ... exit unset (nothing rendered)"). Explicitly out of scope per the spec's Design Notes ("Reopened-sketch nuance ... intentionally out of scope -- Story 3.6 owns save/load marker semantics"); flagged for Story 3.6 to close.
+- source_spec: `_bmad-output/implementation-artifacts/epic-3/spec-3-4-entry-and-exit-marking.md`
+  summary: Once a marker is placed there is no way to unset/clear it -- the exit can be redefined (moved) but never removed back to the "unset" state the session model already supports (`exit=None`), and the entry is always required so it has no meaningful unset.
+  evidence: confirmed by direct inspection of `_place_entry`/`_place_exit` (`src/labyrinthes/adapters/tkinter/builder/screen.py`) -- neither offers any remove/clear path, and no keybinding or tool exists for it. The frozen spec's Approach/ACs never require unsetting, so this is an additive UX enhancement candidate rather than a defect; a stray misplaced exit must currently be moved somewhere rather than removed.
+- source_spec: `_bmad-output/implementation-artifacts/epic-3/spec-3-4-entry-and-exit-marking.md`
+  summary: The drive-by `cconfigure`→`configure` runtime-typo fix in `SettingsWindow`'s logo picker (bundled into this story's diff during implementation) has no regression test exercising the fixed navigation.
+  evidence: the typo fix is in this story's diff (`src/labyrinthes/adapters/tkinter/common/settings_window.py`), but the logo-picker screen it fixes was already untested before this story (no GUI test covers `show_logo_picker`), so the corrected path is pinned by nothing. Pre-existing test gap surfaced incidentally; the fix itself was kept because it repairs a real runtime crash.

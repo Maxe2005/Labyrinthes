@@ -1,9 +1,14 @@
+import pytest
+
 from labyrinthes.application.builder_session import (
     BuilderSession,
     BuilderTool,
+    apply_set_entry,
+    apply_set_exit,
     apply_zone_operation,
     start_builder_session,
 )
+from labyrinthes.domain.errors import DomainValidationError
 from labyrinthes.domain.grid import Grid
 from labyrinthes.domain.maze import Maze, MazeKind
 from labyrinthes.domain.position import Position
@@ -21,7 +26,13 @@ def _sketch_maze(width: int = 5, height: int = 5) -> Maze:
 
 
 def _session_at(cursor: Position, tool: BuilderTool) -> BuilderSession:
-    return BuilderSession(maze=_sketch_maze(), cursor=cursor, tool=tool)
+    return BuilderSession(
+        maze=_sketch_maze(),
+        cursor=cursor,
+        tool=tool,
+        entry=Position(0, 0),
+        exit=None,
+    )
 
 
 # -- apply_zone_operation --------------------------------------------------
@@ -48,6 +59,8 @@ def test_apply_zone_operation_with_restore_zone_tool_restores_the_span():
         ),
         cursor=Position(0, 0),
         tool=BuilderTool.RESTORE_ZONE,
+        entry=Position(0, 0),
+        exit=None,
     )
 
     result = apply_zone_operation(session, BuilderTool.RESTORE_ZONE, Position(1, 1), Position(3, 3))
@@ -104,7 +117,118 @@ def test_apply_zone_operation_does_not_mutate_the_original_session():
     assert session.maze.grid == original_grid
 
 
+# -- apply_set_entry -------------------------------------------------------
+
+
+def test_apply_set_entry_marks_any_cell_as_the_entry():
+    session = _session_at(Position(0, 0), BuilderTool.SET_ENTRY)
+
+    result = apply_set_entry(session, Position(2, 3))
+
+    assert result.entry == Position(2, 3)
+    assert result.exit is None
+
+
+def test_apply_set_entry_leaves_the_cursor_and_tool_unchanged():
+    session = _session_at(Position(1, 1), BuilderTool.SET_ENTRY)
+
+    result = apply_set_entry(session, Position(2, 3))
+
+    assert result.cursor == Position(1, 1)
+    assert result.tool is BuilderTool.SET_ENTRY
+
+
+def test_apply_set_entry_returns_a_new_session_without_mutating_the_original():
+    session = _session_at(Position(0, 0), BuilderTool.SET_ENTRY)
+    original_maze = session.maze
+
+    apply_set_entry(session, Position(2, 3))
+
+    assert session.entry == Position(0, 0)
+    assert session.maze is original_maze
+
+
+def test_apply_set_entry_rejects_an_out_of_bounds_cell():
+    session = _session_at(Position(0, 0), BuilderTool.SET_ENTRY)
+
+    with pytest.raises(DomainValidationError):
+        apply_set_entry(session, Position(5, 0))
+
+
+def test_apply_set_entry_rejects_the_cell_already_holding_the_exit():
+    session = BuilderSession(
+        maze=_sketch_maze(),
+        cursor=Position(0, 0),
+        tool=BuilderTool.SET_ENTRY,
+        entry=Position(0, 0),
+        exit=Position(4, 2),
+    )
+
+    with pytest.raises(DomainValidationError):
+        apply_set_entry(session, Position(4, 2))
+
+
+# -- apply_set_exit --------------------------------------------------------
+
+
+def test_apply_set_exit_marks_a_border_cell_as_the_exit():
+    session = _session_at(Position(0, 0), BuilderTool.SET_EXIT)
+
+    result = apply_set_exit(session, Position(4, 2))
+
+    assert result.exit == Position(4, 2)
+    assert result.entry == Position(0, 0)
+
+
+def test_apply_set_exit_marks_a_top_row_cell():
+    session = _session_at(Position(0, 0), BuilderTool.SET_EXIT)
+
+    result = apply_set_exit(session, Position(0, 1))
+
+    assert result.exit == Position(0, 1)
+
+
+def test_apply_set_exit_rejects_an_interior_cell():
+    session = _session_at(Position(0, 0), BuilderTool.SET_EXIT)
+
+    with pytest.raises(DomainValidationError):
+        apply_set_exit(session, Position(2, 2))
+
+
+def test_apply_set_exit_rejects_the_cell_already_holding_the_entry():
+    session = _session_at(Position(0, 0), BuilderTool.SET_EXIT)
+
+    with pytest.raises(DomainValidationError):
+        apply_set_exit(session, Position(0, 0))
+
+
+def test_apply_set_exit_leaves_the_cursor_and_tool_unchanged():
+    session = _session_at(Position(1, 1), BuilderTool.SET_EXIT)
+
+    result = apply_set_exit(session, Position(4, 4))
+
+    assert result.cursor == Position(1, 1)
+    assert result.tool is BuilderTool.SET_EXIT
+
+
+def test_apply_set_exit_returns_a_new_session_without_mutating_the_original():
+    session = _session_at(Position(0, 0), BuilderTool.SET_EXIT)
+    original_maze = session.maze
+
+    apply_set_exit(session, Position(4, 4))
+
+    assert session.exit is None
+    assert session.maze is original_maze
+
+
 # -- start_builder_session (sanity, not otherwise covered here) -----------
+
+
+def test_start_builder_session_seeds_entry_from_the_maze_and_no_exit():
+    session = start_builder_session(_sketch_maze())
+
+    assert session.entry == Position(0, 0)
+    assert session.exit is None
 
 
 def test_start_builder_session_defaults_to_the_break_tool():

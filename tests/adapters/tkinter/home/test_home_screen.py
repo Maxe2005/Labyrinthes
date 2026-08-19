@@ -407,5 +407,8 @@ def test_open_settings_from_home_reflects_a_stored_confirmation_value(
     settings_windows = [c for c in tk_root.winfo_children() if isinstance(c, SettingsWindow)]
     assert len(settings_windows) == 1
     settings_windows[0]._select_category("Confirmation")
-    assert settings_windows[0]._confirmation_rows["Confirm before switching mazes"].get() is True
+    assert (
+        settings_windows[0]._confirmation_rows["Confirm before switching/restarting mazes"].get()
+        is True
+    )
     settings_windows[0].destroy()

@@ -3,10 +3,12 @@ import pytest
 from labyrinthes.application.confirmation_settings import (
     read_confirm_invalid_input,
     read_confirm_level_change,
+    read_confirm_redefine_marker,
     read_confirm_restart,
     read_confirm_switch_maze,
     write_confirm_invalid_input,
     write_confirm_level_change,
+    write_confirm_redefine_marker,
     write_confirm_restart,
     write_confirm_switch_maze,
 )
@@ -14,6 +16,7 @@ from labyrinthes.application.errors import SettingCorruptError, SettingNotFoundE
 from labyrinthes.application.settings_keys import (
     CONFIRM_INVALID_INPUT,
     CONFIRM_LEVEL_CHANGE,
+    CONFIRM_REDEFINE_MARKER,
     CONFIRM_RESTART,
     CONFIRM_SWITCH_MAZE,
 )
@@ -148,3 +151,46 @@ def test_each_writer_stores_without_encoding():
         assert repository.get(SettingsScope.GAME, key) is True
         writer(repository, False)
         assert repository.get(SettingsScope.GAME, key) is False
+
+
+# -- Story 3.4: builder-scoped redefine-marker confirmation ----------------
+
+
+def test_read_confirm_redefine_marker_defaults_to_true_in_the_builder_scope():
+    # Story 3.4's default is `True` (unlike the legacy Player defaults) --
+    # and it must be read from the `builder` scope, not `game`.
+    repository = _InMemorySettingsRepository()
+
+    assert read_confirm_redefine_marker(repository) is True
+
+
+def test_read_confirm_redefine_marker_reads_only_the_builder_scope():
+    repository = _InMemorySettingsRepository()
+    repository.set(SettingsScope.GAME, CONFIRM_REDEFINE_MARKER, False)
+    assert read_confirm_redefine_marker(repository) is True  # game-scope value is ignored
+
+    repository.set(SettingsScope.BUILDER, CONFIRM_REDEFINE_MARKER, False)
+    assert read_confirm_redefine_marker(repository) is False
+
+
+def test_read_confirm_redefine_marker_falls_back_when_the_value_is_not_an_actual_bool():
+    repository = _InMemorySettingsRepository()
+    repository.set(SettingsScope.BUILDER, CONFIRM_REDEFINE_MARKER, 1)
+
+    assert read_confirm_redefine_marker(repository) is True
+
+
+def test_read_confirm_redefine_marker_falls_back_on_a_corrupted_store():
+    assert read_confirm_redefine_marker(_CorruptSettingsRepository()) is True
+
+
+def test_write_confirm_redefine_marker_persists_to_the_builder_scope_and_round_trips():
+    repository = _InMemorySettingsRepository()
+
+    write_confirm_redefine_marker(repository, False)
+    assert repository.get(SettingsScope.BUILDER, CONFIRM_REDEFINE_MARKER) is False
+    assert read_confirm_redefine_marker(repository) is False
+
+    write_confirm_redefine_marker(repository, True)
+    assert repository.get(SettingsScope.BUILDER, CONFIRM_REDEFINE_MARKER) is True
+    assert read_confirm_redefine_marker(repository) is True

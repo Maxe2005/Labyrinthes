@@ -48,6 +48,7 @@ __all__ = [
     "Wall",
     "advance_visibility",
     "initial_level_visibility",
+    "is_border_cell",
     "is_border_wall",
     "note_collision",
     "partition_grid",
@@ -218,6 +219,11 @@ def is_border_wall(grid: Grid, wall: Wall) -> bool:
     if wall.side == "top":
         return wall.row == 0 or wall.row == grid.height
     return wall.col == 0 or wall.col == grid.width
+
+
+def is_border_cell(grid: Grid, position: Position) -> bool:
+    """`True` for a cell on the playable-area border: first/last row or column."""
+    return position.row in (0, grid.height - 1) or position.col in (0, grid.width - 1)
 
 
 def total_interior_walls(grid: Grid) -> int:

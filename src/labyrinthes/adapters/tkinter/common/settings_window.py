@@ -66,10 +66,12 @@ from labyrinthes.adapters.tkinter.common.tokens import (
 from labyrinthes.application.confirmation_settings import (
     read_confirm_invalid_input,
     read_confirm_level_change,
+    read_confirm_redefine_marker,
     read_confirm_restart,
     read_confirm_switch_maze,
     write_confirm_invalid_input,
     write_confirm_level_change,
+    write_confirm_redefine_marker,
     write_confirm_restart,
     write_confirm_switch_maze,
 )
@@ -81,13 +83,24 @@ __all__ = ["SettingsWindow"]
 _CATEGORIES = ("Appearance", "Confirmation")
 _APPEARANCE_PLACEHOLDER = "Appearance settings are coming soon."
 
-# `(row text, reader, writer)` for the four Confirmation toggles -- one per
-# Player action, in the order the spec's AC-1 action list names them.
+# `(row text, reader, writer)` for the confirmation toggles -- one per
+# gated action, in the order the specs' action lists name them. The first
+# four are Player actions (Story 2.10); the last is a Builder action
+# (Story 3.4).
 _CONFIRMATION_TOGGLES = (
-    ("Confirm before switching/restarting mazes", read_confirm_switch_maze, write_confirm_switch_maze),
+    (
+        "Confirm before switching/restarting mazes",
+        read_confirm_switch_maze,
+        write_confirm_switch_maze,
+    ),
     ("Confirm before restarting", read_confirm_restart, write_confirm_restart),
     ("Confirm before changing level", read_confirm_level_change, write_confirm_level_change),
     ("Alert me about invalid input", read_confirm_invalid_input, write_confirm_invalid_input),
+    (
+        "Confirm before redefining an entry/exit",
+        read_confirm_redefine_marker,
+        write_confirm_redefine_marker,
+    ),
 )
 
 
@@ -204,8 +217,7 @@ class SettingsWindow(tk.Toplevel):
             ).pack(padx=SPACING["2xl"], pady=SPACING["2xl"])
 
     def _build_logo_picker(self, container: tk.Frame) -> None:
-        from labyrinthes.application.logos import _logo_path, _LOGO_OPTIONS
-        from labyrinthes.application.settings_repository import SettingsScope
+        from labyrinthes.application.logos import _logo_path
 
         colors = colors_for(self._theme)
         logo_frame = tk.Frame(container, background=colors.window)
@@ -213,6 +225,7 @@ class SettingsWindow(tk.Toplevel):
 
         try:
             from PIL import Image, ImageTk
+
             current_key = read_theme_logo(self._settings_repository)
             img = Image.open(_logo_path(current_key))
             img = img.resize((128, 128), Image.Resampling.LANCZOS)
@@ -236,9 +249,7 @@ class SettingsWindow(tk.Toplevel):
         nav_frame = tk.Frame(logo_frame, background=colors.window)
         nav_frame.pack(anchor="w", pady=SPACING["xs"])
 
-        keys = [o[0] for o in _LOGO_OPTIONS]
         current = read_theme_logo(self._settings_repository)
-        current_idx = keys.index(current) if current in keys else 0
 
         prev_btn = tk.Button(
             nav_frame,
@@ -272,8 +283,7 @@ class SettingsWindow(tk.Toplevel):
         next_btn.pack(side="left", padx=(SPACING["sm"], 0))
 
     def _on_prev_logo(self) -> None:
-        from labyrinthes.application.logos import _LOGO_OPTIONS
-        from labyrinthes.application.settings_repository import SettingsScope
+        from labyrinthes.application.logos import _LOGO_OPTIONS, _logo_path
 
         current = read_theme_logo(self._settings_repository)
         keys = [o[0] for o in _LOGO_OPTIONS]
@@ -283,9 +293,10 @@ class SettingsWindow(tk.Toplevel):
         new_idx = (current_idx - 1) % len(keys)
         new_key = keys[new_idx]
         write_theme_logo(self._settings_repository, new_key)
-        self._logo_key_label.cconfigure(text=new_key)
+        self._logo_key_label.configure(text=new_key)
         try:
             from PIL import Image, ImageTk
+
             img = Image.open(_logo_path(new_key))
             img = img.resize((128, 128), Image.Resampling.LANCZOS)
             self._logo_photo = ImageTk.PhotoImage(img)
@@ -299,7 +310,7 @@ class SettingsWindow(tk.Toplevel):
             pass
 
     def _on_next_logo(self) -> None:
-        from labyrinthes.application.logos import _LOGO_OPTIONS
+        from labyrinthes.application.logos import _LOGO_OPTIONS, _logo_path
 
         current = read_theme_logo(self._settings_repository)
         keys = [o[0] for o in _LOGO_OPTIONS]
@@ -309,9 +320,10 @@ class SettingsWindow(tk.Toplevel):
         new_idx = (current_idx + 1) % len(keys)
         new_key = keys[new_idx]
         write_theme_logo(self._settings_repository, new_key)
-        self._logo_key_label.cconfigure(text=new_key)
+        self._logo_key_label.configure(text=new_key)
         try:
             from PIL import Image, ImageTk
+
             img = Image.open(_logo_path(new_key))
             img = img.resize((128, 128), Image.Resampling.LANCZOS)
             self._logo_photo = ImageTk.PhotoImage(img)
