@@ -1,5 +1,9 @@
 """Builder edit screen (Stories 3.2/3.3/3.4).
 
+from __future__ import annotations
+
+from dataclasses import dataclass, replace
+
 `mount()` dispatches on `state` exactly like `player/screen.py`: `state is
 None` opens `NewMazeDialog` as the entry state (nothing else renders --
 the maze-frame stays empty until the user confirms dimensions, mirroring
@@ -436,6 +440,13 @@ class _BuilderEditArea(tk.Frame):
             self._place_entry(position)
         elif tool is BuilderTool.SET_EXIT:
             self._place_exit(position)
+        else:
+            # No marker tool active: move editing cursor directly to clicked cell
+            from dataclasses import replace
+
+            self._session = replace(self._session, cursor=position)
+            self._canvas.set_cursor(self._session.cursor)
+            self._sync_markers()
 
     def _place_entry(self, position: Position) -> None:
         # Clicking the cell already holding the marker, or the one holding
@@ -730,9 +741,11 @@ class _BuilderMazeCanvas(tk.Canvas):
                 self._on_zone_dragged(tool, anchor, end)
         elif tool is BuilderTool.SET_ENTRY or tool is BuilderTool.SET_EXIT:
             # Same-cell release under a press-captured marker tool = a
-            # cell click (Story 3.4). Fires only for marker tools, so a
-            # same-cell click under Break/Pass-through/zone tools stays a
-            # no-op here -- `_on_click` already handled any wall-bar hit.
+            # cell click (Story 3.4).
+            self._on_cell_clicked(tool, end)
+        elif end == anchor:
+            # Same-cell click with no zone-drag and no marker tool active:
+            # move editing cursor directly to the clicked cell (Story 3.5).
             self._on_cell_clicked(tool, end)
 
     def _cell_center(self, position: Position) -> tuple[int, int]:
