@@ -73,6 +73,16 @@ development_status:
   3-7-builder-theme-toggle: backlog
   3-8-test-in-player-launch-the-game-from-the-builder: backlog
   3-9-edit-in-builder-launch-the-builder-from-the-game: backlog
+  3-10-builder-cursor-and-marker-glyphs: backlog
+  3-11-wall-tool-semantics-break-vs-pass-through: backlog
+  3-12-zone-selection-colored-outline-click-click: backlog
+  3-13-entry-exit-live-placement: backlog
+  3-14-reachability-counter-and-highlight: backlog
+  3-15-configurable-defaults: backlog
+  3-16-player-continue-regenerates-random: backlog
+  3-17-shell-windowing: backlog
+  3-18-top-bar-brand-logo: backlog
+  3-19-screen-layout-blocks: backlog
   4-1-migration-script-folder-file-renaming: backlog
   4-2-migration-script-settings-csv-header-renaming: backlog
   4-3-migration-script-mazeid-backfill: backlog
