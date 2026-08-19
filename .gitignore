@@ -29,6 +29,9 @@ _bmad/render/
 
 uv.lock
 
+#App legacy
+Autres/Parametres_defaut.csv
+
 # App
 settings/
 mazes/saved-random/

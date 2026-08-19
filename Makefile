@@ -1,4 +1,4 @@
-.PHONY: help venv install run lint format format-check test clean
+.PHONY: help venv install run legacy-builder legacy-player lint format format-check test clean
 
 VENV := .venv
 PYTHON := $(VENV)/bin/python
@@ -8,6 +8,8 @@ help:
 	@echo "  make venv          - create the virtualenv (.venv)"
 	@echo "  make install       - install the package (editable) with dev dependencies"
 	@echo "  make run           - launch the app (python -m labyrinthes.app)"
+	@echo "  make legacy-builder - launch the legacy builder (Creer_labyrinthes.py)"
+	@echo "  make legacy-player  - launch the legacy player (Labyrinthes_copy.py)"
 	@echo "  make lint          - run ruff check"
 	@echo "  make format        - run ruff format"
 	@echo "  make format-check  - check formatting without modifying files"
@@ -22,6 +24,12 @@ install: venv
 
 run:
 	$(PYTHON) -m labyrinthes.app
+
+legacy-builder:
+	$(PYTHON) Creer_labyrinthes.py
+
+legacy-player:
+	$(PYTHON) Labyrinthes_copy.py
 
 lint:
 	$(PYTHON) -m ruff check .
