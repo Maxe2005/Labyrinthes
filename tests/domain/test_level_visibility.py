@@ -9,6 +9,7 @@ from labyrinthes.domain.level_visibility import (
     Wall,
     advance_visibility,
     initial_level_visibility,
+    is_border_cell,
     is_border_wall,
     note_collision,
     partition_grid,
@@ -353,6 +354,29 @@ def test_is_border_wall_identifies_border_segments():
 def test_total_interior_walls_counts_only_non_border_segments():
     assert total_interior_walls(Grid.filled(width=2, height=2)) == 4
     assert total_interior_walls(Grid.filled(width=3, height=3)) == 12
+
+
+def test_is_border_cell_marks_every_edge_cell_on_a_minimum_grid():
+    grid = Grid.filled(width=3, height=3)
+
+    for row in range(3):
+        for col in range(3):
+            expected = row in (0, 2) or col in (0, 2)
+            assert is_border_cell(grid, Position(row=row, col=col)) is expected
+
+
+def test_is_border_cell_identifies_corners_and_edges_on_a_rectangular_grid():
+    grid = Grid.filled(width=5, height=4)
+
+    assert is_border_cell(grid, Position(0, 0)) is True
+    assert is_border_cell(grid, Position(0, 4)) is True
+    assert is_border_cell(grid, Position(3, 0)) is True
+    assert is_border_cell(grid, Position(3, 4)) is True
+    assert is_border_cell(grid, Position(0, 2)) is True
+    assert is_border_cell(grid, Position(2, 4)) is True
+    assert is_border_cell(grid, Position(1, 1)) is False
+    assert is_border_cell(grid, Position(1, 3)) is False
+    assert is_border_cell(grid, Position(2, 2)) is False
 
 
 # -- value-object validation -------------------------------------------

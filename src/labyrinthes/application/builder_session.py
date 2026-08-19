@@ -1,5 +1,5 @@
 """`BuilderSession` -- immutable Builder-edit-session state, plus pure
-orchestration (Story 3.2).
+orchestration (Stories 3.2/3.3/3.4).
 
 Free functions over a frozen dataclass, matching `player_session.py`'s
 established style: no Tkinter, no wall-clock reads, no repository access
@@ -10,7 +10,7 @@ Technical Decisions call this "an adapter-local mutable session wrapper
 `application/`-layer half of that wrapper lives (only rendering/input
 wiring stays in `adapters/tkinter/builder/`).
 
-Four tools:
+Six tools:
 - `BuilderTool.BREAK` -- `apply_wall_toggle(session, wall)` toggles the
   wall the adapter hit-tested from a click (breaks if present, restores
   if absent); the cursor never moves. `move_cursor` just moves the cursor,
@@ -29,6 +29,15 @@ Four tools:
   via a keybinding) while still holding the mouse button down. A live
   re-read of `session.tool` at release time would let a single continuous
   gesture be interpreted under two different tools.
+- `BuilderTool.SET_ENTRY` / `BuilderTool.SET_EXIT` (Story 3.4) --
+  `apply_set_entry`/`apply_set_exit` place the optional session entry/exit
+  markers, keeping `session.maze`'s required `entry`/`exit` fields in sync
+  via `dataclasses.replace`. Both refuse targets that would collide with
+  the *other* marker (start and goal never share a cell) with
+  `DomainValidationError` -- the adapter swallows it as a no-op.
+  `apply_set_exit` additionally refuses a non-border cell;
+  `apply_set_entry` additionally refuses an out-of-bounds cell. Neither
+  moves the cursor.
 """
 
 from __future__ import annotations
@@ -37,7 +46,8 @@ import dataclasses
 import enum
 from dataclasses import dataclass, replace
 
-from labyrinthes.domain.level_visibility import Wall, is_border_wall
+from labyrinthes.domain.errors import DomainValidationError
+from labyrinthes.domain.level_visibility import Wall, is_border_cell, is_border_wall
 from labyrinthes.domain.maze import Maze
 from labyrinthes.domain.movement import Direction, attempt_move
 from labyrinthes.domain.position import Position
@@ -52,6 +62,8 @@ from labyrinthes.domain.zone_editing import destroy_zone, restore_zone
 __all__ = [
     "BuilderSession",
     "BuilderTool",
+    "apply_set_entry",
+    "apply_set_exit",
     "apply_wall_toggle",
     "apply_zone_operation",
     "broken_wall_count",
@@ -68,28 +80,87 @@ class BuilderTool(enum.Enum):
     PASS_THROUGH = "pass-through"
     DESTROY_ZONE = "destroy-zone"
     RESTORE_ZONE = "restore-zone"
+    SET_ENTRY = "set-entry"
+    SET_EXIT = "set-exit"
 
 
 @dataclass(frozen=True)
 class BuilderSession:
     """One Builder edit session: the maze under edit, the editing cursor
-    position, and the active tool."""
+    position, the active tool, and the optional entry/exit markers.
+
+    `entry`/`exit` are the session's authoritative positions and own
+    "unset" as `None`; `maze.entry`/`maze.exit` stay required (player,
+    generation, and CSV all depend on them) and are kept in sync via
+    `dataclasses.replace` on every placement -- Story 3.6's save reads the
+    right values off `session.maze`.
+    """
 
     maze: Maze
     cursor: Position
     tool: BuilderTool
+    entry: Position | None
+    exit: Position | None
 
 
 def start_builder_session(maze: Maze) -> BuilderSession:
     """A fresh `BuilderSession` for `maze`: cursor at `maze.entry`, Break tool
     active (mirrors `player_session.start_session`'s "ball at `maze.entry`"
-    convention)."""
-    return BuilderSession(maze=maze, cursor=maze.entry, tool=BuilderTool.BREAK)
+    convention), entry seeded from `maze.entry` (a fresh sketch's entry
+    renders immediately), exit unset (`None`)."""
+    return BuilderSession(
+        maze=maze,
+        cursor=maze.entry,
+        tool=BuilderTool.BREAK,
+        entry=maze.entry,
+        exit=None,
+    )
 
 
 def set_tool(session: BuilderSession, tool: BuilderTool) -> BuilderSession:
     """Return `session` with the active tool replaced."""
     return replace(session, tool=tool)
+
+
+def apply_set_entry(session: BuilderSession, position: Position) -> BuilderSession:
+    """Place the session entry marker on `position`, any cell.
+
+    An out-of-bounds target, or a target already holding the exit marker
+    (start and goal never share a cell), propagates `DomainValidationError`
+    from the guards below -- the adapter catches and swallows it as a
+    no-op. Rebuilds `session.maze` with `entry=position` (the
+    `apply_wall_toggle` pattern) and mirrors the position into the
+    session's optional `entry`. The cursor is left unchanged.
+    """
+    grid = session.maze.grid
+    if not (0 <= position.row < grid.height and 0 <= position.col < grid.width):
+        raise DomainValidationError(f"Cannot set the entry at {position!r}: out of bounds")
+    if position == session.exit:
+        raise DomainValidationError(
+            f"Cannot set the entry at {position!r}: the exit already marks that cell"
+        )
+    new_maze = dataclasses.replace(session.maze, entry=position)
+    return replace(session, maze=new_maze, entry=position)
+
+
+def apply_set_exit(session: BuilderSession, position: Position) -> BuilderSession:
+    """Place the session exit marker on `position`, a border cell only.
+
+    A non-border target propagates `DomainValidationError` from the domain
+    `is_border_cell` guard, and a target already holding the entry marker
+    (start and goal never share a cell) does too -- the adapter catches
+    and swallows both as a no-op. Rebuilds `session.maze` with
+    `exit=position` and mirrors the position into the session's optional
+    `exit`. The cursor is left unchanged.
+    """
+    if not is_border_cell(session.maze.grid, position):
+        raise DomainValidationError(f"Cannot set the exit at {position!r}: not a border cell")
+    if position == session.entry:
+        raise DomainValidationError(
+            f"Cannot set the exit at {position!r}: the entry already marks that cell"
+        )
+    new_maze = dataclasses.replace(session.maze, exit=position)
+    return replace(session, maze=new_maze, exit=position)
 
 
 def apply_wall_toggle(session: BuilderSession, wall: Wall) -> BuilderSession:

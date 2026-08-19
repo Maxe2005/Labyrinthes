@@ -106,6 +106,7 @@ from labyrinthes.application.hard_mode_settings import (
     read_hard_mode_moving_color,
     read_hard_mode_ready_color,
 )
+from labyrinthes.application.logos import _logo_path
 from labyrinthes.application.maze_repository import MazeRepository
 from labyrinthes.application.movement_settings import (
     read_movement_mode,
@@ -146,7 +147,6 @@ from labyrinthes.application.player_session import (
 )
 from labyrinthes.application.settings_repository import SettingsRepository
 from labyrinthes.application.theme_logo_settings import read_theme_logo
-from labyrinthes.application.logos import _logo_path
 from labyrinthes.application.time_limit_settings import read_time_limit
 from labyrinthes.domain.difficulty import Difficulty
 from labyrinthes.domain.duration import Duration
@@ -471,6 +471,7 @@ class GameplayScreen(tk.Frame):
 
         try:
             from PIL import Image, ImageTk
+
             img = Image.open(_logo_path(self._logo_key))
             img = img.resize((64, 64), Image.Resampling.LANCZOS)
             self._logo_photo = ImageTk.PhotoImage(img)

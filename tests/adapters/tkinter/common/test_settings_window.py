@@ -4,16 +4,18 @@ from labyrinthes.adapters.tkinter.common.settings_window import SettingsWindow
 from labyrinthes.adapters.tkinter.common.tokens import Theme
 from labyrinthes.application.confirmation_settings import (
     read_confirm_level_change,
+    read_confirm_redefine_marker,
     read_confirm_switch_maze,
     write_confirm_invalid_input,
     write_confirm_restart,
 )
 
 _CONFIRMATION_ROW_TEXTS = {
-    "Confirm before switching mazes",
+    "Confirm before switching/restarting mazes",
     "Confirm before restarting",
     "Confirm before changing level",
     "Alert me about invalid input",
+    "Confirm before redefining an entry/exit",
 }
 
 
@@ -75,7 +77,7 @@ def test_confirmation_category_is_present_in_the_nav(tk_root, fake_settings_repo
         window.destroy()
 
 
-def test_selecting_confirmation_swaps_the_content_pane_to_four_toggle_rows_and_back(
+def test_selecting_confirmation_swaps_the_content_pane_to_five_toggle_rows_and_back(
     tk_root, fake_settings_repository
 ):
     window = _window(tk_root, fake_settings_repository)
@@ -99,12 +101,29 @@ def test_toggling_a_row_calls_the_matching_writer(tk_root, fake_settings_reposit
         row = next(
             cb
             for cb in _find_all(window, tk.Checkbutton)
-            if cb.cget("text") == "Confirm before switching mazes"
+            if cb.cget("text") == "Confirm before switching/restarting mazes"
         )
 
         row.invoke()
 
         assert read_confirm_switch_maze(fake_settings_repository) is True
+    finally:
+        window.destroy()
+
+
+def test_toggling_the_redefine_marker_row_calls_its_writer(tk_root, fake_settings_repository):
+    window = _window(tk_root, fake_settings_repository)
+    try:
+        window._select_category("Confirmation")
+        row = next(
+            cb
+            for cb in _find_all(window, tk.Checkbutton)
+            if cb.cget("text") == "Confirm before redefining an entry/exit"
+        )
+
+        row.invoke()
+
+        assert read_confirm_redefine_marker(fake_settings_repository) is False
     finally:
         window.destroy()
 
@@ -116,10 +135,11 @@ def test_a_stored_value_is_reflected_in_the_rows_initial_state(tk_root, fake_set
     try:
         window._select_category("Confirmation")
 
-        assert window._confirmation_rows["Confirm before switching mazes"].get() is False
+        assert window._confirmation_rows["Confirm before switching/restarting mazes"].get() is False
         assert window._confirmation_rows["Confirm before restarting"].get() is False
         assert window._confirmation_rows["Confirm before changing level"].get() is False
         assert window._confirmation_rows["Alert me about invalid input"].get() is False
+        assert window._confirmation_rows["Confirm before redefining an entry/exit"].get() is True
     finally:
         window.destroy()
 

@@ -89,7 +89,12 @@ def mount(
         # `Router.navigate()`, so `SettingsWindow` survives navigating away
         # from Player instead of being torn down as a cascade side effect
         # of `frame.destroy()`. See `SettingsWindow`'s module docstring.
-        SettingsWindow(parent, theme=theme, settings_repository=settings_repository, show_logo_picker=True)
+        SettingsWindow(
+            parent,
+            theme=theme,
+            settings_repository=settings_repository,
+            show_logo_picker=True,
+        )
 
     if state is None:
         breadcrumb_segments = [
