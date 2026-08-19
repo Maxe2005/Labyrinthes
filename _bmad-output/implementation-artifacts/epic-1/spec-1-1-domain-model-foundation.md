@@ -29,8 +29,8 @@ so that every later feature builds on one shared, drift-free shape rather than e
 
 - [x] **Task 2 — `Position`, `Duration`, `MazeId`** (AC: 1)
   - [x] `src/labyrinthes/domain/position.py`: frozen dataclass `Position(row: int, col: int)` — the one shared type for entry, exit, ball, and editing-cursor locations alike (AD-3). No validation of bounds here (a `Position` isn't aware of any `Grid`'s size).
-  - [x] `src/labyrinthes/domain/duration.py`: frozen dataclass `Duration(milliseconds: int)`, rejecting negative values with `DomainValidationError`. Used later by the Timer (Story 2.9) and Personal Records (Story 5.1) — keep it minimal, no formatting/parsing helpers beyond what's needed now.
-  - [x] `src/labyrinthes/domain/maze_id.py`: frozen dataclass `MazeId(value: str)` — an opaque identifier only. **Do not implement a minting/generation scheme here** — AD-3/AD-8 assign that to a single shared minting function consumed by `MazeRepository` (Story 1.4) and the migration script (Epic 4); this story only needs the *type*.
+  - [x] `src/labyrinthes/domain/duration.py`: frozen dataclass `Duration(milliseconds: int)`, rejecting negative values with `DomainValidationError`. Used later by the Timer (Story 2.9) and Personal Records (Story 6.1) — keep it minimal, no formatting/parsing helpers beyond what's needed now.
+  - [x] `src/labyrinthes/domain/maze_id.py`: frozen dataclass `MazeId(value: str)` — an opaque identifier only. **Do not implement a minting/generation scheme here** — AD-3/AD-8 assign that to a single shared minting function consumed by `MazeRepository` (Story 1.4) and the migration script (Epic 5); this story only needs the *type*.
 
 - [x] **Task 3 — `Level`, `Difficulty` ordinal types** (AC: 1)
   - [x] `src/labyrinthes/domain/level.py`: `class Level(enum.IntEnum)` with members `ONE=1, TWO=2, THREE=3, FOUR=4, MAX=5`. `IntEnum` gives correct ordering for free (`Level.MAX > Level.FOUR`), satisfying AD-3's "`MAX` above `4`" requirement without hand-rolled `__lt__`/`__gt__`.

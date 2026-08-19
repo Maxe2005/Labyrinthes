@@ -78,6 +78,18 @@ FR-27: Personal Records (local best-times) — on winning a maze that has a stab
 
 FR-28: First-activation explainer for Level, Difficulty, and HARD-mode tiers — the first time the user activates a given Level, Difficulty, or HARD-mode tier, an explainer popup describes what that tier changes; an ⓘ affordance next to the corresponding control reopens the same explainer on demand at any time. Every tier gets this treatment — Level, Difficulty, and HARD mode (FR-14) alike. Auto-show-on-first-activation is configurable off in Settings; the on-demand ⓘ affordance keeps working regardless of that setting. The explainer's wording stays plain and non-alarmist, consistent with the product's voice and tone (see UX spec).
 
+FR-29 *(added by the 2026-08-19 course correction)*: Builder reachability feedback — the Builder HUD shows the count of cells inaccessible from the entry; clicking the counter outlines those cells on the grid. Before an entry is set, the counter reads "—" and is not interactive. Replaces the "Walls broken" HUD stat.
+
+FR-30 *(added by the 2026-08-19 course correction)*: Configurable defaults — the default dimensions proposed by the Builder's New Maze dialog and the Player's Generate Random dialog, and the Builder's default tool when a session opens, are user-configurable settings (dimensions bounded by the shared 3–50 / 3–35 bounds).
+
+FR-31 *(added by the 2026-08-19 course correction)*: Window management — the app window opens centered on screen, is freely resizable, the maze canvas zooms (Ctrl+wheel, `+`/`-`) and adapts to the available space, and F11 toggles fullscreen. The Settings window opens centered, is resizable, and supports fullscreen.
+
+FR-32 *(added by the 2026-08-19 course correction)*: Top-bar brand mark — every screen's top bar shows the brand logo (per the user's logo setting) before the app name.
+
+FR-33 *(added by the 2026-08-19 course correction)*: Play again — after solving a generated random maze, the win banner's continue action generates a new random maze with the same dimensions and entry position, immediately.
+
+FR-34 *(added by the 2026-08-19 course correction)*: Layout grouping — the Builder's and Player's controls and displays are grouped into labeled blocks on the sides and top, clearly separated from the maze frame.
+
 ### NonFunctional Requirements
 
 NFR1: Logic/UI decoupling — the maze engine (grid, 0/1/2/3 encoding, generation, Level/Difficulty rules) depends on no UI library. This is a PRD requirement, not just good practice — it's what makes a future web/mobile interface possible.
@@ -158,12 +170,20 @@ FR-19: Epic 3 - Edit in Builder (Game → Builder, wired once Builder exists)
 FR-20: Epic 1 - Maze data format, single shared MazeRepository
 FR-21: Epic 1 - Settings persistence, single shared SettingsRepository
 FR-22: Epic 1 (Story 1.10) - Canonical keybinding table + automated collision/label-consistency check; every later epic's actions register into this same table
-FR-23: Epic 4 - Legacy data migration to English, MazeId backfill
-FR-24: Epic 6 (deferred, P2) - Water Chase mode
-FR-25: Epic 6 (deferred, P2) - Exploration mode
+FR-23: Epic 5 - Legacy data migration to English, MazeId backfill
+FR-24: Epic 7 (deferred, P2) - Water Chase mode
+FR-25: Epic 7 (deferred, P2) - Exploration mode
 FR-26: Epic 1 - Home screen navigation hub, breadcrumb, Settings top-bar affordance
-FR-27: Epic 5 - Personal Records (local best-times)
-FR-28: Epic 5 - First-activation explainers (Level/Difficulty/HARD)
+FR-27: Epic 6 - Personal Records (local best-times)
+FR-28: Epic 6 - First-activation explainers (Level/Difficulty/HARD)
+FR-29: Epic 4 - Builder reachability counter (replaces "Walls broken")
+FR-30: Epic 4 - Configurable defaults (Builder tool, new-maze & random dimensions)
+FR-31: Epic 4 - Window management (centered, resizable, zoom, fullscreen)
+FR-32: Epic 4 - Top-bar brand mark (logo before the app name)
+FR-33: Epic 4 - Play again (win banner regenerates a random maze)
+FR-34: Epic 4 - Layout grouping (labeled blocks separated from the maze)
+
+**Epic 4 amendments:** Epic 4's stories also refine the acceptance criteria of FR-1 (wall-tool semantics, cursor glyph), FR-2 (zone gestures), FR-3 (marker shapes, live placement), FR-4 (default dimensions), FR-10 (random defaults, play-again), FR-18 (top-bar logo) delivered by Epics 1-3 — those FR rows stay owned by their original epic, with the refinements tracked in Epic 4's stories.
 
 **NFRs — cross-cutting, apply to every epic (not owned by a single one):**
 NFR1 (Logic/UI decoupling), NFR4 (Language convention), NFR5 (Readable git workflow) apply to all epics' stories. NFR2 (Data contract stability) and NFR3 (Quality and tests, including the AD-9 import-boundary test) are established structurally in Epic 1 and must hold for every epic thereafter. NFR6 (Accessibility floor) gets its explicit anchor in Epic 1 (Story 1.10, shared-widget focus/contrast/keyboard operability) but every epic's screen-specific stories (e.g. Epic 2/3's marker and wall-bar shape-vs-color distinction) must uphold it too.
@@ -175,23 +195,27 @@ Establishes the single composition root and screen router, a functional Home hub
 **FRs covered:** FR-20, FR-21, FR-22, FR-26
 
 ### Epic 2: Play a Maze (Game / Player)
-Classic maze selection (browse/jump), random maze generation and saving, Levels, Difficulty, HARD mode, Smooth/Discrete movement, timer, per-action confirmation prompts, and appearance (theme + logo). Delivers UJ-2's core play loop end-to-end (short of Personal Records, added in Epic 5).
+Classic maze selection (browse/jump), random maze generation and saving, Levels, Difficulty, HARD mode, Smooth/Discrete movement, timer, per-action confirmation prompts, and appearance (theme + logo). Delivers UJ-2's core play loop end-to-end (short of Personal Records, added in Epic 6).
 **FRs covered:** FR-9, FR-10, FR-11, FR-12, FR-13, FR-14, FR-15, FR-16, FR-17, FR-18
 
 ### Epic 3: Build and Test a Maze (Builder)
 Wall and zone editing, entry/exit marking, new maze / sketch creation with shared size bounds, Sketch/Maze saving, Builder theme, direct cell navigation — plus the complete bidirectional Builder↔Player link (`Test in Player`, `Edit in Builder`), only completable now that both screens exist. Delivers UJ-1 end-to-end, including the build → test → edit loop with no forced trip through Home.
 **FRs covered:** FR-1, FR-2, FR-3, FR-4, FR-5, FR-6, FR-7, FR-8, FR-19
 
-### Epic 4: Legacy Data Migration to English
-A one-time conversion script that renames the legacy French-named folders/files/CSV headers to the new English-named layout without altering maze content, and backfills the `MazeId` header line on every legacy classic and saved-random maze. Makes the author's existing maze library usable under the rewritten app, and eligible for Personal Records from day one of Epic 5.
+### Epic 4: Review Corrections — Builder & Player Polish, Windowing, Configurable Defaults
+Corrects delivered Builder/Player/shell behavior per the 2026-08-19 course correction: distinct marker/cursor glyphs, reworked Break vs Pass-through semantics, visible zone selection with a second gesture, live entry/exit placement, a reachability counter replacing "Walls broken", configurable defaults (Builder tool, new-maze and random dimensions), a play-again win-banner action, shell windowing (centered, resizable, zoom, fullscreen), a top-bar brand logo, and grouped screen layouts. Amends acceptance criteria of Epics 1-3 (FR-1/2/3/4/10/18) and adds FR-29 through FR-34.
+**FRs covered:** FR-29, FR-30, FR-31, FR-32, FR-33, FR-34
+
+### Epic 5: Legacy Data Migration to English
+A one-time conversion script that renames the legacy French-named folders/files/CSV headers to the new English-named layout without altering maze content, and backfills the `MazeId` header line on every legacy classic and saved-random maze. Makes the author's existing maze library usable under the rewritten app, and eligible for Personal Records from day one of Epic 6.
 **FRs covered:** FR-23
 
-### Epic 5: Home Enrichment — Personal Records & First-Activation Explainers
+### Epic 6: Home Enrichment — Personal Records & First-Activation Explainers
 The `RecordsRepository`/`RecordsService`, the Personal Records zone on Home (`record-group`, flat/collapsed/expanded), and first-activation explainer popups for Level/Difficulty/HARD-mode tiers with an on-demand ⓘ affordance. Completes UJ-2 (the run now updates a Personal Record) and completes Home's information architecture.
 **FRs covered:** FR-27, FR-28
 
-### Epic 6: (Deferred, P2) New Play Modes — Water Chase & Exploration
-Water Chase (rising-water hazard) and Exploration (chained mazes, collectibles, narration) — explicitly low priority per the PRD, to be tackled only after full legacy parity (Epics 1-5). No detailed design or stories are produced in this pass; kept as a placeholder so FR-24/FR-25 stay tracked.
+### Epic 7: (Deferred, P2) New Play Modes — Water Chase & Exploration
+Water Chase (rising-water hazard) and Exploration (chained mazes, collectibles, narration) — explicitly low priority per the PRD, to be tackled only after full legacy parity (Epics 1-6). No detailed design or stories are produced in this pass; kept as a placeholder so FR-24/FR-25 stay tracked.
 **FRs covered:** FR-24, FR-25
 
 ## Epic 1: Foundation & Navigation Shell
@@ -477,7 +501,7 @@ So that an interrupted write or a corrupted file never destroys existing data or
 
 ## Epic 2: Play a Maze (Game / Player)
 
-Classic maze selection, random maze generation and saving, Levels, Difficulty, HARD mode, movement modes, timer, per-action confirmation prompts, and appearance. Delivers UJ-2's core play loop end-to-end (short of Personal Records, added in Epic 5).
+Classic maze selection, random maze generation and saving, Levels, Difficulty, HARD mode, movement modes, timer, per-action confirmation prompts, and appearance. Delivers UJ-2's core play loop end-to-end (short of Personal Records, added in Epic 6).
 
 **FRs covered:** FR-9, FR-10, FR-11, FR-12, FR-13, FR-14, FR-15, FR-16, FR-17, FR-18
 
@@ -923,13 +947,251 @@ So that I can jump straight into editing it.
 **When** Edit in Builder is used
 **Then** it still works — fixing the legacy one-way-only link
 
-## Epic 4: Legacy Data Migration to English
+## Epic 4: Review Corrections — Builder & Player Polish, Windowing, Configurable Defaults
 
-A one-time conversion script that renames the legacy French-named folders/files/CSV headers to the new English-named layout without altering maze content, and backfills the `MazeId` header line on every legacy classic and saved-random maze. Makes the author's existing maze library usable under the rewritten app, and eligible for Personal Records from day one of Epic 5.
+Delivers the 2026-08-19 course correction: distinct marker/cursor glyphs, reworked Break vs Pass-through semantics, visible zone selection with a second gesture, live entry/exit placement, a reachability counter replacing "Walls broken", configurable defaults (Builder tool, new-maze and random dimensions), a play-again win-banner action, shell windowing (centered, resizable, zoom, fullscreen), a top-bar brand logo, and grouped screen layouts. Amends acceptance criteria delivered by Epics 1-3 (FR-1/2/3/4/10/18) and adds FR-29 through FR-34.
+
+**FRs covered:** FR-29, FR-30, FR-31, FR-32, FR-33, FR-34
+
+### Story 4.1: Builder cursor & marker glyphs
+
+As a maze author and a player,
+I want the Builder's selected cell to render as a round like the Player's ball, and the entry marker to render as a square everywhere,
+So that entry, exit, and the player/builder are never confused by shape alone.
+
+**Acceptance Criteria:**
+
+**Given** the Builder edit screen
+**When** a cell is selected
+**Then** the cursor renders as a filled circle (the Player-ball glyph), never a blue rectangle outline
+
+**Given** the entry marker (in both the Builder and the Player)
+**When** rendered
+**Then** it renders as a filled square, distinct from the round player/builder and the diamond exit marker
+
+**Given** the exit marker
+**When** rendered
+**Then** it keeps the filled diamond glyph
+
+### Story 4.2: Wall-tool semantics — Break vs Pass-through + Space toggle
+
+As a maze author,
+I want Break to break walls as I move through them and Pass-through to let me traverse walls freely without altering them, toggling the two with Space,
+So that breaking a wall is a deliberate act while traversal is free.
+
+**Acceptance Criteria:**
+
+**Given** Break mode
+**When** the cursor moves across a wall
+**Then** the wall breaks and the cursor moves (the former Pass-through behavior)
+
+**Given** Break mode
+**When** a wall segment is clicked
+**Then** it toggles as before (Story 3.2)
+
+**Given** Pass-through mode
+**When** the cursor moves across a wall
+**Then** the cursor moves and no wall is modified — walls have no effect on the builder
+
+**Given** either mode
+**When** the cursor would leave the grid
+**Then** movement stops at the grid bounds and the outer border stays closed
+
+**Given** the Space shortcut
+**When** pressed
+**Then** the tool toggles between Break and Pass-through, registered in the canonical keybinding table
+
+### Story 4.3: Zone selection — colored outline & click-click gesture
+
+As a maze author,
+I want zone selection to show a colored outline and to accept a second gesture,
+So that I can see what I'm about to destroy/restore and select with either a drag or two clicks.
+
+**Acceptance Criteria:**
+
+**Given** a zone tool (Destroy or Restore) active
+**When** the user starts a selection
+**Then** a colored rectangle outline is drawn live from the anchor to the current cell, distinct per tool
+
+**Given** a click-and-drag
+**When** released on another cell
+**Then** the dragged zone is applied (the existing gesture, Story 3.3)
+
+**Given** a plain click on a cell (press + release, no drag)
+**When** a zone tool is active
+**Then** the click arms the anchor, the outline follows the mouse, and a second click on another cell commits the zone — a single click never applies a zone operation
+
+**Given** an armed anchor
+**When** Escape is pressed
+**Then** the anchor is cancelled and no zone operation applies
+
+### Story 4.4: Entry/exit live placement — ghost follows cursor, place on click or Enter
+
+As a maze author,
+I want the entry/exit icon to follow my cursor in real time and be placed on a click or the Enter key,
+So that I can aim precisely before placing and place without the mouse.
+
+**Acceptance Criteria:**
+
+**Given** the Set Entry tool active
+**When** the cursor moves
+**Then** a ghost square (entry color) follows the cursor on any cell in real time, never resting on a placeholder position
+
+**Given** the Set Exit tool active
+**When** the cursor moves
+**Then** the ghost diamond follows the cursor on border cells only (existing behavior, Story 3.4)
+
+**Given** either tool active
+**When** a cell is clicked or Enter is pressed on the cursor cell
+**Then** the marker is placed (ghost for Set Entry, `ghost-marker` pre-placement for Set Exit) and the existing redefinition confirmation prompt is honored
+
+**Given** the Enter shortcut
+**When** registered
+**Then** it lives in the canonical keybinding table as a Builder-scoped action
+
+### Story 4.5: Reachability counter & click-to-highlight
+
+As a maze author,
+I want the HUD to count cells inaccessible from the entry and to outline them when I click the counter,
+So that I know what remains to open before the maze is playable.
+
+**Acceptance Criteria:**
+
+**Given** the Builder HUD
+**When** an entry is set
+**Then** the counter shows the live count of cells unreachable from the entry through open passages
+
+**Given** no entry set
+**When** the HUD renders
+**Then** the counter reads "—" and is not interactive
+
+**Given** the counter
+**When** clicked
+**Then** every inaccessible cell is outlined on the grid in a distinct color, toggling on/off and re-rendering when walls or the entry change
+
+**Given** the reachability computation
+**When** implemented
+**Then** it lives in `domain/` as a pure function (a BFS through open passages), with no UI dependency
+
+### Story 4.6: Configurable defaults — Builder tool, new-maze & random dimensions
+
+As the project's author,
+I want the default Builder tool, the default new-maze dimensions, and the default random-maze dimensions to be configurable in Settings,
+So that the dialogs and session start match my habits without editing values each time.
+
+**Acceptance Criteria:**
+
+**Given** the Settings window
+**When** opened
+**Then** a Defaults section offers the default Builder tool and the default dimensions (new-maze and random), each persisting via the scoped `SettingsRepository`
+
+**Given** the Builder New Maze dialog
+**When** opened
+**Then** its dimension fields default to the configured values, clamped within the shared 3–50 / 3–35 bounds, falling back to the bounds' minimum when unset
+
+**Given** the Player Generate Random dialog
+**When** opened
+**Then** its dimension fields default to the configured values, with the same clamping and fallback
+
+**Given** a Builder session starting
+**When** it opens
+**Then** the configured default tool is active (fallback: Break), read in the adapter and passed into the session service — the application layer gains no settings dependency
+
+### Story 4.7: Player — Continue regenerates a random maze with the same params
+
+As a player,
+I want the win banner of a generated random maze to offer regenerating another random maze with the same dimensions and entry,
+So that I can keep playing the same setup without retyping parameters.
+
+**Acceptance Criteria:**
+
+**Given** a solved `generated` maze
+**When** the win banner's continue action is triggered
+**Then** a new random maze is generated immediately with the same width, height, and entry position, and mounted in play — no dialog, no re-save
+
+**Given** a solved `classic` or `saved-random` maze
+**When** the win banner's continue action is triggered
+**Then** the existing Continue behavior is unchanged
+
+**Given** the continue action on a `generated` maze
+**When** rendered
+**Then** it is labelled distinctly (e.g. "New random maze"), not "Continue"
+
+### Story 4.8: Shell windowing — centered, resizable, zoom, fullscreen
+
+As a user,
+I want the app window to open centered, resize freely, zoom the maze, and go fullscreen, with the Settings window behaving the same way,
+So that I can work in the window arrangement I prefer.
+
+**Acceptance Criteria:**
+
+**Given** the shell starts
+**When** the root window opens
+**Then** it is centered on screen and resizable in both directions
+
+**Given** a screen with a maze canvas (Builder, Player)
+**When** the window is resized
+**Then** the canvas re-renders to fit the available space
+
+**Given** Ctrl+wheel (or `+`/`-`)
+**When** used over a maze canvas
+**Then** the cell size zooms in/out and the canvas re-renders
+
+**Given** the F11 shortcut
+**When** pressed
+**Then** the window toggles fullscreen, registered in the canonical keybinding table
+
+**Given** the Settings window
+**When** opened
+**Then** it is centered, resizable, and supports F11 fullscreen, and is never silently closed by a navigation frame teardown
+
+### Story 4.9: Top-bar brand logo follows the logo setting
+
+As a user,
+I want the top bar to show the brand logo before the app name, matching my chosen logo setting,
+So that the app has an identifiable brand mark.
+
+**Acceptance Criteria:**
+
+**Given** any screen's top bar
+**When** it renders
+**Then** the logo image for the current logo setting is shown top-left before the "Labyrinthes" name
+
+**Given** the logo setting (Story 2.11)
+**When** changed and the screen re-mounts
+**Then** the top bar shows the newly chosen logo
+
+**Given** the logo rendering
+**When** implemented
+**Then** it reuses the shared logo loader in `application/` and never couples `common/` to a screen's asset folder
+
+### Story 4.10: Screen layout — labeled blocks separated from the maze
+
+As a user,
+I want the Builder's and Player's controls and displays grouped into labeled blocks on the sides and top, clearly separated from the maze,
+So that the UI reads as tidy panels around a focused grid.
+
+**Acceptance Criteria:**
+
+**Given** the Builder edit screen
+**When** it renders
+**Then** tools are grouped under labeled headings in side blocks (e.g. Tools, Markers), the HUD sits on top, and the maze renders inside its own bordered maze-frame separated from the side blocks
+
+**Given** the Player screens
+**When** they render
+**Then** the existing labeled groups are tidied into consistent blocks clearly separated from the maze frame
+
+**Given** the group headings
+**When** rendered
+**Then** they use the shared typography tokens, with consistent spacing across Builder and Player
+
+## Epic 5: Legacy Data Migration to English
+
+A one-time conversion script that renames the legacy French-named folders/files/CSV headers to the new English-named layout without altering maze content, and backfills the `MazeId` header line on every legacy classic and saved-random maze. Makes the author's existing maze library usable under the rewritten app, and eligible for Personal Records from day one of Epic 6.
 
 **FRs covered:** FR-23
 
-### Story 4.1: Migration script — folder & file renaming
+### Story 5.1: Migration script — folder & file renaming
 
 As the project's author,
 I want a one-time script that renames the legacy French-named data folders and files to the new English-named layout,
@@ -953,7 +1215,7 @@ So that my existing maze library becomes usable under the rewritten app.
 **When** the legacy folders are checked
 **Then** the French-named layout no longer exists on disk — no side-by-side copy, no built-in rollback beyond whatever backup the author took beforehand
 
-### Story 4.2: Migration script — settings CSV header renaming
+### Story 5.2: Migration script — settings CSV header renaming
 
 As the project's author,
 I want the legacy settings file's `entité,nom,valeur` header and `builder`/`parcoureur` entity tags renamed to the new English-named layout,
@@ -969,7 +1231,7 @@ So that Settings persistence (Epic 1) reads a consistent, English-named file fro
 **When** `SettingsRepository` (Story 1.5) reads it
 **Then** every existing default setting value is present, unchanged, under its new key
 
-### Story 4.3: Migration script — MazeId backfill
+### Story 5.3: Migration script — MazeId backfill
 
 As the project's author,
 I want the migration script to mint and write a `MazeId` for every legacy classic and saved-random maze it converts,
@@ -989,13 +1251,13 @@ So that my existing maze library is eligible for Personal Records from day one.
 **When** any migrated classic/saved-random maze is reloaded via `MazeRepository`
 **Then** it carries a non-`None` `id`
 
-## Epic 5: Home Enrichment — Personal Records & First-Activation Explainers
+## Epic 6: Home Enrichment — Personal Records & First-Activation Explainers
 
 The `RecordsRepository`/`RecordsService`, the Personal Records zone on Home (`record-group`, flat/collapsed/expanded), and first-activation explainer popups for Level/Difficulty/HARD-mode tiers with an on-demand ⓘ affordance. Completes UJ-2 (the run now updates a Personal Record) and completes Home's information architecture.
 
 **FRs covered:** FR-27, FR-28
 
-### Story 5.1: RecordsRepository & RecordsService
+### Story 6.1: RecordsRepository & RecordsService
 
 As a developer,
 I want a single `RecordsRepository` (storage) and a `RecordsService` (application) implementing the "is this a new best" comparison and the "most-recently-set-or-broken first" ordering,
@@ -1019,7 +1281,7 @@ So that Home and Player never invent divergent comparison logic.
 **When** defined
 **Then** it is an immutable value object (`maze_id`, `level`, `difficulty`, `time`, `set_at`) living in `application/`, not `domain/`
 
-### Story 5.2: Player records a completion on win
+### Story 6.2: Player records a completion on win
 
 As a player,
 I want my fastest completion time recorded automatically when I win a classic or saved-random maze, at the Level and Difficulty I used,
@@ -1043,7 +1305,7 @@ So that my Personal Records reflect real runs without extra steps.
 **When** the new time is faster
 **Then** it replaces the stored one
 
-### Story 5.3: Home — Personal Records zone with record-group
+### Story 6.3: Home — Personal Records zone with record-group
 
 As a player,
 I want Home to show my Personal Records grouped per maze, with an inviting empty state before I've won anything,
@@ -1071,7 +1333,7 @@ So that I can see my progress at a glance.
 **When** multiple mazes have records
 **Then** rows are ordered most-recently-set-or-broken first
 
-### Story 5.4: First-activation explainer — Level and Difficulty tiers
+### Story 6.4: First-activation explainer — Level and Difficulty tiers
 
 As a player,
 I want an explainer popup the first time I activate a given Level or Difficulty tier, with an ⓘ affordance to reopen it on demand,
@@ -1095,7 +1357,7 @@ So that I understand what each tier changes without hunting for documentation.
 **When** read
 **Then** it stays plain and non-alarmist, consistent with the product's Voice and Tone
 
-### Story 5.5: First-activation explainer — HARD mode tier
+### Story 6.5: First-activation explainer — HARD mode tier
 
 As a player,
 I want the same first-activation explainer treatment for HARD mode as for Level/Difficulty tiers,
@@ -1105,7 +1367,7 @@ So that every tier gets a consistent, non-alarmist introduction.
 
 **Given** HARD mode has never been activated before
 **When** it's activated
-**Then** the explainer popup fires automatically (subject to the same auto-show setting as Story 5.4), describing the ball-invisible-during-movement effect factually, not as a warning
+**Then** the explainer popup fires automatically (subject to the same auto-show setting as Story 6.4), describing the ball-invisible-during-movement effect factually, not as a warning
 
 **Given** the ⓘ affordance next to the HARD-mode control
 **When** clicked
@@ -1115,8 +1377,8 @@ So that every tier gets a consistent, non-alarmist introduction.
 **When** persisted
 **Then** it survives app restarts, via the game-scoped `SettingsRepository`
 
-## Epic 6: (Deferred, P2) New Play Modes — Water Chase & Exploration
+## Epic 7: (Deferred, P2) New Play Modes — Water Chase & Exploration
 
-Water Chase (rising-water hazard) and Exploration (chained mazes, collectibles, narration) — explicitly low priority per the PRD, to be tackled only after full legacy parity (Epics 1-5). Per the PRD's own framing (§4.6, §8), design detail remains to be refined when the time comes; this epic intentionally carries no stories yet. It is kept as a placeholder so FR-24/FR-25 stay tracked in the coverage map rather than silently dropped, and should be revisited with a fresh epics/stories pass once Epics 1-5 have shipped and the concrete design questions the PRD leaves open (breath-reserve mechanic, exploration map structure, narration format) have been settled.
+Water Chase (rising-water hazard) and Exploration (chained mazes, collectibles, narration) — explicitly low priority per the PRD, to be tackled only after full legacy parity (Epics 1-6). Per the PRD's own framing (§4.6, §8), design detail remains to be refined when the time comes; this epic intentionally carries no stories yet. It is kept as a placeholder so FR-24/FR-25 stay tracked in the coverage map rather than silently dropped, and should be revisited with a fresh epics/stories pass once Epics 1-6 have shipped and the concrete design questions the PRD leaves open (breath-reserve mechanic, exploration map structure, narration format) have been settled.
 
 **FRs covered:** FR-24, FR-25

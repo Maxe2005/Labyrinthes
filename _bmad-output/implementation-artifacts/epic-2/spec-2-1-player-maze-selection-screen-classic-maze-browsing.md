@@ -118,7 +118,7 @@ router.register(
 )
 ```
 
-**Gallery labels are position-based, not filename-based.** `Maze` carries no name/label field, so "Classic Maze {i+1} of {n}" is derived purely from the browsed index within `list_names()`'s returned order — never from the underlying storage name. This sidesteps needing numeric-aware sorting of filenames (Epic 4's migration hasn't defined a naming convention yet) and keeps the label meaningful regardless of what a classic maze happens to be named on disk.
+**Gallery labels are position-based, not filename-based.** `Maze` carries no name/label field, so "Classic Maze {i+1} of {n}" is derived purely from the browsed index within `list_names()`'s returned order — never from the underlying storage name. This sidesteps needing numeric-aware sorting of filenames (Epic 5's migration hasn't defined a naming convention yet) and keeps the label meaningful regardless of what a classic maze happens to be named on disk.
 
 ## Verification
 
@@ -147,4 +147,4 @@ router.register(
 
 **Verification performed:** `ruff check .` clean, `ruff format --check .` clean, `pytest` -- 324 passed (322 before the review-patch pass, +2 new regression tests for the two code-level patches).
 
-**Residual risk:** The deferred theme-toggle/browse-position issue is real but low-consequence (one click restores the browsed maze) and self-contained to this screen; no other residual risks identified. The classic-maze library is empty in this repo today (`mazes/classic/` doesn't exist -- Epic 4's migration hasn't run), so the populated-gallery path is currently exercised only by tests, not by a real run of the app; this is expected and unblocks on Epic 4, not this story.
+**Residual risk:** The deferred theme-toggle/browse-position issue is real but low-consequence (one click restores the browsed maze) and self-contained to this screen; no other residual risks identified. The classic-maze library is empty in this repo today (`mazes/classic/` doesn't exist -- Epic 5's migration hasn't run), so the populated-gallery path is currently exercised only by tests, not by a real run of the app; this is expected and unblocks on Epic 5, not this story.

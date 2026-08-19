@@ -55,36 +55,37 @@ Max reviewed the working rewrite (shell + Player + Builder, all present on the `
 | Epic 1 — Foundation / shell | `done`, content merged into the working tree | G2 (windowing), G3 (top-bar logo), G4 (layout) rework shell deliverables (1.6 toolkit, 1.7 router, 1.8 home/top-bar, 1.10 keybindings). No architectural AD is violated. |
 | Epic 2 — Player | `done`, content on working tree | P1, P2 rework 2.2 (random generation defaults) and 2.4 (gameplay win flow); G1 touches 2.4 marker rendering. |
 | Epic 3 — Builder | `in-progress` (3.1–3.5 done, 3.6–3.9 backlog) | B1–B7 rework/extend 3.2 (wall editing), 3.3 (zone editing), 3.4 (entry/exit), 3.5 (cursor). |
-| Epics 4–6 | `backlog` | No direct impact; Epic 3 content feeds 3.8/3.9 (bidirectional links) and Epic 5 (records) unchanged. |
+| Epic 4 (new) | new epic, inserted after Epic 3 | Hosts the whole correction batch (stories 4.1–4.10), reworking Epic 1–3 deliverables. |
+| Epics 5–7 (renumbered from Epics 4–6) | `backlog` | No direct impact; Epic 3 content feeds 3.8/3.9 (bidirectional links) and Epic 6 (records, renumbered) unchanged. |
 
-**Recommendation:** keep Epic 3 as the vehicle for the whole batch. All corrections land as new stories on `epic-3-build-and-test-a-maze` (3.10+), each explicitly amending the acceptance criteria of the done story it reworks. This avoids reopening closed epics and keeps everything on the single active branch. The `sprint-status.yaml` entries for the amended done stories stay `done`; the amendments are tracked via the new stories (see 2.2).
+**Recommendation:** the batch becomes a **new Epic 4**, inserted after Epic 3; Epics 4–6 are renumbered to 5–7 (`epics.md`, `sprint-status.yaml` updated). Epic 4 branches from the current `epic-3-build-and-test-a-maze` HEAD (which already contains shell + Player + Builder), so every correction lands on the tree that holds the code it reworks. The `sprint-status.yaml` entries for the amended done stories stay `done`; the amendments are tracked via Epic 4's stories (see 2.2).
 
 ### 2.2 Story impact
 
-New stories proposed on Epic 3 (all `backlog` until approved):
+New stories proposed on Epic 4 (all `backlog` until approved):
 
 | New story | Reworks / amends | Corrections |
 |---|---|---|
-| 3.10 Builder cursor & marker glyphs | 3.2, 3.4, 3.5 (Builder); 2.4 (Player) | B1, G1 |
-| 3.11 Wall-tool semantics (Break vs Pass-through) + Space toggle | 3.2 | B2 |
-| 3.12 Zone selection: colored outline + click–click gesture | 3.3 | B3 |
-| 3.13 Entry/exit live placement (ghost follows cursor, place on click or Enter) | 3.4 | B4 |
-| 3.14 Reachability counter + click-to-highlight | 3.2 (HUD) | B5 |
-| 3.15 Configurable defaults (Builder tool, new-maze dims, random-maze dims) | 3.1 (new-maze dialog), 2.2 (random dialog) | B6, B7, P1 |
-| 3.16 Player: Continue regenerates random maze with same params | 2.4 | P2 |
-| 3.17 Shell windowing: centered, resizable, maze zoom, fullscreen | 1.7, 1.8 | G2 |
-| 3.18 Top-bar brand logo follows `theme_logo` | 1.6, 1.8, 2.11 | G3 |
-| 3.19 Screen layout: labeled blocks, maze separation | 1.8, 2.4, 3.2 | G4 |
+| 4.1 Builder cursor & marker glyphs | 3.2, 3.4, 3.5 (Builder); 2.4 (Player) | B1, G1 |
+| 4.2 Wall-tool semantics (Break vs Pass-through) + Space toggle | 3.2 | B2 |
+| 4.3 Zone selection: colored outline + click–click gesture | 3.3 | B3 |
+| 4.4 Entry/exit live placement (ghost follows cursor, place on click or Enter) | 3.4 | B4 |
+| 4.5 Reachability counter + click-to-highlight | 3.2 (HUD) | B5 |
+| 4.6 Configurable defaults (Builder tool, new-maze dims, random-maze dims) | 3.1 (new-maze dialog), 2.2 (random dialog) | B6, B7, P1 |
+| 4.7 Player: Continue regenerates random maze with same params | 2.4 | P2 |
+| 4.8 Shell windowing: centered, resizable, maze zoom, fullscreen | 1.7, 1.8 | G2 |
+| 4.9 Top-bar brand logo follows `theme_logo` | 1.6, 1.8, 2.11 | G3 |
+| 4.10 Screen layout: labeled blocks, maze separation | 1.8, 2.4, 3.2 | G4 |
 
 ### 2.3 Artifact conflicts
 
 - **PRD** — needs amendments to FR-1 (Break/Pass-through semantics), FR-2 (zone gestures), FR-3 (marker shapes, live entry/exit placement), FR-4 (configurable defaults), plus new acceptance for the reachability counter and shell windowing/zoom.
 - **Architecture spine** — no AD change. Add `domain/reachability.py` (pure domain, BFS through open passages). Windowing/zoom/centering belongs to `app/` composition root (AD-10 compliant: it owns the Tk root and may import concrete screens). New settings follow AD-7 (scoped keys, single readers). The Builder tool default is read in the adapter and **passed into** `start_builder_session(...)` — the application layer stays theme/repository-agnostic.
 - **UX Design / Experience** — update: brand-mark (logo in top bar), marker glyph set (square=entry, diamond=exit, circle=player/builder), zone selection rectangle, live entry ghost, layout blocks, interactive HUD chip (inaccessible counter replaces "Walls broken").
-- **`epic-3-context.md`** — update FR-1/FR-2/FR-3 wording, the HUD description, the stories list, and the keybinding note.
-- **Settings keys / dialogs** — new keys (see 3.15) + a "Defaults" category in `SettingsWindow` (Builder tool, new-maze dims, random-maze dims). No scope-model change: random dims are `game` scope, Builder defaults are `builder` scope.
+- **Epic 4 context / `epic-3-context.md`** — a new `epic-4-context.md` records the correction stories; `epic-3-context.md` stays scoped to Epic 3's FR-1/FR-2/FR-3 (the amended HUD/keybinding wording is picked up by Epic 4's stories).
+- **Settings keys / dialogs** — new keys (see 4.6) + a "Defaults" category in `SettingsWindow` (Builder tool, new-maze dims, random-maze dims). No scope-model change: random dims are `game` scope, Builder defaults are `builder` scope.
 - **Keybinding table** — new canonical entries: `toggle_break_pass_through` (Space, Builder), `place_marker` (Return, Builder), `toggle_fullscreen` (F11, shell), and maze-zoom (`+`/`-`, per-screen). Canonical-table uniqueness test must stay green.
-- **Deferred-work / retro items** — `epic-2-retro-item-1-router-cascade` (Settings window closing on frame teardown) is directly relevant to 3.17; align it there.
+- **Deferred-work / retro items** — `epic-2-retro-item-1-router-cascade` (Settings window closing on frame teardown) is directly relevant to 4.8; align it there.
 
 ### 2.4 Technical impact
 
@@ -98,24 +99,24 @@ New stories proposed on Epic 3 (all `backlog` until approved):
 
 ## Section 3: Recommended Approach
 
-**Option 1 — Direct Adjustment (recommended).** Modify existing stories via new amendment stories inside the current Epic 3; no rollback, no MVP reduction.
+**Option 1 — Direct Adjustment (recommended).** Modify existing stories via new amendment stories in a new Epic 4 inserted after Epic 3 (epics 4–6 renumbered to 5–7); no rollback, no MVP reduction.
 
 - **Rollback (Option 2) — not viable:** all affected stories are done and their value is real; reverting to re-do would duplicate work and lose the delivered features.
 - **MVP review (Option 3) — not needed:** the PRD MVP is intact; these are refinements that strengthen the MVP's UX, not scope reductions.
 
 **Rationale:** lowest effort, lowest risk, keeps momentum on the active branch, and each correction maps 1:1 to a focused story with an existing test surface. Effort: **Medium** (10 stories, mostly adapter-layer rework + 2 pure-domain additions). Risk: **Low–Medium** (concentrated in Builder/Player adapters; domain/application boundaries hold; no data-model change; wall encoding 0/1/2/3 untouched — preserved per migration requirement).
 
-**Sequencing:** 3.10 (glyphs) → 3.11 (tools) → 3.12 (zone) → 3.13 (markers) → 3.14 (counter) are independent Builder stories but share the builder canvas — do them in order to minimize merge friction. 3.15, 3.16, 3.17, 3.18, 3.19 are largely independent; 3.18 depends on `application/logos.py` (exists) and the Settings logo flow (2.11, exists). All land on `epic-3` via the normal story → review → merge-to-epic flow; the epic stays off `rewrite` until every epic-3 story (3.1–3.19) is `done`.
+**Sequencing:** 4.1 (glyphs) → 4.2 (tools) → 4.3 (zone) → 4.4 (markers) → 4.5 (counter) are independent Builder stories but share the builder canvas — do them in order to minimize merge friction. 4.6, 4.7, 4.8, 4.9, 4.10 are largely independent; 4.9 depends on `application/logos.py` (exists) and the Settings logo flow (2.11, exists). All land on the `epic-4` branch via the normal story → review → merge-to-epic flow; the epic stays off `rewrite` until every epic-3 story (3.1–3.9) and epic-4 story (4.1–4.10) is `done`.
 
 ---
 
 ## Section 4: Detailed Change Proposals
 
-### 4.1 Story proposals (new stories on Epic 3)
+### 4.1 Story proposals (new stories on Epic 4)
 
 ---
 
-**Story 3.10 — Builder cursor & marker glyphs**
+**Story 4.1 — Builder cursor & marker glyphs**
 
 Amends: 3.2 / 3.4 / 3.5 (Builder), 2.4 (Player).
 
@@ -127,7 +128,7 @@ Amends: 3.2 / 3.4 / 3.5 (Builder), 2.4 (Player).
 
 ---
 
-**Story 3.11 — Wall-tool semantics: Break vs Pass-through + Space toggle**
+**Story 4.2 — Wall-tool semantics: Break vs Pass-through + Space toggle**
 
 Amends: 3.2. Replaces the FR-1 semantic described in `epic-3-context.md`.
 
@@ -143,7 +144,7 @@ Amends: 3.2. Replaces the FR-1 semantic described in `epic-3-context.md`.
 
 ---
 
-**Story 3.12 — Zone selection: colored outline + two gestures**
+**Story 4.3 — Zone selection: colored outline + two gestures**
 
 Amends: 3.3.
 
@@ -160,7 +161,7 @@ Amends: 3.3.
 
 ---
 
-**Story 3.13 — Entry/exit live placement (ghost follows cursor, place on click or Enter)**
+**Story 4.4 — Entry/exit live placement (ghost follows cursor, place on click or Enter)**
 
 Amends: 3.4.
 
@@ -175,7 +176,7 @@ Amends: 3.4.
 
 ---
 
-**Story 3.14 — Reachability counter + click-to-highlight**
+**Story 4.5 — Reachability counter + click-to-highlight**
 
 Amends: 3.2 (HUD). Replaces the "Walls broken" HUD stat.
 
@@ -189,7 +190,7 @@ Amends: 3.2 (HUD). Replaces the "Walls broken" HUD stat.
 
 ---
 
-**Story 3.15 — Configurable defaults (Builder tool, new-maze dims, random-maze dims)**
+**Story 4.6 — Configurable defaults (Builder tool, new-maze dims, random-maze dims)**
 
 Amends: 3.1 (new-maze dialog), 2.2 (random dialog). New settings.
 
@@ -204,7 +205,7 @@ Amends: 3.1 (new-maze dialog), 2.2 (random dialog). New settings.
 
 ---
 
-**Story 3.16 — Player: Continue regenerates random maze with same params**
+**Story 4.7 — Player: Continue regenerates random maze with same params**
 
 Amends: 2.4.
 
@@ -216,7 +217,7 @@ Amends: 2.4.
 
 ---
 
-**Story 3.17 — Shell windowing: centered, resizable, maze zoom, fullscreen**
+**Story 4.8 — Shell windowing: centered, resizable, maze zoom, fullscreen**
 
 Amends: 1.7, 1.8.
 
@@ -232,7 +233,7 @@ Amends: 1.7, 1.8.
 
 ---
 
-**Story 3.18 — Top-bar brand logo follows `theme_logo`**
+**Story 4.9 — Top-bar brand logo follows `theme_logo`**
 
 Amends: 1.6, 1.8, 2.11.
 
@@ -244,7 +245,7 @@ Amends: 1.6, 1.8, 2.11.
 
 ---
 
-**Story 3.19 — Screen layout: labeled blocks, maze separation**
+**Story 4.10 — Screen layout: labeled blocks, maze separation**
 
 Amends: 1.8, 2.4, 3.2.
 
@@ -282,17 +283,17 @@ Amends: 1.8, 2.4, 3.2.
 
 ## Section 5: Implementation Handoff
 
-**Scope:** Moderate — 10 new stories on Epic 3 (backlog reorganization + Developer implementation). No PM/Architect replan required.
+**Scope:** Moderate — 10 new stories on the new Epic 4 (backlog reorganization + Developer implementation). No PM/Architect replan required.
 
 | Role | Responsibility |
 |---|---|
 | Max (Product Owner) | Approve proposal; confirm story grouping; validate against running app after each story. |
-| Max (Developer) | Implement stories in order via the standard story → review → merge flow on `epic-3` (Conventional Commits in English with story keys 3.10–3.19). |
-| Code review (bmad-loop / manual) | Adversarial review on each story branch before merging into `epic-3`. |
-| Docs | Update PRD, `epic-3-context.md`, UX docs, `sprint-status.yaml` (add 3-10..3-19 as `backlog`; move to `todo`/`in-progress` as each starts). |
+| Max (Developer) | Create `epic-4` from the current `epic-3` HEAD; implement stories in order via the standard story → review → merge flow on `epic-4` (Conventional Commits in English with story keys 4.1–4.10). |
+| Code review (bmad-loop / manual) | Adversarial review on each story branch before merging into `epic-4`. |
+| Docs | Update PRD, add `epic-4-context.md`, UX docs, `sprint-status.yaml` (Epic 4 stories 4-1..4-10 in `backlog`; move to `todo`/`in-progress` as each starts). |
 
-**Sequencing:** 3.10 → 3.11 → 3.12 → 3.13 → 3.14 (shared builder canvas, in order); 3.15, 3.16, 3.17, 3.18, 3.19 independent — 3.18 after 3.15 (logo is already wired; no hard dependency), 3.17 first if windowing churn is desired before canvas tweaks.
+**Sequencing:** 4.1 → 4.2 → 4.3 → 4.4 → 4.5 (shared builder canvas, in order); 4.6, 4.7, 4.8, 4.9, 4.10 independent — 4.9 after 4.6 (logo is already wired; no hard dependency), 4.8 first if windowing churn is desired before canvas tweaks.
 
 **Verification per story:** `ruff check src tests` → `ruff format --check src tests` → `pytest` (GUI tests need `DISPLAY=:0`, present). Re-run a single failing GUI test alone before assuming a regression (AGENTS.md flakiness note).
 
-**Success criteria:** all 13 corrections reproducible in the running app (`python -m labyrinthes.app`), all test suites green, keybinding-table uniqueness holds, and the epic stays off `rewrite` until every epic-3 story is `done`.
+**Success criteria:** all 13 corrections reproducible in the running app (`python -m labyrinthes.app`), all test suites green, keybinding-table uniqueness holds, and `epic-4` stays off `rewrite` until every epic-4 story (4.1–4.10) is `done`.

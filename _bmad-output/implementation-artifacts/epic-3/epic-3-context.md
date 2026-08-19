@@ -52,4 +52,4 @@ Deliver the Builder end-to-end (UJ-1): create a new empty maze at chosen dimensi
 - Epic 1 must supply the domain model (1.1), `MazeRepository`/`SettingsRepository` (1.3–1.5, hardened 1.12), the `common/` toolkit and tokens (1.6), the router (1.7), the theme mechanism (1.9), and the canonical keybinding table (1.10) before this epic's storage-, rendering-, and shortcut-consuming stories can land.
 - Epic 2's gameplay screen is required for 3.8 (Test in Player mounts it with a `Maze`) and 3.9 (Edit in Builder keys off the `classic`/`saved-random` kinds); these two stories are the reason the epic waits until both screens exist.
 - Internal: 3.1 (a grid to edit) precedes 3.2 (wall editing) and 3.4 (entry/exit); 3.2 precedes 3.3 (zone editing operates on walls); 3.4 precedes 3.6 (Save-as-Maze requires entry+exit); 3.6's Maze save feeds Epic 2's classic gallery (2.1).
-- Re-saving a maze while preserving its `MazeId` (3.6/3.9) is what keeps Epic 5's Personal Records tied to a stable identity across edits.
+- Re-saving a maze while preserving its `MazeId` (3.6/3.9) is what keeps Epic 6's Personal Records tied to a stable identity across edits.

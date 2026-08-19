@@ -73,24 +73,24 @@ development_status:
   3-7-builder-theme-toggle: backlog
   3-8-test-in-player-launch-the-game-from-the-builder: backlog
   3-9-edit-in-builder-launch-the-builder-from-the-game: backlog
-  3-10-builder-cursor-and-marker-glyphs: backlog
-  3-11-wall-tool-semantics-break-vs-pass-through: backlog
-  3-12-zone-selection-colored-outline-click-click: backlog
-  3-13-entry-exit-live-placement: backlog
-  3-14-reachability-counter-and-highlight: backlog
-  3-15-configurable-defaults: backlog
-  3-16-player-continue-regenerates-random: backlog
-  3-17-shell-windowing: backlog
-  3-18-top-bar-brand-logo: backlog
-  3-19-screen-layout-blocks: backlog
-  4-1-migration-script-folder-file-renaming: backlog
-  4-2-migration-script-settings-csv-header-renaming: backlog
-  4-3-migration-script-mazeid-backfill: backlog
-  5-1-recordsrepository-recordsservice: backlog
-  5-2-player-records-a-completion-on-win: backlog
-  5-3-home-personal-records-zone-with-record-group: backlog
-  5-4-first-activation-explainer-level-and-difficulty-tiers: backlog
-  5-5-first-activation-explainer-hard-mode-tier: backlog
+  4-1-builder-cursor-and-marker-glyphs: backlog
+  4-2-wall-tool-semantics-break-vs-pass-through: backlog
+  4-3-zone-selection-colored-outline-click-click: backlog
+  4-4-entry-exit-live-placement: backlog
+  4-5-reachability-counter-and-highlight: backlog
+  4-6-configurable-defaults: backlog
+  4-7-player-continue-regenerates-random: backlog
+  4-8-shell-windowing: backlog
+  4-9-top-bar-brand-logo: backlog
+  4-10-screen-layout-blocks: backlog
+  5-1-migration-script-folder-file-renaming: backlog
+  5-2-migration-script-settings-csv-header-renaming: backlog
+  5-3-migration-script-mazeid-backfill: backlog
+  6-1-recordsrepository-recordsservice: backlog
+  6-2-player-records-a-completion-on-win: backlog
+  6-3-home-personal-records-zone-with-record-group: backlog
+  6-4-first-activation-explainer-level-and-difficulty-tiers: backlog
+  6-5-first-activation-explainer-hard-mode-tier: backlog
   epic-1: done
   epic-1-retrospective: done
   epic-2: done
@@ -103,6 +103,8 @@ development_status:
   epic-5-retrospective: optional
   epic-6: backlog
   epic-6-retrospective: optional
+  epic-7: backlog
+  epic-7-retrospective: optional
 generated: 2026-08-05
 last_updated: 08-19-2026 09:59
 project: Labyrinthes
