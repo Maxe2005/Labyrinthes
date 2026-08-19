@@ -101,6 +101,7 @@ from labyrinthes.application.builder_session import (
     start_builder_session,
 )
 from labyrinthes.application.confirmation_settings import read_confirm_redefine_marker
+from labyrinthes.application.maze_repository import MazeRepository
 from labyrinthes.application.settings_repository import SettingsRepository
 from labyrinthes.domain.errors import DomainValidationError
 from labyrinthes.domain.grid import Grid
@@ -152,6 +153,7 @@ def mount(
     toggle_theme: ToggleThemeFn,
     *,
     settings_repository: SettingsRepository,
+    maze_repository: MazeRepository | None = None,
 ) -> tk.Frame:
     """Build the Builder edit screen `Frame`, parented under `parent`.
 
@@ -245,6 +247,7 @@ class _BuilderEditArea(tk.Frame):
         bind_shortcut(self, keybinding("restore_zone"), self._activate_restore_zone)
         bind_shortcut(self, keybinding("set_entry"), self._activate_set_entry)
         bind_shortcut(self, keybinding("set_exit"), self._activate_set_exit)
+        bind_shortcut(self, keybinding("save_maze"), self.save_maze)
 
     # -- construction --------------------------------------------------
 
@@ -565,6 +568,91 @@ class _BuilderEditArea(tk.Frame):
     def _sync_after_wall_change(self) -> None:
         self._canvas.refresh_walls(self._session.maze.grid)
         self._walls_chip.set_value(str(broken_wall_count(self._session)))
+
+    def save_maze(self) -> None:
+        """Save the current maze.
+
+        - If exit is not set: block Maze save with inline message, allow Sketch save.
+        - If exit is set: persist via MazeRepository.save() (mints MazeId for CLASSIC/SAVED_RANDOM).
+        - Duplicate names are handled by trying to load existing maze; if found,
+          ask to overwrite, otherwise use unique name.
+        """
+        exit_is_set = self._session.exit is not None
+
+        # Duplicate-name check: try loading by name
+        suggested_name = f"{self._session.maze.grid.width}x{self._session.maze.grid.height}"
+
+        def make_unique(name: str) -> str:
+            try:
+                maze_repository.load(name, self._session.maze.kind)
+                # Name exists - append -2, -3, etc.
+                base, ext = (name.rsplit(".csv", 1) if ".csv" in name else (name, ""))
+                counter = 2
+                while True:
+                    candidate = f"{base}-{counter}"
+                    try:
+                        maze_repository.load(candidate, self._session.maze.kind)
+                        counter += 1
+                    except Exception:
+                        return candidate
+                return name
+            except Exception:
+                # Name is unique
+                return name
+
+        unique_name = make_unique(suggested_name)
+
+        if not exit_is_set:
+            # Block Maze save, show inline message, allow Sketch save
+            from labyrinthes.adapters.tkinter.common import ConfirmDialog
+
+            ConfirmDialog(
+                self,
+                theme=self._theme,
+                message=(
+                    f'Exit not set. Save as "Sketch" (always available, no exit required), '
+                    f'or set the exit first? Name: "{unique_name}"'
+                ),
+                on_confirm=lambda: self._do_save_sketch(unique_name),
+                on_cancel=lambda: None,
+            )
+            return
+
+        # Exit is set — proceed with Maze save (MazeId minted for eligible kinds)
+        self._do_save_maze(unique_name)
+
+    def _do_save_sketch(self, name: str) -> None:
+        """Save the current maze as a Sketch (kind=SKETCH, id=None)."""
+        sketch_maze = Maze(
+            grid=self._session.maze.grid,
+            entry=self._session.entry,
+            exit=self._session.exit,
+            kind=MazeKind.SKETCH,
+            id=None,
+        )
+        maze_repository.save(sketch_maze, name)
+        # Update HUD to show "Draft" for sketch
+        self._walls_chip.set_value("Draft")
+        # Navigate back to Builder with the sketch maze as state
+        from labyrinthes.application.builder_session import start_builder_session
+
+        new_session = start_builder_session(sketch_maze)
+        self._session = new_session
+        # Rebuild the area with the new sketch maze
+        self.__init__(self._parent, sketch_maze, self._theme, settings_repository=self._settings_repository)
+
+    def _do_save_maze(self, name: str) -> None:
+        """Save the current maze as a finished Maze (mints MazeId for eligible kinds)."""
+        maze_with_id = maze_repository.save(self._session.maze, name)
+        # Navigate back to Builder with the saved maze as state
+        from labyrinthes.application.builder_session import start_builder_session
+
+        new_session = start_builder_session(maze_with_id)
+        self._session = new_session
+        # Rebuild the area with the new maze
+        self.__init__(self._parent, maze_with_id, self._theme, settings_repository=self._settings_repository)
+        # Refresh the canvas
+        self._sync_after_wall_change()
 
 
 class _BuilderMazeCanvas(tk.Canvas):
