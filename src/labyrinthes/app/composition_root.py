@@ -143,7 +143,11 @@ def build_app(
         router.register(
             ScreenId.BUILDER,
             _bind_screen(
-                partial(mount_builder, settings_repository=settings_repository),
+                partial(
+                    mount_builder,
+                    maze_repository=maze_repository,
+                    settings_repository=settings_repository,
+                ),
                 navigate,
                 theme_controller,
             ),

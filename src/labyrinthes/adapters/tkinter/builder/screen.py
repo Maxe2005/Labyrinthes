@@ -67,6 +67,7 @@ from __future__ import annotations
 import functools
 import tkinter as tk
 from collections.abc import Callable
+from dataclasses import replace
 
 from labyrinthes.adapters.tkinter.common import (
     SPACING,
@@ -77,6 +78,7 @@ from labyrinthes.adapters.tkinter.common import (
     HudChip,
     NavigateFn,
     NewMazeDialog,
+    PillButton,
     ScreenId,
     SettingsWindow,
     Theme,
@@ -106,9 +108,16 @@ from labyrinthes.application.settings_repository import SettingsRepository
 from labyrinthes.domain.errors import DomainValidationError
 from labyrinthes.domain.grid import Grid
 from labyrinthes.domain.level_visibility import Wall, is_border_cell
-from labyrinthes.domain.maze import Maze
+from labyrinthes.domain.maze import Maze, MazeKind
 from labyrinthes.domain.movement import Direction
 from labyrinthes.domain.position import Position
+
+# Kinds `MazeRepository.save()` mints a `MazeId` for (AD-3/AD-6) -- a maze
+# save promotes any other kind (in practice, only `SKETCH`: the Builder
+# never opens a `GENERATED` maze) to `CLASSIC`; an already-eligible kind
+# (a future Edit-in-Builder resave, Story 3.9) is left as-is so its
+# existing id is carried forward, not re-minted.
+_ID_ELIGIBLE_KINDS = frozenset({MazeKind.CLASSIC, MazeKind.SAVED_RANDOM})
 
 __all__ = ["mount"]
 
@@ -153,7 +162,7 @@ def mount(
     toggle_theme: ToggleThemeFn,
     *,
     settings_repository: SettingsRepository,
-    maze_repository: MazeRepository | None = None,
+    maze_repository: MazeRepository,
 ) -> tk.Frame:
     """Build the Builder edit screen `Frame`, parented under `parent`.
 
@@ -161,6 +170,10 @@ def mount(
     Maze` renders the maze-frame directly with that maze already loaded
     for editing (confirming the dialog re-enters this same branch via
     `navigate(ScreenId.BUILDER, maze)`).
+
+    `maze_repository` (Story 3.6) is required and keyword-only, mirroring
+    `player/screen.py`'s own `mount()` -- the Save flow needs it to persist
+    Sketches/Mazes and to duplicate-name-check via `list_names()`/`load()`.
     """
     frame = tk.Frame(parent)
 
@@ -198,7 +211,14 @@ def mount(
         )
         return frame
 
-    edit_area = _BuilderEditArea(frame, state, theme, settings_repository=settings_repository)
+    edit_area = _BuilderEditArea(
+        frame,
+        state,
+        theme,
+        navigate=navigate,
+        settings_repository=settings_repository,
+        maze_repository=maze_repository,
+    )
     edit_area.pack(
         fill="both",
         expand=True,
@@ -218,12 +238,17 @@ class _BuilderEditArea(tk.Frame):
         maze: Maze,
         theme: Theme,
         *,
+        navigate: NavigateFn,
         settings_repository: SettingsRepository,
+        maze_repository: MazeRepository,
     ) -> None:
         colors = colors_for(theme)
         super().__init__(parent, background=colors.window)
+        self._parent = parent
         self._theme = theme
+        self._navigate = navigate
         self._settings_repository = settings_repository
+        self._maze_repository = maze_repository
         self._session: BuilderSession = start_builder_session(maze)
         # The open marker-redefinition `ConfirmDialog`, if any -- `None`
         # when no prompt is showing (Story 3.4). `_maybe_confirm`'s guard
@@ -352,6 +377,34 @@ class _BuilderEditArea(tk.Frame):
         )
         self._walls_chip.pack(side="left")
 
+        # "Draft" status (AC3, Story 3.6): shown only for a `SKETCH`-kind
+        # maze -- set once, at construction, from the maze this area was
+        # built with. A save always re-`navigate()`s to a freshly mounted
+        # `_BuilderEditArea` (see `save_maze`), so this never goes stale --
+        # there is no in-place chip update to keep in sync.
+        if self._session.maze.kind is MazeKind.SKETCH:
+            self._status_chip: HudChip | None = HudChip(
+                hud_row, "Status", "Draft", theme=self._theme
+            )
+            self._status_chip.pack(side="left", padx=(SPACING["sm"], 0))
+        else:
+            self._status_chip = None
+
+        # The single primary `pill-btn` for this screen (Epic 3's UX
+        # pattern: "exactly one primary pill-btn per screen -- New Maze,
+        # Save"), placed in the screen body like Home's own "New Maze"
+        # pill (`home/screen.py`), not inside the shared `TopBar` (which
+        # carries only the brand/breadcrumb/icon-btns, per `top_bar.py`).
+        save_kb = keybinding("save_maze")
+        PillButton(
+            hud_row,
+            save_kb.label,
+            theme=self._theme,
+            primary=True,
+            shortcut=save_kb.display,
+            command=self.save_maze,
+        ).pack(side="right")
+
     def _build_canvas(self, parent: tk.Widget) -> None:
         self._canvas = _BuilderMazeCanvas(
             parent,
@@ -445,8 +498,6 @@ class _BuilderEditArea(tk.Frame):
             self._place_exit(position)
         else:
             # No marker tool active: move editing cursor directly to clicked cell
-            from dataclasses import replace
-
             self._session = replace(self._session, cursor=position)
             self._canvas.set_cursor(self._session.cursor)
             self._sync_markers()
@@ -570,89 +621,239 @@ class _BuilderEditArea(tk.Frame):
         self._walls_chip.set_value(str(broken_wall_count(self._session)))
 
     def save_maze(self) -> None:
-        """Save the current maze.
+        """Start the Save flow (AC1/AC2, I/O matrix).
 
-        - If exit is not set: block Maze save with inline message, allow Sketch save.
-        - If exit is set: persist via MazeRepository.save() (mints MazeId for CLASSIC/SAVED_RANDOM).
-        - Duplicate names are handled by trying to load existing maze; if found,
-          ask to overwrite, otherwise use unique name.
+        Exit not set: Maze save is blocked; a `ConfirmDialog` explains why
+        and offers Sketch save instead (always available). Exit set: goes
+        straight to Maze save. Either path opens `_SaveNameDialog` next for
+        the actual name entry/duplicate-name handling -- this method only
+        decides *which* kind is being saved.
         """
-        exit_is_set = self._session.exit is not None
-
-        # Duplicate-name check: try loading by name
-        suggested_name = f"{self._session.maze.grid.width}x{self._session.maze.grid.height}"
-
-        def make_unique(name: str) -> str:
-            try:
-                maze_repository.load(name, self._session.maze.kind)
-                # Name exists - append -2, -3, etc.
-                base, ext = (name.rsplit(".csv", 1) if ".csv" in name else (name, ""))
-                counter = 2
-                while True:
-                    candidate = f"{base}-{counter}"
-                    try:
-                        maze_repository.load(candidate, self._session.maze.kind)
-                        counter += 1
-                    except Exception:
-                        return candidate
-                return name
-            except Exception:
-                # Name is unique
-                return name
-
-        unique_name = make_unique(suggested_name)
-
-        if not exit_is_set:
-            # Block Maze save, show inline message, allow Sketch save
-            from labyrinthes.adapters.tkinter.common import ConfirmDialog
-
+        if self._session.exit is None:
             ConfirmDialog(
                 self,
                 theme=self._theme,
                 message=(
-                    f'Exit not set. Save as "Sketch" (always available, no exit required), '
-                    f'or set the exit first? Name: "{unique_name}"'
+                    'Exit not set. Save as "Sketch" (always available, no '
+                    "exit required), or set the exit first?"
                 ),
-                on_confirm=lambda: self._do_save_sketch(unique_name),
-                on_cancel=lambda: None,
+                on_confirm=self._open_save_dialog_for_sketch,
+                on_close=lambda: None,
+            )
+            return
+        self._open_save_dialog_for_maze()
+
+    def _open_save_dialog_for_sketch(self) -> None:
+        self._open_save_dialog(MazeKind.SKETCH, self._do_save_sketch)
+
+    def _open_save_dialog_for_maze(self) -> None:
+        # Promote to CLASSIC unless the maze already carries an
+        # id-eligible kind (a future Edit-in-Builder resave, Story 3.9) --
+        # `MazeRepository.save()` never infers/rewrites `kind` itself, so
+        # the caller must set the target kind before calling it (its own
+        # docstring), and never re-mints an id an already-eligible maze
+        # already carries (AD-3/AD-6).
+        target_kind = self._session.maze.kind
+        if target_kind not in _ID_ELIGIBLE_KINDS:
+            target_kind = MazeKind.CLASSIC
+        self._open_save_dialog(target_kind, functools.partial(self._do_save_maze, target_kind))
+
+    def _open_save_dialog(self, kind: MazeKind, on_confirm: Callable[[str], None]) -> None:
+        grid = self._session.maze.grid
+        suggested_name = f"{grid.width}x{grid.height}"
+        existing_names = self._maze_repository.list_names(kind)
+        _SaveNameDialog(
+            self,
+            theme=self._theme,
+            suggested_name=suggested_name,
+            existing_names=existing_names,
+            on_confirm=on_confirm,
+        )
+
+    def _do_save_sketch(self, name: str) -> None:
+        """Persist the current maze as a Sketch and return to Builder with it.
+
+        `session.maze.entry`/`.exit` are already kept in sync with the
+        session's own optional `entry`/`exit` fields by
+        `apply_set_entry`/`apply_set_exit` (`builder_session.py`), so no
+        separate override is needed here -- only `kind`/`id` change.
+        """
+        sketch_maze = replace(self._session.maze, kind=MazeKind.SKETCH, id=None)
+        saved = self._maze_repository.save(sketch_maze, name)
+        self._navigate(ScreenId.BUILDER, saved)
+
+    def _do_save_maze(self, target_kind: MazeKind, name: str) -> None:
+        """Persist the current maze as a finished Maze and return to Builder with it."""
+        maze_to_save = replace(self._session.maze, kind=target_kind)
+        saved = self._maze_repository.save(maze_to_save, name)
+        self._navigate(ScreenId.BUILDER, saved)
+
+
+_NAME_REQUIRED_MESSAGE = "Name is required."
+_PATH_SEPARATOR_MESSAGE = "Name must not contain a path separator."
+_PATH_SEPARATORS = ("/", "\\")
+
+
+def _validate_save_name(name: str) -> str | None:
+    """The inline error for `name`, or `None` if it's shape-valid.
+
+    Duplicates `player/save_maze_dialog.py::_validate_name`'s two rules
+    (empty / contains a path separator) locally rather than importing them
+    -- `adapters/tkinter/builder/` never imports `adapters/tkinter/player/`
+    (AD-1, AD-9/AD-10), so the rules are kept in sync by convention, the
+    same way `save_maze_dialog.py` itself duplicates them from
+    `adapters/storage/paths.py::maze_file_path` rather than importing that
+    (AD-9's Builder/Player-never-import-each-other applies one layer up:
+    neither screen package imports the storage adapter directly either).
+    """
+    if not name:
+        return _NAME_REQUIRED_MESSAGE
+    if any(separator in name for separator in _PATH_SEPARATORS):
+        return _PATH_SEPARATOR_MESSAGE
+    return None
+
+
+class _SaveNameDialog(tk.Toplevel):
+    """Name entry, live validation, and arm/confirm overwrite for the Save flow.
+
+    Mirrors `player/save_maze_dialog.py`'s `SaveMazeDialog` (Story 2.3)
+    deliberately: FR-5's "match the Builder's save behavior" was written
+    against *this* story providing the shape `SaveMazeDialog` follows, so
+    the two are kept in lock-step -- a duplicate-name collision arms the
+    Save button (relabeled "Overwrite") and shows an inline warning rather
+    than saving immediately; a second click on the *same, unchanged* name
+    confirms the overwrite. Kept local rather than imported from
+    `adapters/tkinter/player/` per AD-1/AD-9/AD-10 (Builder and Player
+    never import each other); unifying this with `SaveMazeDialog` into
+    `adapters/tkinter/common/` is a reasonable follow-up (AD-11), not done
+    here to keep this story's diff scoped to the Builder.
+    """
+
+    def __init__(
+        self,
+        parent: tk.Widget,
+        *,
+        theme: Theme,
+        suggested_name: str,
+        existing_names: list[str],
+        on_confirm: Callable[[str], None],
+    ) -> None:
+        super().__init__(parent)
+        self.title("Save")
+        self._existing_names = existing_names
+        self._on_confirm = on_confirm
+        self._armed_name: str | None = None
+
+        colors = colors_for(theme)
+        self.configure(background=colors.window)
+
+        form = tk.Frame(self, background=colors.window)
+        form.pack(padx=SPACING["2xl"], pady=SPACING["2xl"], fill="both", expand=True)
+
+        row = tk.Frame(form, background=colors.window)
+        row.pack(fill="x", pady=(0, SPACING["xs"]))
+
+        tk.Label(
+            row,
+            text="Name",
+            font=TYPOGRAPHY.body.to_tk_font(),
+            background=colors.window,
+            foreground=colors.ink,
+            width=12,
+            anchor="w",
+        ).pack(side="left")
+
+        self._name_entry = tk.Entry(row, width=24)
+        self._name_entry.insert(0, suggested_name)
+        self._name_entry.select_range(0, "end")
+        self._name_entry.pack(side="left")
+        self._name_entry.bind("<KeyRelease>", self._on_name_changed)
+        self._name_entry.bind("<Return>", self._on_save_clicked)
+        # Consume "s"/"S" locally before they reach the global `save_maze`
+        # shortcut's `bind_all()` handler -- same guard as
+        # `SaveMazeDialog._name_entry` (Story 2.3/2.4): otherwise typing an
+        # "s" into a maze *name* both inserts the character and reopens a
+        # second `_SaveNameDialog` stacked on this one.
+        self._name_entry.bind("<KeyPress-s>", lambda _event: "break")
+        self._name_entry.bind("<KeyPress-S>", lambda _event: "break")
+        self._name_entry.focus_set()
+
+        self._message_label = tk.Label(
+            form,
+            text="",
+            font=TYPOGRAPHY.body_secondary.to_tk_font(),
+            background=colors.window,
+            foreground=colors.exit,
+            anchor="w",
+            justify="left",
+            wraplength=360,
+        )
+        self._message_label.pack(fill="x", pady=(0, SPACING["sm"]))
+
+        buttons = tk.Frame(self, background=colors.window)
+        buttons.pack(padx=SPACING["2xl"], pady=(0, SPACING["2xl"]), anchor="e")
+
+        self._cancel_button = PillButton(buttons, "Cancel", theme=theme, command=self._on_cancel)
+        self._cancel_button.pack(side="left", padx=(0, SPACING["sm"]))
+
+        self._save_button = PillButton(
+            buttons, "Save", theme=theme, primary=True, command=self._on_save_clicked
+        )
+        self._save_button.pack(side="left")
+
+        self.bind("<Escape>", self._on_cancel)
+
+    # -- arming --------------------------------------------------------
+
+    def _reset_arming(self) -> None:
+        if self._armed_name is not None:
+            self._armed_name = None
+            self._save_button.set_text("Save")
+
+    def _on_name_changed(self, _event: tk.Event | None = None) -> None:
+        # Compared against the raw (unstripped) field text, the same value
+        # `_armed_name` was captured from -- a non-content `<KeyRelease>`
+        # (arrow keys, Home/End, Shift) fires this handler too but leaves
+        # the text unchanged, so arming must survive it; only an actual
+        # edit resets it.
+        if self._name_entry.get() != self._armed_name:
+            self._reset_arming()
+        if self._armed_name is not None:
+            return
+        self._message_label.configure(
+            text=_validate_save_name(self._name_entry.get().strip()) or ""
+        )
+
+    # -- actions ---------------------------------------------------
+
+    def _on_save_clicked(self, _event: tk.Event | None = None) -> None:
+        raw = self._name_entry.get()
+        name = raw.strip()
+        error = _validate_save_name(name)
+        if error is not None:
+            self._reset_arming()
+            self._message_label.configure(text=error)
+            return
+
+        if name in self._existing_names and self._armed_name != raw:
+            # First click on a colliding name: arm, warn, relabel -- no
+            # save yet.
+            self._armed_name = raw
+            self._save_button.set_text("Overwrite")
+            self._message_label.configure(
+                text=f'A maze named "{name}" already exists — Save again to overwrite it.'
             )
             return
 
-        # Exit is set — proceed with Maze save (MazeId minted for eligible kinds)
-        self._do_save_maze(unique_name)
+        # Destroy before invoking `on_confirm`: `on_confirm` triggers
+        # `_navigate()`, which mounts a fresh Builder frame -- closing this
+        # dialog's own window first, via its own controlled path, avoids
+        # relying on that navigation's frame teardown to also clean this up.
+        self.destroy()
+        self._on_confirm(name)
 
-    def _do_save_sketch(self, name: str) -> None:
-        """Save the current maze as a Sketch (kind=SKETCH, id=None)."""
-        sketch_maze = Maze(
-            grid=self._session.maze.grid,
-            entry=self._session.entry,
-            exit=self._session.exit,
-            kind=MazeKind.SKETCH,
-            id=None,
-        )
-        maze_repository.save(sketch_maze, name)
-        # Update HUD to show "Draft" for sketch
-        self._walls_chip.set_value("Draft")
-        # Navigate back to Builder with the sketch maze as state
-        from labyrinthes.application.builder_session import start_builder_session
-
-        new_session = start_builder_session(sketch_maze)
-        self._session = new_session
-        # Rebuild the area with the new sketch maze
-        self.__init__(self._parent, sketch_maze, self._theme, settings_repository=self._settings_repository)
-
-    def _do_save_maze(self, name: str) -> None:
-        """Save the current maze as a finished Maze (mints MazeId for eligible kinds)."""
-        maze_with_id = maze_repository.save(self._session.maze, name)
-        # Navigate back to Builder with the saved maze as state
-        from labyrinthes.application.builder_session import start_builder_session
-
-        new_session = start_builder_session(maze_with_id)
-        self._session = new_session
-        # Rebuild the area with the new maze
-        self.__init__(self._parent, maze_with_id, self._theme, settings_repository=self._settings_repository)
-        # Refresh the canvas
-        self._sync_after_wall_change()
+    def _on_cancel(self, _event: tk.Event | None = None) -> None:
+        self.destroy()
 
 
 class _BuilderMazeCanvas(tk.Canvas):
@@ -821,6 +1022,8 @@ class _BuilderMazeCanvas(tk.Canvas):
         # a stale anchor/tool as a zone operation.
         self._drag_anchor = None
         self._drag_tool = None
+        if tool is None:
+            return
         if end != anchor:
             # Zone drag: only a press-captured zone tool fires a zone
             # operation -- a Break/Pass-through/marker drag never is one
