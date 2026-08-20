@@ -57,11 +57,11 @@ context: ['_bmad-output/implementation-artifacts/epic-3/epic-3-context.md']
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `src/labyrinthes/adapters/tkinter/common/keybindings.py` — add `test_in_player` keybinding (`t`, `ScreenId.BUILDER`) to `KEYBINDINGS`
-- [ ] `src/labyrinthes/adapters/tkinter/builder/screen.py` — add `_test_in_player()` (navigate to `ScreenId.PLAYER` with `self._session.maze`); add a non-primary Test in Player `PillButton` to the HUD row beside Save; bind the `test_in_player` shortcut in `_BuilderEditArea.__init__`
-- [ ] `tests/adapters/tkinter/builder/test_builder_screen.py` — add tests: pill click navigates to `PLAYER` with the session maze; `t` shortcut fires the same handler; assert the passed maze is the exact in-progress object (`calls[0] == (ScreenId.PLAYER, edit_area._session.maze)` pattern from `test_builder_screen.py:1860-1898`)
-- [ ] `tests/adapters/tkinter/common/test_keybindings.py` — confirm the uniqueness test still passes with the new entry (no edit expected)
-- [ ] Run `ruff check .`, `ruff format --check .`, `pytest`
+- [x] `src/labyrinthes/adapters/tkinter/common/keybindings.py` — add `test_in_player` keybinding (`t`, `ScreenId.BUILDER`) to `KEYBINDINGS`
+- [x] `src/labyrinthes/adapters/tkinter/builder/screen.py` — add `_test_in_player()` (navigate to `ScreenId.PLAYER` with `self._session.maze`); add a non-primary Test in Player `PillButton` to the HUD row beside Save; bind the `test_in_player` shortcut in `_BuilderEditArea.__init__`
+- [x] `tests/adapters/tkinter/builder/test_builder_screen.py` — add tests: pill click navigates to `PLAYER` with the session maze; `t` shortcut fires the same handler; assert the passed maze is the exact in-progress object (`calls[0] == (ScreenId.PLAYER, edit_area._session.maze)` pattern from `test_builder_screen.py:1860-1898`)
+- [x] `tests/adapters/tkinter/common/test_keybindings.py` — confirm the uniqueness test still passes with the new entry (no edit expected)
+- [x] Run `ruff check .`, `ruff format --check .`, `pytest`
 
 **Acceptance Criteria:**
 - Given an active Builder session with a maze in progress, when Test in Player is triggered (pill or `t`), then the router mounts the Player's gameplay screen directly with the in-progress Maze as state, bypassing Home
@@ -75,8 +75,8 @@ context: ['_bmad-output/implementation-artifacts/epic-3/epic-3-context.md']
 ## Verification
 
 **Commands:**
-- `ruff check src/ tests/` — expected: passes, 0 errors
-- `ruff format --check src/ tests/` — expected: passes
-- `pytest tests/adapters/tkinter/builder/test_builder_screen.py tests/adapters/tkinter/common/test_keybindings.py` — expected: passes, including the new Test-in-Player tests
-- `pytest tests/test_architecture_boundaries.py` — expected: passes (builder must not import player)
-- `pytest tests/` — expected: full suite passes
+- `ruff check src/ tests/` — passes, 0 errors
+- `ruff format --check src/ tests/` — passes, 144 files already formatted
+- `pytest tests/adapters/tkinter/builder/test_builder_screen.py tests/adapters/tkinter/common/test_keybindings.py tests/test_architecture_boundaries.py` — passes (88 tests, incl. the 4 new Test-in-Player tests)
+- `pytest tests/app/test_composition_root.py` — passes (10 tests, incl. the new handed-off-maze theme-toggle test)
+- `pytest tests/` — passes (877 tests)

@@ -340,6 +340,7 @@ def test_cold_open_with_state_none_opens_the_new_maze_dialog(
     tk_root,
     navigate_stub,
     toggle_theme_stub,
+    find_all,
     fake_settings_repository,
     fake_maze_repository,
 ):
@@ -359,6 +360,13 @@ def test_cold_open_with_state_none_opens_the_new_maze_dialog(
     dialogs = [c for c in frame.winfo_children() if isinstance(c, NewMazeDialog)]
     assert len(dialogs) == 1
     assert calls == []
+    # I/O matrix, row "Builder in the New-Maze entry state": the Test in
+    # Player pill lives only in `_BuilderEditArea` (the active-session
+    # branch), so no active session means no such pill anywhere.
+    test_pills = [
+        b for b in find_all(frame, PillButton) if b._label.cget("text") == "Test in Player"
+    ]
+    assert test_pills == []
 
 
 def test_confirming_new_maze_dialog_navigates_to_builder_with_the_new_sketch(
@@ -1774,6 +1782,98 @@ def test_save_pill_button_renders_in_the_hud_row_with_the_canonical_shortcut(
 
     save_button = next(b for b in find_all(frame, PillButton) if b._label.cget("text") == "Save")
     assert save_button._kbd is not None
+
+
+def test_test_in_player_pill_renders_non_primary_with_the_canonical_shortcut(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
+):
+    navigate, _ = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(
+        tk_root,
+        _sketch_maze(4, 3),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
+    )
+
+    test_pill = next(
+        b for b in find_all(frame, PillButton) if b._label.cget("text") == "Test in Player"
+    )
+    assert test_pill._primary is False  # exactly one primary pill per screen
+    assert test_pill._kbd is not None  # canonical shortcut kbd-tag
+
+    save_pill = next(b for b in find_all(frame, PillButton) if b._label.cget("text") == "Save")
+    assert save_pill._primary is True
+
+
+def test_test_in_player_pill_click_navigates_to_player_with_the_session_maze(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
+):
+    navigate, calls = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(
+        tk_root,
+        _sketch_maze(4, 3),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
+    )
+    edit_area = find_all(frame, _BuilderEditArea)[0]
+    test_pill = next(
+        b for b in find_all(frame, PillButton) if b._label.cget("text") == "Test in Player"
+    )
+
+    test_pill._on_click()
+
+    assert len(calls) == 1
+    assert calls[0] == (ScreenId.PLAYER, edit_area._session.maze)
+    assert calls[0][1] is edit_area._session.maze  # exact in-progress object
+
+
+def test_test_in_player_shortcut_fires_the_same_handler_as_the_pill(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
+):
+    navigate, calls = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(
+        tk_root,
+        _sketch_maze(4, 3),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
+    )
+    edit_area = find_all(frame, _BuilderEditArea)[0]
+
+    # `test_in_player`'s bound handler (BUILDER-scoped 't') calls exactly
+    # this method -- see `_BuilderEditArea.__init__`'s `bind_shortcut`
+    # (mirrors the 'b'/'d'/'r' keybinding tests).
+    edit_area._test_in_player()
+
+    assert len(calls) == 1
+    assert calls[0] == (ScreenId.PLAYER, edit_area._session.maze)
+    assert calls[0][1] is edit_area._session.maze  # exact in-progress object
 
 
 def test_status_chip_shows_draft_for_a_sketch_maze(

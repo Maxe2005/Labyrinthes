@@ -273,6 +273,7 @@ class _BuilderEditArea(tk.Frame):
         bind_shortcut(self, keybinding("set_entry"), self._activate_set_entry)
         bind_shortcut(self, keybinding("set_exit"), self._activate_set_exit)
         bind_shortcut(self, keybinding("save_maze"), self.save_maze)
+        bind_shortcut(self, keybinding("test_in_player"), self._test_in_player)
 
     # -- construction --------------------------------------------------
 
@@ -403,6 +404,17 @@ class _BuilderEditArea(tk.Frame):
             primary=True,
             shortcut=save_kb.display,
             command=self.save_maze,
+        ).pack(side="right")
+
+        # Non-primary variant (exactly one primary `pill-btn` per screen):
+        # Save keeps `primary=True`; Test in Player is the default style.
+        test_kb = keybinding("test_in_player")
+        PillButton(
+            hud_row,
+            test_kb.label,
+            theme=self._theme,
+            shortcut=test_kb.display,
+            command=self._test_in_player,
         ).pack(side="right")
 
     def _build_canvas(self, parent: tk.Widget) -> None:
@@ -619,6 +631,16 @@ class _BuilderEditArea(tk.Frame):
     def _sync_after_wall_change(self) -> None:
         self._canvas.refresh_walls(self._session.maze.grid)
         self._walls_chip.set_value(str(broken_wall_count(self._session)))
+
+    def _test_in_player(self) -> None:
+        """Hand the in-progress `Maze` straight to the Player's gameplay screen.
+
+        A live in-memory hand-off through `navigate()` (FR-8): the Player
+        mounts `GameplayScreen` directly when its `mount()` receives a
+        non-`None` state, so this is the only Builder-side trigger -- no
+        serialization round-trip and no save required first (Story 3.8).
+        """
+        self._navigate(ScreenId.PLAYER, self._session.maze)
 
     def save_maze(self) -> None:
         """Start the Save flow (AC1/AC2, I/O matrix).
