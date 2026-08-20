@@ -103,17 +103,26 @@ class BuilderSession:
     exit: Position | None
 
 
-def start_builder_session(maze: Maze) -> BuilderSession:
+def start_builder_session(
+    maze: Maze, *, entry: Position | None = None, exit: Position | None = None
+) -> BuilderSession:
     """A fresh `BuilderSession` for `maze`: cursor at `maze.entry`, Break tool
     active (mirrors `player_session.start_session`'s "ball at `maze.entry`"
     convention), entry seeded from `maze.entry` (a fresh sketch's entry
-    renders immediately), exit unset (`None`)."""
+    renders immediately), exit unset (`None`).
+
+    `entry`/`exit` override those defaults -- the "Test in Player" return
+    path hands the session's own markers back in so a round-trip restores
+    exactly what the Builder had set (`BuilderTestLaunch`'s payload), rather
+    than resetting an unset exit to `None` / a set one to a fresh default.
+    """
+    resolved_entry = maze.entry if entry is None else entry
     return BuilderSession(
         maze=maze,
-        cursor=maze.entry,
+        cursor=resolved_entry,
         tool=BuilderTool.BREAK,
-        entry=maze.entry,
-        exit=None,
+        entry=resolved_entry,
+        exit=exit,
     )
 
 

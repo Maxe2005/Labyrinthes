@@ -21,6 +21,7 @@ from labyrinthes.adapters.tkinter.common.keybindings import (
     keybinding,
 )
 from labyrinthes.adapters.tkinter.common.navigation import (
+    BuilderTestLaunch,
     NavigateFn,
     ScreenId,
     ScreenMountFn,
@@ -54,6 +55,7 @@ __all__ = [
     "TYPOGRAPHY",
     "Breadcrumb",
     "BreadcrumbSegment",
+    "BuilderTestLaunch",
     "ColorTokens",
     "ConfirmDialog",
     "FontSpec",

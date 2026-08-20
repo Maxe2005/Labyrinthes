@@ -10,6 +10,9 @@ from labyrinthes.adapters.tkinter.player.classic_gallery import ClassicMazeGalle
 from labyrinthes.app import composition_root
 from labyrinthes.app.composition_root import App, build_app
 from labyrinthes.app.router import Router, ScreenId
+from labyrinthes.domain.grid import Grid
+from labyrinthes.domain.maze import Maze, MazeKind
+from labyrinthes.domain.position import Position
 
 
 def _find_all(widget: tk.Widget, widget_type: type) -> list:
@@ -73,6 +76,49 @@ def test_navigate_closure_bound_into_a_screens_mount_drives_the_real_router(monk
         captured_navigate["navigate"](ScreenId.BUILDER, None)
 
         assert app.router.current_screen_id == ScreenId.BUILDER
+    finally:
+        app.root.destroy()
+
+
+def test_theme_toggle_keeps_a_handed_off_maze_mounted_on_the_player(monkeypatch, tmp_path):
+    # I/O matrix, row "Theme toggled while the handed-off maze is in the
+    # Player" (Story 3.8): a `navigate(ScreenId.PLAYER, maze)` hand-off
+    # records that maze as `last_state`, so a theme-triggered re-navigate
+    # re-mounts the Player with the *same* handed-off `Maze` -- the test
+    # run restarts, but the maze itself stays mounted (no home-bypass lost).
+    handed_off = Maze(
+        grid=Grid.filled(4, 3),
+        entry=Position(row=0, col=0),
+        exit=Position(row=2, col=3),
+        kind=MazeKind.CLASSIC,
+        id=None,
+    )
+    captured = {}
+    captured_navigate = {}
+    captured_toggle_theme = {}
+
+    def capturing_mount_home(parent, state, navigate, theme, toggle_theme, **kwargs):
+        captured_navigate["navigate"] = navigate
+        captured_toggle_theme["toggle_theme"] = toggle_theme
+        return tk.Frame(parent)
+
+    def capturing_mount_player(parent, state, navigate, theme, toggle_theme, **kwargs):
+        captured["maze"] = state
+        return tk.Frame(parent)
+
+    monkeypatch.setattr(composition_root, "mount_home", capturing_mount_home)
+    monkeypatch.setattr(composition_root, "mount_player", capturing_mount_player)
+    app = build_app(settings_repository=JsonSettingsRepository(root=tmp_path))
+    try:
+        app.root.withdraw()
+
+        captured_navigate["navigate"](ScreenId.PLAYER, handed_off)
+        assert captured["maze"] is handed_off
+
+        captured_toggle_theme["toggle_theme"]()
+
+        assert app.router.current_screen_id == ScreenId.PLAYER
+        assert captured["maze"] is handed_off
     finally:
         app.root.destroy()
 

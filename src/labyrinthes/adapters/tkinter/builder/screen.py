@@ -24,6 +24,15 @@ immutable `Maze` value") and wires:
   `scope` field).
 - A center column: `HudChip`s for grid size + live "Walls broken", above
   `_BuilderMazeCanvas`.
+- A HUD row trailing `pill-btn`s: the primary Save pill plus the
+  non-primary Test in Player pill (Story 3.8), both mirroring the
+  `save_maze`/`test_in_player` keybindings ('s'/'t', `ScreenId.BUILDER`) --
+  the `test_in_player` binding hands the in-progress `Maze` to the Player
+  via `navigate(ScreenId.PLAYER, BuilderTestLaunch(maze, entry, exit))`,
+  with no serialization or save required first. It is gated on the exit
+  being set (a blocked alert-mode `ConfirmDialog` otherwise, mirroring
+  `save_maze`), and the payload carries the session's `entry`/`exit`
+  markers so a "Back to Builder" return restores them exactly.
 - Arrow-key cursor movement, reusing the existing (scope-less)
   `move_up`/`move_down`/`move_left`/`move_right` entries -- Builder and
   Player are never mounted simultaneously, so no scope is needed there.
@@ -73,6 +82,7 @@ from labyrinthes.adapters.tkinter.common import (
     SPACING,
     TYPOGRAPHY,
     BreadcrumbSegment,
+    BuilderTestLaunch,
     ConfirmDialog,
     FontSpec,
     HudChip,
@@ -156,7 +166,7 @@ def _cell_size(width: int, height: int) -> int:
 
 def mount(
     parent: tk.Widget,
-    state: Maze | None,
+    state: Maze | None | BuilderTestLaunch,
     navigate: NavigateFn,
     theme: Theme,
     toggle_theme: ToggleThemeFn,
@@ -169,7 +179,10 @@ def mount(
     `state is None` opens `NewMazeDialog` as the entry state; `state is a
     Maze` renders the maze-frame directly with that maze already loaded
     for editing (confirming the dialog re-enters this same branch via
-    `navigate(ScreenId.BUILDER, maze)`).
+    `navigate(ScreenId.BUILDER, maze)`); `state is a BuilderTestLaunch`
+    (the "Test in Player" round-trip) renders the same edit UI with the
+    launch's `maze` and restores the session's `entry`/`exit` markers from
+    the payload.
 
     `maze_repository` (Story 3.6) is required and keyword-only, mirroring
     `player/screen.py`'s own `mount()` -- the Save flow needs it to persist
@@ -211,13 +224,18 @@ def mount(
         )
         return frame
 
+    maze = state.maze if isinstance(state, BuilderTestLaunch) else state
+    entry = state.entry if isinstance(state, BuilderTestLaunch) else None
+    exit_marker = state.exit if isinstance(state, BuilderTestLaunch) else None
     edit_area = _BuilderEditArea(
         frame,
-        state,
+        maze,
         theme,
         navigate=navigate,
         settings_repository=settings_repository,
         maze_repository=maze_repository,
+        entry=entry,
+        exit=exit_marker,
     )
     edit_area.pack(
         fill="both",
@@ -241,6 +259,8 @@ class _BuilderEditArea(tk.Frame):
         navigate: NavigateFn,
         settings_repository: SettingsRepository,
         maze_repository: MazeRepository,
+        entry: Position | None = None,
+        exit: Position | None = None,
     ) -> None:
         colors = colors_for(theme)
         super().__init__(parent, background=colors.window)
@@ -249,7 +269,7 @@ class _BuilderEditArea(tk.Frame):
         self._navigate = navigate
         self._settings_repository = settings_repository
         self._maze_repository = maze_repository
-        self._session: BuilderSession = start_builder_session(maze)
+        self._session: BuilderSession = start_builder_session(maze, entry=entry, exit=exit)
         # The open marker-redefinition `ConfirmDialog`, if any -- `None`
         # when no prompt is showing (Story 3.4). `_maybe_confirm`'s guard
         # (`is not None` -> no-op) stops a second gated trigger from
@@ -273,6 +293,7 @@ class _BuilderEditArea(tk.Frame):
         bind_shortcut(self, keybinding("set_entry"), self._activate_set_entry)
         bind_shortcut(self, keybinding("set_exit"), self._activate_set_exit)
         bind_shortcut(self, keybinding("save_maze"), self.save_maze)
+        bind_shortcut(self, keybinding("test_in_player"), self._test_in_player)
 
     # -- construction --------------------------------------------------
 
@@ -403,6 +424,17 @@ class _BuilderEditArea(tk.Frame):
             primary=True,
             shortcut=save_kb.display,
             command=self.save_maze,
+        ).pack(side="right")
+
+        # Non-primary variant (exactly one primary `pill-btn` per screen):
+        # Save keeps `primary=True`; Test in Player is the default style.
+        test_kb = keybinding("test_in_player")
+        PillButton(
+            hud_row,
+            test_kb.label,
+            theme=self._theme,
+            shortcut=test_kb.display,
+            command=self._test_in_player,
         ).pack(side="right")
 
     def _build_canvas(self, parent: tk.Widget) -> None:
@@ -620,6 +652,44 @@ class _BuilderEditArea(tk.Frame):
         self._canvas.refresh_walls(self._session.maze.grid)
         self._walls_chip.set_value(str(broken_wall_count(self._session)))
 
+    def _test_in_player(self) -> None:
+        """Hand the in-progress `Maze` straight to the Player's gameplay screen.
+
+        A live in-memory hand-off through `navigate()` (FR-8): the Player
+        mounts `GameplayScreen` directly when its `mount()` receives a
+        `BuilderTestLaunch` state, so this is the only Builder-side trigger
+        -- no serialization round-trip and no save required first (Story
+        3.8).
+
+        Blocking popup gate (amendment): Test in Player is refused while
+        the session's exit marker is unset -- `start_builder_session` always
+        seeds the entry (the (0,0) default counts as defined), so only the
+        exit can be missing. An alert-mode `ConfirmDialog` (OK-only, no
+        action) explains and refuses, mirroring `save_maze`'s own
+        exit-unset gate. On success the hand-off is a `BuilderTestLaunch`
+        carrying the session's `entry`/`exit` set-ness, so the round-trip
+        back restores exactly those markers.
+        """
+        if self._session.exit is None:
+            ConfirmDialog(
+                self,
+                theme=self._theme,
+                message=("Test in Player needs the exit to be set. Set the exit first?"),
+                on_confirm=None,
+                on_close=lambda: None,
+                confirm_label="OK",
+                cancel_label=None,
+            )
+            return
+        self._navigate(
+            ScreenId.PLAYER,
+            BuilderTestLaunch(
+                maze=self._session.maze,
+                entry=self._session.entry,
+                exit=self._session.exit,
+            ),
+        )
+
     def save_maze(self) -> None:
         """Start the Save flow (AC1/AC2, I/O matrix).
 
@@ -769,13 +839,18 @@ class _SaveNameDialog(tk.Toplevel):
         self._name_entry.pack(side="left")
         self._name_entry.bind("<KeyRelease>", self._on_name_changed)
         self._name_entry.bind("<Return>", self._on_save_clicked)
-        # Consume "s"/"S" locally before they reach the global `save_maze`
-        # shortcut's `bind_all()` handler -- same guard as
-        # `SaveMazeDialog._name_entry` (Story 2.3/2.4): otherwise typing an
-        # "s" into a maze *name* both inserts the character and reopens a
-        # second `_SaveNameDialog` stacked on this one.
+        # Consume "s"/"S" and "t"/"T" locally before they reach the global
+        # `save_maze`/`test_in_player` shortcuts' `bind_all()` handlers --
+        # same guard as `SaveMazeDialog._name_entry` (Story 2.3/2.4):
+        # otherwise typing a "t" into a maze *name* while the dialog is open
+        # fires `_test_in_player` and navigates away mid-save, abandoning
+        # the dialog and the session (Story 3.8's review finding), and
+        # typing an "s" both inserts the character and reopens a second
+        # `_SaveNameDialog` stacked on this one.
         self._name_entry.bind("<KeyPress-s>", lambda _event: "break")
         self._name_entry.bind("<KeyPress-S>", lambda _event: "break")
+        self._name_entry.bind("<KeyPress-t>", lambda _event: "break")
+        self._name_entry.bind("<KeyPress-T>", lambda _event: "break")
         self._name_entry.focus_set()
 
         self._message_label = tk.Label(

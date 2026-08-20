@@ -74,6 +74,13 @@ second gated trigger stacking a second dialog (the dialog is non-modal, so
 clicks can still reach this screen). Each action reads its setting at
 action time -- never cached at mount -- so a Settings toggle takes effect
 without an app restart (AC-3).
+
+Story 3.8's amendment gives the screen an optional `on_back_to_builder`
+callback (`None` in normal gallery-driven gameplay). When set (a Builder
+"Test in Player" run), the win banner offers Restart + Back to Builder
+instead of Continue -- the latter returns to the Builder, restoring the
+session's markers from the `BuilderTestLaunch` payload it was mounted
+with.
 """
 
 from __future__ import annotations
@@ -215,6 +222,7 @@ class GameplayScreen(tk.Frame):
         maze_repository: MazeRepository,
         settings_repository: SettingsRepository,
         on_kind_changed: Callable[[MazeKind], None] | None = None,
+        on_back_to_builder: Callable[[], None] | None = None,
     ) -> None:
         colors = colors_for(theme)
         super().__init__(parent, background=colors.window)
@@ -223,6 +231,11 @@ class GameplayScreen(tk.Frame):
         self._settings_repository = settings_repository
         self._maze = maze  # tracks kind/id across a save -- see `_build_save_zone()`
         self._on_kind_changed = on_kind_changed
+        # The test-mode "Back to Builder" callback (Builder's Test in
+        # Player, Story 3.8): `None` in normal gallery-driven gameplay. When
+        # set, the win banner offers Restart + Back to Builder instead of
+        # Continue, per the amendment.
+        self._on_back_to_builder = on_back_to_builder
         self._session = start_session(maze)
         # Apply the `game`-scoped settings-loaded mode/speed at mount. This
         # screen is rebuilt on re-navigate, so settings loaded here are fresh.
@@ -996,13 +1009,34 @@ class GameplayScreen(tk.Frame):
         # a `GENERATED` maze's Save pill (`_build_save_zone()`) can still
         # be showing underneath this banner (winning doesn't hide it), and
         # two simultaneous primary pills would violate that rule.
-        PillButton(
-            self._win_banner,
-            "Continue",
-            theme=self._theme,
-            primary=False,
-            command=self._on_continue_clicked,
-        ).pack(side="right", padx=SPACING["lg"], pady=SPACING["sm"])
+        if self._on_back_to_builder is not None:
+            # Test mode (Builder's Test in Player, Story 3.8): instead of
+            # Continue, the banner offers Restart (a fresh run, exactly the
+            # timeout banner's own Restart) and Back to Builder (returns to
+            # the Builder, restoring the session's markers from the
+            # `BuilderTestLaunch` payload the screen was mounted with).
+            PillButton(
+                self._win_banner,
+                "Restart",
+                theme=self._theme,
+                primary=False,
+                command=self._restart_run,
+            ).pack(side="right", padx=SPACING["lg"], pady=SPACING["sm"])
+            PillButton(
+                self._win_banner,
+                "Back to Builder",
+                theme=self._theme,
+                primary=False,
+                command=self._on_back_to_builder,
+            ).pack(side="right", pady=SPACING["sm"])
+        else:
+            PillButton(
+                self._win_banner,
+                "Continue",
+                theme=self._theme,
+                primary=False,
+                command=self._on_continue_clicked,
+            ).pack(side="right", padx=SPACING["lg"], pady=SPACING["sm"])
 
     def _on_continue_clicked(self) -> None:
         # Only dismisses the banner -- `solved` stays `True`, and

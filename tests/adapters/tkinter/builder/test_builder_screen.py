@@ -7,6 +7,7 @@ from labyrinthes.adapters.tkinter.builder.screen import (
     mount,
 )
 from labyrinthes.adapters.tkinter.common import (
+    BuilderTestLaunch,
     ConfirmDialog,
     HudChip,
     NewMazeDialog,
@@ -16,9 +17,14 @@ from labyrinthes.adapters.tkinter.common import (
     ToolButton,
     TopBar,
 )
+from labyrinthes.adapters.tkinter.common.keybindings import keybinding
 from labyrinthes.adapters.tkinter.common.navigation import ScreenId
 from labyrinthes.adapters.tkinter.common.tokens import colors_for
-from labyrinthes.application.builder_session import BuilderTool
+from labyrinthes.application.builder_session import (
+    BuilderTool,
+    apply_set_exit,
+    apply_wall_toggle,
+)
 from labyrinthes.application.confirmation_settings import (
     write_confirm_invalid_input,
     write_confirm_redefine_marker,
@@ -340,6 +346,7 @@ def test_cold_open_with_state_none_opens_the_new_maze_dialog(
     tk_root,
     navigate_stub,
     toggle_theme_stub,
+    find_all,
     fake_settings_repository,
     fake_maze_repository,
 ):
@@ -359,6 +366,13 @@ def test_cold_open_with_state_none_opens_the_new_maze_dialog(
     dialogs = [c for c in frame.winfo_children() if isinstance(c, NewMazeDialog)]
     assert len(dialogs) == 1
     assert calls == []
+    # I/O matrix, row "Builder in the New-Maze entry state": the Test in
+    # Player pill lives only in `_BuilderEditArea` (the active-session
+    # branch), so no active session means no such pill anywhere.
+    test_pills = [
+        b for b in find_all(frame, PillButton) if b._label.cget("text") == "Test in Player"
+    ]
+    assert test_pills == []
 
 
 def test_confirming_new_maze_dialog_navigates_to_builder_with_the_new_sketch(
@@ -1774,6 +1788,246 @@ def test_save_pill_button_renders_in_the_hud_row_with_the_canonical_shortcut(
 
     save_button = next(b for b in find_all(frame, PillButton) if b._label.cget("text") == "Save")
     assert save_button._kbd is not None
+
+
+def test_test_in_player_pill_renders_non_primary_with_the_canonical_shortcut(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
+):
+    navigate, _ = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(
+        tk_root,
+        _sketch_maze(4, 3),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
+    )
+
+    test_pill = next(
+        b for b in find_all(frame, PillButton) if b._label.cget("text") == "Test in Player"
+    )
+    assert test_pill._primary is False  # exactly one primary pill per screen
+    assert test_pill._kbd is not None  # canonical shortcut kbd-tag
+
+    save_pill = next(b for b in find_all(frame, PillButton) if b._label.cget("text") == "Save")
+    assert save_pill._primary is True
+
+
+def test_test_in_player_pill_click_navigates_to_player_with_the_edited_session_maze(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
+):
+    navigate, calls = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(
+        tk_root,
+        _sketch_maze(4, 3),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
+    )
+    edit_area = find_all(frame, _BuilderEditArea)[0]
+    test_pill = next(
+        b for b in find_all(frame, PillButton) if b._label.cget("text") == "Test in Player"
+    )
+
+    # Break an interior wall first so the "exact in-progress object"
+    # assertion isn't trivially satisfied by an unedited session -- the
+    # hand-off must reflect the live edited state, not the mounted maze.
+    broken = Wall(row=1, col=1, side="top")
+    pre_edit_grid = edit_area._session.maze.grid
+    assert pre_edit_grid.cell_at(Position(row=1, col=1)).has_top_wall
+    edit_area._session = apply_wall_toggle(edit_area._session, broken)
+    # The Test in Player gate requires the session's exit marker to be set
+    # (amendment) -- place it before clicking.
+    exit_marker = Position(row=2, col=3)
+    edit_area._session = apply_set_exit(edit_area._session, exit_marker)
+
+    test_pill._on_click()
+
+    assert len(calls) == 1
+    assert calls[0][0] is ScreenId.PLAYER
+    launch = calls[0][1]
+    assert isinstance(launch, BuilderTestLaunch)
+    assert launch.maze is edit_area._session.maze  # exact in-progress object
+    assert launch.maze.grid is not pre_edit_grid  # the wall edit is handed off
+    assert not launch.maze.grid.cell_at(Position(row=1, col=1)).has_top_wall
+    assert launch.entry == edit_area._session.entry  # markers round-trip
+    assert launch.exit == exit_marker
+
+
+def test_test_in_player_pill_click_is_blocked_by_a_popup_when_the_exit_is_unset(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
+):
+    # Amendment: Test in Player is refused while the session's exit marker
+    # is unset (`start_builder_session` always seeds the entry, so only the
+    # exit can be missing). An alert-mode ConfirmDialog explains -- and no
+    # navigation happens.
+    navigate, calls = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(
+        tk_root,
+        _sketch_maze(4, 3),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
+    )
+    edit_area = find_all(frame, _BuilderEditArea)[0]
+    assert edit_area._session.exit is None
+    test_pill = next(
+        b for b in find_all(frame, PillButton) if b._label.cget("text") == "Test in Player"
+    )
+
+    test_pill._on_click()
+
+    assert calls == []
+    dialogs = find_all(frame, ConfirmDialog)
+    assert len(dialogs) == 1
+    labels = [c.cget("text") for c in find_all(dialogs[0], tk.Label)]
+    assert any("exit" in text.lower() for text in labels)
+
+
+def test_test_in_player_is_available_for_a_classic_maze_once_the_exit_is_set(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
+):
+    # FR-8's "available from any active Builder session" -- not gated to
+    # maze kind (unlike FR-19's mirror), but the exit-marker gate applies
+    # to every kind alike.
+    navigate, calls = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    classic = _classic_maze(4, 3)
+    frame = mount(
+        tk_root,
+        classic,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
+    )
+    edit_area = find_all(frame, _BuilderEditArea)[0]
+    exit_marker = Position(row=2, col=3)
+    edit_area._session = apply_set_exit(edit_area._session, exit_marker)
+    test_pill = next(
+        b for b in find_all(frame, PillButton) if b._label.cget("text") == "Test in Player"
+    )
+
+    test_pill._on_click()
+
+    assert len(calls) == 1
+    assert calls[0][0] is ScreenId.PLAYER
+    launch = calls[0][1]
+    assert isinstance(launch, BuilderTestLaunch)
+    assert launch.maze is edit_area._session.maze
+    assert launch.exit == exit_marker
+
+
+def test_test_in_player_shortcut_is_registered_for_an_active_edit_session(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
+):
+    navigate, _ = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    mount(
+        tk_root,
+        _sketch_maze(4, 3),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
+    )
+
+    assert tk_root.bind_all(keybinding("test_in_player").event) != ""
+
+
+def test_test_in_player_shortcut_is_not_registered_in_the_new_maze_entry_state(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    fake_settings_repository,
+    fake_maze_repository,
+):
+    navigate, _ = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    mount(
+        tk_root,
+        None,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
+    )
+
+    # I/O matrix "Builder in the New-Maze entry state": no active session,
+    # so 't' is inert there.
+    assert tk_root.bind_all(keybinding("test_in_player").event) == ""
+
+
+def test_test_in_player_shortcut_fires_the_same_handler_as_the_pill(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
+):
+    navigate, calls = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(
+        tk_root,
+        _sketch_maze(4, 3),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
+    )
+    edit_area = find_all(frame, _BuilderEditArea)[0]
+    # The Test in Player gate requires the session's exit marker to be set
+    # (amendment) -- place it before firing the handler.
+    edit_area._session = apply_set_exit(edit_area._session, Position(row=2, col=3))
+
+    # Verifies the handler method the `test_in_player` binding is wired to
+    # (the registration itself is asserted separately in
+    # `test_test_in_player_shortcut_is_registered_for_an_active_edit_session`).
+    edit_area._test_in_player()
+
+    assert len(calls) == 1
+    assert calls[0][0] is ScreenId.PLAYER
+    launch = calls[0][1]
+    assert isinstance(launch, BuilderTestLaunch)
+    assert launch.maze is edit_area._session.maze  # exact in-progress object
 
 
 def test_status_chip_shows_draft_for_a_sketch_maze(

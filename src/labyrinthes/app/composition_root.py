@@ -44,7 +44,11 @@ from functools import partial
 from labyrinthes.adapters.storage.csv_maze_repository import CsvMazeRepository
 from labyrinthes.adapters.storage.json_settings_repository import JsonSettingsRepository
 from labyrinthes.adapters.tkinter.builder.screen import mount as mount_builder
-from labyrinthes.adapters.tkinter.common.navigation import NavigateFn, ScreenMountFn
+from labyrinthes.adapters.tkinter.common.navigation import (
+    BuilderTestLaunch,
+    NavigateFn,
+    ScreenMountFn,
+)
 from labyrinthes.adapters.tkinter.common.tokens import Theme
 from labyrinthes.adapters.tkinter.home.screen import mount as mount_home
 from labyrinthes.adapters.tkinter.player.screen import mount as mount_player
@@ -79,7 +83,7 @@ def _bind_screen(
     `register()` ran.
     """
 
-    def bound(parent: tk.Widget, state: Maze | None) -> tk.Frame:
+    def bound(parent: tk.Widget, state: Maze | None | BuilderTestLaunch) -> tk.Frame:
         return mount(parent, state, navigate, theme_controller.theme, theme_controller.toggle)
 
     return bound
@@ -114,9 +118,9 @@ def build_app(
         router = Router(container)
         theme_controller = ThemeController(settings_repository)
 
-        last_state: Maze | None = None
+        last_state: Maze | None | BuilderTestLaunch = None
 
-        def navigate(screen_id: ScreenId, state: Maze | None = None) -> None:
+        def navigate(screen_id: ScreenId, state: Maze | None | BuilderTestLaunch = None) -> None:
             nonlocal last_state
             last_state = state
             router.navigate(screen_id, state)
