@@ -71,7 +71,7 @@ development_status:
   3-5-direct-navigation-go-to: done
   3-6-sketch-maze-save: done
   3-7-builder-theme-toggle: done
-  3-8-test-in-player-launch-the-game-from-the-builder: backlog
+  3-8-test-in-player-launch-the-game-from-the-builder: in-progress
   3-9-edit-in-builder-launch-the-builder-from-the-game: backlog
   4-1-builder-cursor-and-marker-glyphs: backlog
   4-2-wall-tool-semantics-break-vs-pass-through: backlog
