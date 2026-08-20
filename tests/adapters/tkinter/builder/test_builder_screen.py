@@ -7,6 +7,7 @@ from labyrinthes.adapters.tkinter.builder.screen import (
     mount,
 )
 from labyrinthes.adapters.tkinter.common import (
+    BuilderTestLaunch,
     ConfirmDialog,
     HudChip,
     NewMazeDialog,
@@ -19,7 +20,11 @@ from labyrinthes.adapters.tkinter.common import (
 from labyrinthes.adapters.tkinter.common.keybindings import keybinding
 from labyrinthes.adapters.tkinter.common.navigation import ScreenId
 from labyrinthes.adapters.tkinter.common.tokens import colors_for
-from labyrinthes.application.builder_session import BuilderTool, apply_wall_toggle
+from labyrinthes.application.builder_session import (
+    BuilderTool,
+    apply_set_exit,
+    apply_wall_toggle,
+)
 from labyrinthes.application.confirmation_settings import (
     write_confirm_invalid_input,
     write_confirm_redefine_marker,
@@ -1846,17 +1851,25 @@ def test_test_in_player_pill_click_navigates_to_player_with_the_edited_session_m
     pre_edit_grid = edit_area._session.maze.grid
     assert pre_edit_grid.cell_at(Position(row=1, col=1)).has_top_wall
     edit_area._session = apply_wall_toggle(edit_area._session, broken)
+    # The Test in Player gate requires the session's exit marker to be set
+    # (amendment) -- place it before clicking.
+    exit_marker = Position(row=2, col=3)
+    edit_area._session = apply_set_exit(edit_area._session, exit_marker)
 
     test_pill._on_click()
 
     assert len(calls) == 1
-    assert calls[0] == (ScreenId.PLAYER, edit_area._session.maze)
-    assert calls[0][1] is edit_area._session.maze  # exact in-progress object
-    assert calls[0][1].grid is not pre_edit_grid  # the wall edit is handed off
-    assert not calls[0][1].grid.cell_at(Position(row=1, col=1)).has_top_wall
+    assert calls[0][0] is ScreenId.PLAYER
+    launch = calls[0][1]
+    assert isinstance(launch, BuilderTestLaunch)
+    assert launch.maze is edit_area._session.maze  # exact in-progress object
+    assert launch.maze.grid is not pre_edit_grid  # the wall edit is handed off
+    assert not launch.maze.grid.cell_at(Position(row=1, col=1)).has_top_wall
+    assert launch.entry == edit_area._session.entry  # markers round-trip
+    assert launch.exit == exit_marker
 
 
-def test_test_in_player_is_unconditionally_available_for_a_classic_maze(
+def test_test_in_player_pill_click_is_blocked_by_a_popup_when_the_exit_is_unset(
     tk_root,
     navigate_stub,
     toggle_theme_stub,
@@ -1864,8 +1877,47 @@ def test_test_in_player_is_unconditionally_available_for_a_classic_maze(
     fake_settings_repository,
     fake_maze_repository,
 ):
-    # FR-8's "unconditionally available from any active Builder session" --
-    # not gated to maze kind (unlike FR-19's mirror).
+    # Amendment: Test in Player is refused while the session's exit marker
+    # is unset (`start_builder_session` always seeds the entry, so only the
+    # exit can be missing). An alert-mode ConfirmDialog explains -- and no
+    # navigation happens.
+    navigate, calls = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(
+        tk_root,
+        _sketch_maze(4, 3),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
+    )
+    edit_area = find_all(frame, _BuilderEditArea)[0]
+    assert edit_area._session.exit is None
+    test_pill = next(
+        b for b in find_all(frame, PillButton) if b._label.cget("text") == "Test in Player"
+    )
+
+    test_pill._on_click()
+
+    assert calls == []
+    dialogs = find_all(frame, ConfirmDialog)
+    assert len(dialogs) == 1
+    labels = [c.cget("text") for c in find_all(dialogs[0], tk.Label)]
+    assert any("exit" in text.lower() for text in labels)
+
+
+def test_test_in_player_is_available_for_a_classic_maze_once_the_exit_is_set(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
+):
+    # FR-8's "available from any active Builder session" -- not gated to
+    # maze kind (unlike FR-19's mirror), but the exit-marker gate applies
+    # to every kind alike.
     navigate, calls = navigate_stub
     toggle_theme, _ = toggle_theme_stub
     classic = _classic_maze(4, 3)
@@ -1878,6 +1930,9 @@ def test_test_in_player_is_unconditionally_available_for_a_classic_maze(
         settings_repository=fake_settings_repository,
         maze_repository=fake_maze_repository,
     )
+    edit_area = find_all(frame, _BuilderEditArea)[0]
+    exit_marker = Position(row=2, col=3)
+    edit_area._session = apply_set_exit(edit_area._session, exit_marker)
     test_pill = next(
         b for b in find_all(frame, PillButton) if b._label.cget("text") == "Test in Player"
     )
@@ -1885,7 +1940,11 @@ def test_test_in_player_is_unconditionally_available_for_a_classic_maze(
     test_pill._on_click()
 
     assert len(calls) == 1
-    assert calls[0] == (ScreenId.PLAYER, classic)
+    assert calls[0][0] is ScreenId.PLAYER
+    launch = calls[0][1]
+    assert isinstance(launch, BuilderTestLaunch)
+    assert launch.maze is edit_area._session.maze
+    assert launch.exit == exit_marker
 
 
 def test_test_in_player_shortcut_is_registered_for_an_active_edit_session(
@@ -1955,6 +2014,9 @@ def test_test_in_player_shortcut_fires_the_same_handler_as_the_pill(
         maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
+    # The Test in Player gate requires the session's exit marker to be set
+    # (amendment) -- place it before firing the handler.
+    edit_area._session = apply_set_exit(edit_area._session, Position(row=2, col=3))
 
     # Verifies the handler method the `test_in_player` binding is wired to
     # (the registration itself is asserted separately in
@@ -1962,8 +2024,10 @@ def test_test_in_player_shortcut_fires_the_same_handler_as_the_pill(
     edit_area._test_in_player()
 
     assert len(calls) == 1
-    assert calls[0] == (ScreenId.PLAYER, edit_area._session.maze)
-    assert calls[0][1] is edit_area._session.maze  # exact in-progress object
+    assert calls[0][0] is ScreenId.PLAYER
+    launch = calls[0][1]
+    assert isinstance(launch, BuilderTestLaunch)
+    assert launch.maze is edit_area._session.maze  # exact in-progress object
 
 
 def test_status_chip_shows_draft_for_a_sketch_maze(

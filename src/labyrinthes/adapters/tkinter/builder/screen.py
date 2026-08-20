@@ -27,9 +27,12 @@ immutable `Maze` value") and wires:
 - A HUD row trailing `pill-btn`s: the primary Save pill plus the
   non-primary Test in Player pill (Story 3.8), both mirroring the
   `save_maze`/`test_in_player` keybindings ('s'/'t', `ScreenId.BUILDER`) --
-  the `test_in_player` binding hands the in-progress `Maze` straight to
-  the Player's gameplay screen via `navigate(ScreenId.PLAYER, maze)`, with
-  no serialization or save required first.
+  the `test_in_player` binding hands the in-progress `Maze` to the Player
+  via `navigate(ScreenId.PLAYER, BuilderTestLaunch(maze, entry, exit))`,
+  with no serialization or save required first. It is gated on the exit
+  being set (a blocked alert-mode `ConfirmDialog` otherwise, mirroring
+  `save_maze`), and the payload carries the session's `entry`/`exit`
+  markers so a "Back to Builder" return restores them exactly.
 - Arrow-key cursor movement, reusing the existing (scope-less)
   `move_up`/`move_down`/`move_left`/`move_right` entries -- Builder and
   Player are never mounted simultaneously, so no scope is needed there.
@@ -79,6 +82,7 @@ from labyrinthes.adapters.tkinter.common import (
     SPACING,
     TYPOGRAPHY,
     BreadcrumbSegment,
+    BuilderTestLaunch,
     ConfirmDialog,
     FontSpec,
     HudChip,
@@ -162,7 +166,7 @@ def _cell_size(width: int, height: int) -> int:
 
 def mount(
     parent: tk.Widget,
-    state: Maze | None,
+    state: Maze | None | BuilderTestLaunch,
     navigate: NavigateFn,
     theme: Theme,
     toggle_theme: ToggleThemeFn,
@@ -175,7 +179,10 @@ def mount(
     `state is None` opens `NewMazeDialog` as the entry state; `state is a
     Maze` renders the maze-frame directly with that maze already loaded
     for editing (confirming the dialog re-enters this same branch via
-    `navigate(ScreenId.BUILDER, maze)`).
+    `navigate(ScreenId.BUILDER, maze)`); `state is a BuilderTestLaunch`
+    (the "Test in Player" round-trip) renders the same edit UI with the
+    launch's `maze` and restores the session's `entry`/`exit` markers from
+    the payload.
 
     `maze_repository` (Story 3.6) is required and keyword-only, mirroring
     `player/screen.py`'s own `mount()` -- the Save flow needs it to persist
@@ -217,13 +224,18 @@ def mount(
         )
         return frame
 
+    maze = state.maze if isinstance(state, BuilderTestLaunch) else state
+    entry = state.entry if isinstance(state, BuilderTestLaunch) else None
+    exit_marker = state.exit if isinstance(state, BuilderTestLaunch) else None
     edit_area = _BuilderEditArea(
         frame,
-        state,
+        maze,
         theme,
         navigate=navigate,
         settings_repository=settings_repository,
         maze_repository=maze_repository,
+        entry=entry,
+        exit=exit_marker,
     )
     edit_area.pack(
         fill="both",
@@ -247,6 +259,8 @@ class _BuilderEditArea(tk.Frame):
         navigate: NavigateFn,
         settings_repository: SettingsRepository,
         maze_repository: MazeRepository,
+        entry: Position | None = None,
+        exit: Position | None = None,
     ) -> None:
         colors = colors_for(theme)
         super().__init__(parent, background=colors.window)
@@ -255,7 +269,7 @@ class _BuilderEditArea(tk.Frame):
         self._navigate = navigate
         self._settings_repository = settings_repository
         self._maze_repository = maze_repository
-        self._session: BuilderSession = start_builder_session(maze)
+        self._session: BuilderSession = start_builder_session(maze, entry=entry, exit=exit)
         # The open marker-redefinition `ConfirmDialog`, if any -- `None`
         # when no prompt is showing (Story 3.4). `_maybe_confirm`'s guard
         # (`is not None` -> no-op) stops a second gated trigger from
@@ -643,10 +657,38 @@ class _BuilderEditArea(tk.Frame):
 
         A live in-memory hand-off through `navigate()` (FR-8): the Player
         mounts `GameplayScreen` directly when its `mount()` receives a
-        non-`None` state, so this is the only Builder-side trigger -- no
-        serialization round-trip and no save required first (Story 3.8).
+        `BuilderTestLaunch` state, so this is the only Builder-side trigger
+        -- no serialization round-trip and no save required first (Story
+        3.8).
+
+        Blocking popup gate (amendment): Test in Player is refused while
+        the session's exit marker is unset -- `start_builder_session` always
+        seeds the entry (the (0,0) default counts as defined), so only the
+        exit can be missing. An alert-mode `ConfirmDialog` (OK-only, no
+        action) explains and refuses, mirroring `save_maze`'s own
+        exit-unset gate. On success the hand-off is a `BuilderTestLaunch`
+        carrying the session's `entry`/`exit` set-ness, so the round-trip
+        back restores exactly those markers.
         """
-        self._navigate(ScreenId.PLAYER, self._session.maze)
+        if self._session.exit is None:
+            ConfirmDialog(
+                self,
+                theme=self._theme,
+                message=("Test in Player needs the exit to be set. Set the exit first?"),
+                on_confirm=None,
+                on_close=lambda: None,
+                confirm_label="OK",
+                cancel_label=None,
+            )
+            return
+        self._navigate(
+            ScreenId.PLAYER,
+            BuilderTestLaunch(
+                maze=self._session.maze,
+                entry=self._session.entry,
+                exit=self._session.exit,
+            ),
+        )
 
     def save_maze(self) -> None:
         """Start the Save flow (AC1/AC2, I/O matrix).
