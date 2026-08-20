@@ -3,12 +3,14 @@ import tkinter as tk
 from labyrinthes.adapters.tkinter.builder.screen import (
     _BuilderEditArea,
     _BuilderMazeCanvas,
+    _SaveNameDialog,
     mount,
 )
 from labyrinthes.adapters.tkinter.common import (
     ConfirmDialog,
     HudChip,
     NewMazeDialog,
+    PillButton,
     SettingsWindow,
     Theme,
     ToolButton,
@@ -46,6 +48,16 @@ def _sketch_maze(columns: int = 4, rows: int = 3) -> Maze:
         entry=Position(row=0, col=0),
         exit=Position(row=rows - 1, col=columns - 1),
         kind=MazeKind.SKETCH,
+        id=None,
+    )
+
+
+def _classic_maze(columns: int = 4, rows: int = 3) -> Maze:
+    return Maze(
+        grid=Grid.filled(columns, rows),
+        entry=Position(row=0, col=0),
+        exit=Position(row=rows - 1, col=columns - 1),
+        kind=MazeKind.CLASSIC,
         id=None,
     )
 
@@ -96,7 +108,11 @@ def _drag_zone(canvas: _BuilderMazeCanvas, anchor: Position, end: Position) -> N
 
 
 def test_mount_returns_a_frame_parented_under_the_given_parent(
-    tk_root, navigate_stub, toggle_theme_stub, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -107,6 +123,7 @@ def test_mount_returns_a_frame_parented_under_the_given_parent(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
 
     assert isinstance(frame, tk.Frame)
@@ -114,7 +131,12 @@ def test_mount_returns_a_frame_parented_under_the_given_parent(
 
 
 def test_mount_renders_a_home_builder_breadcrumb(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -125,6 +147,7 @@ def test_mount_renders_a_home_builder_breadcrumb(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
 
     breadcrumb = find_all(frame, TopBar)[0]._breadcrumb
@@ -133,7 +156,12 @@ def test_mount_renders_a_home_builder_breadcrumb(
 
 
 def test_breadcrumb_home_segment_is_clickable_and_navigates_home(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     navigate, calls = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -144,6 +172,7 @@ def test_breadcrumb_home_segment_is_clickable_and_navigates_home(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
 
     breadcrumb = find_all(frame, TopBar)[0]._breadcrumb
@@ -155,7 +184,12 @@ def test_breadcrumb_home_segment_is_clickable_and_navigates_home(
 
 
 def test_breadcrumb_trailing_builder_segment_has_no_click_handler(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -166,6 +200,7 @@ def test_breadcrumb_trailing_builder_segment_has_no_click_handler(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
 
     breadcrumb = find_all(frame, TopBar)[0]._breadcrumb
@@ -173,7 +208,12 @@ def test_breadcrumb_trailing_builder_segment_has_no_click_handler(
 
 
 def test_settings_icon_click_opens_a_non_modal_settings_window_leaving_builder_mounted(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -184,6 +224,7 @@ def test_settings_icon_click_opens_a_non_modal_settings_window_leaving_builder_m
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
 
     top_bar = find_all(frame, TopBar)[0]
@@ -199,7 +240,12 @@ def test_settings_icon_click_opens_a_non_modal_settings_window_leaving_builder_m
 
 
 def test_destroying_the_screens_frame_leaves_an_open_settings_window_open(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -210,6 +256,7 @@ def test_destroying_the_screens_frame_leaves_an_open_settings_window_open(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
 
     top_bar = find_all(frame, TopBar)[0]
@@ -230,7 +277,12 @@ def test_destroying_the_screens_frame_leaves_an_open_settings_window_open(
 
 
 def test_theme_toggle_icon_click_invokes_the_passed_in_toggle_theme_callable(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, calls = toggle_theme_stub
@@ -241,6 +293,7 @@ def test_theme_toggle_icon_click_invokes_the_passed_in_toggle_theme_callable(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
 
     top_bar = find_all(frame, TopBar)[0]
@@ -250,7 +303,12 @@ def test_theme_toggle_icon_click_invokes_the_passed_in_toggle_theme_callable(
 
 
 def test_open_settings_from_builder_reflects_a_stored_confirmation_value(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     write_confirm_invalid_input(fake_settings_repository, False)
     navigate, _ = navigate_stub
@@ -262,6 +320,7 @@ def test_open_settings_from_builder_reflects_a_stored_confirmation_value(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
 
     top_bar = find_all(frame, TopBar)[0]
@@ -278,7 +337,11 @@ def test_open_settings_from_builder_reflects_a_stored_confirmation_value(
 
 
 def test_cold_open_with_state_none_opens_the_new_maze_dialog(
-    tk_root, navigate_stub, toggle_theme_stub, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     navigate, calls = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -290,6 +353,7 @@ def test_cold_open_with_state_none_opens_the_new_maze_dialog(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
 
     dialogs = [c for c in frame.winfo_children() if isinstance(c, NewMazeDialog)]
@@ -298,7 +362,11 @@ def test_cold_open_with_state_none_opens_the_new_maze_dialog(
 
 
 def test_confirming_new_maze_dialog_navigates_to_builder_with_the_new_sketch(
-    tk_root, navigate_stub, toggle_theme_stub, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     navigate, calls = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -310,6 +378,7 @@ def test_confirming_new_maze_dialog_navigates_to_builder_with_the_new_sketch(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
 
     dialog = next(c for c in frame.winfo_children() if isinstance(c, NewMazeDialog))
@@ -332,7 +401,12 @@ def test_confirming_new_maze_dialog_navigates_to_builder_with_the_new_sketch(
 
 
 def test_mount_with_a_maze_renders_hud_chips_for_grid_size_and_zero_walls_broken(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -344,6 +418,7 @@ def test_mount_with_a_maze_renders_hud_chips_for_grid_size_and_zero_walls_broken
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
 
     chips = find_all(frame, HudChip)
@@ -353,7 +428,12 @@ def test_mount_with_a_maze_renders_hud_chips_for_grid_size_and_zero_walls_broken
 
 
 def test_break_mode_click_on_an_interior_wall_breaks_it_and_updates_the_hud(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -365,6 +445,7 @@ def test_break_mode_click_on_an_interior_wall_breaks_it_and_updates_the_hud(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
 
     canvas = find_all(frame, tk.Canvas)[0]
@@ -383,7 +464,12 @@ def test_break_mode_click_on_an_interior_wall_breaks_it_and_updates_the_hud(
 
 
 def test_break_mode_click_on_a_border_wall_is_a_no_op(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -395,6 +481,7 @@ def test_break_mode_click_on_a_border_wall_is_a_no_op(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
 
     canvas = find_all(frame, tk.Canvas)[0]
@@ -408,7 +495,12 @@ def test_break_mode_click_on_a_border_wall_is_a_no_op(
 
 
 def test_pass_through_mode_arrow_key_across_a_wall_breaks_it_and_moves_the_cursor(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -420,6 +512,7 @@ def test_pass_through_mode_arrow_key_across_a_wall_breaks_it_and_moves_the_curso
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
 
     pass_through_button = next(
@@ -440,7 +533,12 @@ def test_pass_through_mode_arrow_key_across_a_wall_breaks_it_and_moves_the_curso
 
 
 def test_break_mode_arrow_key_moves_the_cursor_without_breaking_any_wall(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -452,6 +550,7 @@ def test_break_mode_arrow_key_moves_the_cursor_without_breaking_any_wall(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
@@ -466,7 +565,12 @@ def test_break_mode_arrow_key_moves_the_cursor_without_breaking_any_wall(
 
 
 def test_pass_through_mode_arrow_key_into_a_border_wall_leaves_cursor_in_place_and_breaks_nothing(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -478,6 +582,7 @@ def test_pass_through_mode_arrow_key_into_a_border_wall_leaves_cursor_in_place_a
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
@@ -493,7 +598,12 @@ def test_pass_through_mode_arrow_key_into_a_border_wall_leaves_cursor_in_place_a
 
 
 def test_keybinding_b_activates_break_wall_after_switching_to_pass_through(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -505,6 +615,7 @@ def test_keybinding_b_activates_break_wall_after_switching_to_pass_through(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
@@ -523,7 +634,12 @@ def test_keybinding_b_activates_break_wall_after_switching_to_pass_through(
 
 
 def test_pass_through_mode_click_on_a_wall_is_a_no_op(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -535,6 +651,7 @@ def test_pass_through_mode_click_on_a_wall_is_a_no_op(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
@@ -552,7 +669,12 @@ def test_pass_through_mode_click_on_a_wall_is_a_no_op(
 
 
 def test_wall_bar_canvas_color_reflects_present_vs_broken_state(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -565,6 +687,7 @@ def test_wall_bar_canvas_color_reflects_present_vs_broken_state(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
 
     canvas = find_all(frame, tk.Canvas)[0]
@@ -584,7 +707,12 @@ def test_wall_bar_canvas_color_reflects_present_vs_broken_state(
 
 
 def test_destroy_zone_drag_destroys_the_rectangle_in_one_operation(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -596,6 +724,7 @@ def test_destroy_zone_drag_destroys_the_rectangle_in_one_operation(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
@@ -624,7 +753,12 @@ def test_destroy_zone_drag_destroys_the_rectangle_in_one_operation(
 
 
 def test_restore_zone_drag_over_a_just_destroyed_zone_returns_it_to_its_initial_state(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     # AC2: restoring the same rectangle just destroyed returns every wall in
     # it exactly to its initial (present) state.
@@ -638,6 +772,7 @@ def test_restore_zone_drag_over_a_just_destroyed_zone_returns_it_to_its_initial_
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
@@ -659,7 +794,12 @@ def test_restore_zone_drag_over_a_just_destroyed_zone_returns_it_to_its_initial_
 
 
 def test_zone_tool_active_press_and_release_on_the_same_cell_is_a_no_op(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -671,6 +811,7 @@ def test_zone_tool_active_press_and_release_on_the_same_cell_is_a_no_op(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
@@ -688,7 +829,12 @@ def test_zone_tool_active_press_and_release_on_the_same_cell_is_a_no_op(
 
 
 def test_break_mode_click_and_drag_only_toggles_the_directly_clicked_wall(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     # Break mode is active by default: the press itself still behaves like
     # Story 3.2's single-click wall toggle, but the drag/release never
@@ -704,6 +850,7 @@ def test_break_mode_click_and_drag_only_toggles_the_directly_clicked_wall(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
@@ -722,7 +869,12 @@ def test_break_mode_click_and_drag_only_toggles_the_directly_clicked_wall(
 
 
 def test_keybinding_d_activates_destroy_zone_after_switching_to_pass_through(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -734,6 +886,7 @@ def test_keybinding_d_activates_destroy_zone_after_switching_to_pass_through(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
@@ -752,7 +905,12 @@ def test_keybinding_d_activates_destroy_zone_after_switching_to_pass_through(
 
 
 def test_keybinding_r_activates_restore_zone_after_switching_to_pass_through(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -764,6 +922,7 @@ def test_keybinding_r_activates_restore_zone_after_switching_to_pass_through(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
@@ -782,7 +941,12 @@ def test_keybinding_r_activates_restore_zone_after_switching_to_pass_through(
 
 
 def test_switching_from_a_zone_tool_to_break_mid_drag_still_dispatches_the_zone_op(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     # Regression: the tool governing a press-to-release gesture is the one
     # captured at press time, never a live re-read of `session.tool` at
@@ -800,6 +964,7 @@ def test_switching_from_a_zone_tool_to_break_mid_drag_still_dispatches_the_zone_
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
@@ -818,7 +983,12 @@ def test_switching_from_a_zone_tool_to_break_mid_drag_still_dispatches_the_zone_
 
 
 def test_switching_from_break_to_a_zone_tool_mid_drag_does_not_trigger_a_zone_operation(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     # The mirror case: pressing while Break is active (firing Story 3.2's
     # single-click wall toggle immediately), then switching to Destroy Zone
@@ -835,6 +1005,7 @@ def test_switching_from_break_to_a_zone_tool_mid_drag_does_not_trigger_a_zone_op
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
@@ -855,7 +1026,12 @@ def test_switching_from_break_to_a_zone_tool_mid_drag_does_not_trigger_a_zone_op
 
 
 def test_a_stray_release_without_a_preceding_press_does_not_replay_a_stale_drag(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     # Regression: `_drag_anchor`/`_drag_tool` must be consumed (reset to
     # `None`) after a release fires (or declines to fire) a zone operation,
@@ -871,6 +1047,7 @@ def test_a_stray_release_without_a_preceding_press_does_not_replay_a_stale_drag(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
@@ -887,7 +1064,11 @@ def test_a_stray_release_without_a_preceding_press_does_not_replay_a_stale_drag(
 
 
 def test_cancelling_the_new_maze_dialog_destroys_it_and_leaves_the_frame_empty(
-    tk_root, navigate_stub, toggle_theme_stub, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     navigate, calls = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -899,6 +1080,7 @@ def test_cancelling_the_new_maze_dialog_destroys_it_and_leaves_the_frame_empty(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
 
     dialog = next(c for c in frame.winfo_children() if isinstance(c, NewMazeDialog))
@@ -917,7 +1099,12 @@ def _tool_button_by_label(find_all, frame, label: str) -> ToolButton:
 
 
 def test_set_entry_and_set_exit_tool_buttons_are_rendered_in_the_sidebar(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -928,6 +1115,7 @@ def test_set_entry_and_set_exit_tool_buttons_are_rendered_in_the_sidebar(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
 
     assert _tool_button_by_label(find_all, frame, "Set Entry").active is False
@@ -935,7 +1123,12 @@ def test_set_entry_and_set_exit_tool_buttons_are_rendered_in_the_sidebar(
 
 
 def test_keybinding_e_activates_set_entry_and_x_set_exit(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     # `set_entry`/`set_exit`'s bound handlers (BUILDER-scoped 'e'/'x') call
     # exactly these methods -- see `_BuilderEditArea.__init__`'s
@@ -949,6 +1142,7 @@ def test_keybinding_e_activates_set_entry_and_x_set_exit(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
@@ -964,7 +1158,12 @@ def test_keybinding_e_activates_set_entry_and_x_set_exit(
 
 
 def test_clicking_a_cell_with_set_entry_places_the_entry_marker(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     # The entry is seeded at (0,0), so this is a *redefinition* -- disable
     # the Story 3.4 confirm gate so the placement applies directly (the
@@ -979,6 +1178,7 @@ def test_clicking_a_cell_with_set_entry_places_the_entry_marker(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
     canvas = find_all(frame, tk.Canvas)[0]
@@ -998,7 +1198,12 @@ def test_clicking_a_cell_with_set_entry_places_the_entry_marker(
 
 
 def test_clicking_a_border_cell_with_set_exit_places_the_exit_marker(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -1009,6 +1214,7 @@ def test_clicking_a_border_cell_with_set_exit_places_the_exit_marker(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
     canvas = find_all(frame, tk.Canvas)[0]
@@ -1023,7 +1229,12 @@ def test_clicking_a_border_cell_with_set_exit_places_the_exit_marker(
 
 
 def test_clicking_an_interior_cell_with_set_exit_is_a_no_op(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -1034,6 +1245,7 @@ def test_clicking_an_interior_cell_with_set_exit_is_a_no_op(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
     canvas = find_all(frame, tk.Canvas)[0]
@@ -1047,7 +1259,12 @@ def test_clicking_an_interior_cell_with_set_exit_is_a_no_op(
 
 
 def test_set_exit_ghost_preview_follows_the_cursor_along_the_border(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     # The cursor starts on the seeded entry (0,0), whose cell the ghost
     # never covers (the entry marker renders there) -- so the ghost appears
@@ -1063,6 +1280,7 @@ def test_set_exit_ghost_preview_follows_the_cursor_along_the_border(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
     canvas = find_all(frame, tk.Canvas)[0]
@@ -1088,7 +1306,12 @@ def test_set_exit_ghost_preview_follows_the_cursor_along_the_border(
 
 
 def test_set_exit_ghost_is_hidden_when_the_cursor_moves_to_an_interior_cell(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -1099,6 +1322,7 @@ def test_set_exit_ghost_is_hidden_when_the_cursor_moves_to_an_interior_cell(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
     canvas = find_all(frame, tk.Canvas)[0]
@@ -1113,7 +1337,12 @@ def test_set_exit_ghost_is_hidden_when_the_cursor_moves_to_an_interior_cell(
 
 
 def test_set_exit_ghost_is_never_drawn_over_an_existing_marker(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     # The ghost never covers a marker cell: neither the seeded entry at the
     # cursor's start cell nor the exit once placed at the cursor's cell --
@@ -1127,6 +1356,7 @@ def test_set_exit_ghost_is_never_drawn_over_an_existing_marker(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
     canvas = find_all(frame, tk.Canvas)[0]
@@ -1145,7 +1375,12 @@ def test_set_exit_ghost_is_never_drawn_over_an_existing_marker(
 
 
 def test_set_exit_ghost_is_never_rendered_for_other_tools(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -1156,6 +1391,7 @@ def test_set_exit_ghost_is_never_rendered_for_other_tools(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
     canvas = find_all(frame, tk.Canvas)[0]
@@ -1168,7 +1404,12 @@ def test_set_exit_ghost_is_never_rendered_for_other_tools(
 
 
 def test_redefining_the_entry_at_a_different_cell_requires_confirmation(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     # The `confirm_redefine_marker` setting defaults to `True` (Story 3.4).
     navigate, _ = navigate_stub
@@ -1180,6 +1421,7 @@ def test_redefining_the_entry_at_a_different_cell_requires_confirmation(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
     canvas = find_all(frame, tk.Canvas)[0]
@@ -1198,7 +1440,12 @@ def test_redefining_the_entry_at_a_different_cell_requires_confirmation(
 
 
 def test_cancelling_the_redefinition_dialog_leaves_the_marker_in_place(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -1209,6 +1456,7 @@ def test_cancelling_the_redefinition_dialog_leaves_the_marker_in_place(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
     canvas = find_all(frame, tk.Canvas)[0]
@@ -1225,7 +1473,12 @@ def test_cancelling_the_redefinition_dialog_leaves_the_marker_in_place(
 
 
 def test_clicking_the_markers_own_cell_is_a_no_op_without_a_prompt(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -1236,6 +1489,7 @@ def test_clicking_the_markers_own_cell_is_a_no_op_without_a_prompt(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
     canvas = find_all(frame, tk.Canvas)[0]
@@ -1248,7 +1502,12 @@ def test_clicking_the_markers_own_cell_is_a_no_op_without_a_prompt(
 
 
 def test_redefine_confirmation_can_be_disabled_via_settings(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     write_confirm_redefine_marker(fake_settings_repository, False)
     navigate, _ = navigate_stub
@@ -1260,6 +1519,7 @@ def test_redefine_confirmation_can_be_disabled_via_settings(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
     canvas = find_all(frame, tk.Canvas)[0]
@@ -1272,7 +1532,12 @@ def test_redefine_confirmation_can_be_disabled_via_settings(
 
 
 def test_first_exit_placement_never_prompts(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -1283,6 +1548,7 @@ def test_first_exit_placement_never_prompts(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
     canvas = find_all(frame, tk.Canvas)[0]
@@ -1295,7 +1561,12 @@ def test_first_exit_placement_never_prompts(
 
 
 def test_placing_the_exit_on_the_entry_cell_is_a_no_op(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     # Start and goal never share a cell (human-resolved intent): placing
     # the exit on the entry's cell is a silent no-op, no prompt.
@@ -1308,6 +1579,7 @@ def test_placing_the_exit_on_the_entry_cell_is_a_no_op(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
     canvas = find_all(frame, tk.Canvas)[0]
@@ -1322,7 +1594,12 @@ def test_placing_the_exit_on_the_entry_cell_is_a_no_op(
 
 
 def test_placing_the_entry_on_the_exit_cell_is_a_no_op(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     # Mirror of the exit-on-entry case: the entry cannot move onto the
     # exit's cell either.
@@ -1335,6 +1612,7 @@ def test_placing_the_entry_on_the_exit_cell_is_a_no_op(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
     canvas = find_all(frame, tk.Canvas)[0]
@@ -1351,7 +1629,12 @@ def test_placing_the_entry_on_the_exit_cell_is_a_no_op(
 
 
 def test_a_drag_under_a_marker_tool_never_places_a_marker(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     # Placement reuses the same-cell press/release comparison -- a genuine
     # drag (press and release on different cells) under a marker tool is
@@ -1365,6 +1648,7 @@ def test_a_drag_under_a_marker_tool_never_places_a_marker(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
     canvas = find_all(frame, tk.Canvas)[0]
@@ -1378,7 +1662,12 @@ def test_a_drag_under_a_marker_tool_never_places_a_marker(
 
 
 def test_redefining_the_exit_at_a_different_cell_requires_confirmation(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     # The exit redefinition path mirrors the entry's: a prompt first, the
     # placement only on Confirm, and a second gated trigger while the
@@ -1393,6 +1682,7 @@ def test_redefining_the_exit_at_a_different_cell_requires_confirmation(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
     canvas = find_all(frame, tk.Canvas)[0]
@@ -1416,7 +1706,12 @@ def test_redefining_the_exit_at_a_different_cell_requires_confirmation(
 
 
 def test_cancelling_the_exit_redefinition_dialog_leaves_the_marker_in_place(
-    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
 ):
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
@@ -1427,6 +1722,7 @@ def test_cancelling_the_exit_redefinition_dialog_leaves_the_marker_in_place(
         Theme.LIGHT,
         toggle_theme,
         settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
     canvas = find_all(frame, tk.Canvas)[0]
@@ -1441,3 +1737,357 @@ def test_cancelling_the_exit_redefinition_dialog_leaves_the_marker_in_place(
 
     assert edit_area._session.exit == Position(2, 0)
     assert find_all(frame, ConfirmDialog) == []
+
+
+# -- save flow (Story 3.6) --------------------------------------------------
+
+
+def _place_exit(
+    edit_area: _BuilderEditArea, canvas: _BuilderMazeCanvas, position: Position
+) -> None:
+    """Place the session exit marker at `position` (a border cell), the real
+    way (`_activate_set_exit` + a same-cell drag), matching every other
+    marker-placement test in this file."""
+    edit_area._activate_set_exit()
+    _drag_zone(canvas, position, position)
+
+
+def test_save_pill_button_renders_in_the_hud_row_with_the_canonical_shortcut(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
+):
+    navigate, _ = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(
+        tk_root,
+        _sketch_maze(4, 3),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
+    )
+
+    save_button = next(b for b in find_all(frame, PillButton) if b._label.cget("text") == "Save")
+    assert save_button._kbd is not None
+
+
+def test_status_chip_shows_draft_for_a_sketch_maze(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
+):
+    navigate, _ = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(
+        tk_root,
+        _sketch_maze(4, 3),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
+    )
+
+    chips = {c._caption.cget("text"): c for c in find_all(frame, HudChip)}
+    assert chips["STATUS"]._value_label.cget("text") == "Draft"
+
+
+def test_status_chip_is_absent_for_a_classic_maze(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
+):
+    navigate, _ = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(
+        tk_root,
+        _classic_maze(4, 3),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
+    )
+
+    chips = {c._caption.cget("text"): c for c in find_all(frame, HudChip)}
+    assert "STATUS" not in chips
+
+
+def test_saving_with_exit_not_set_offers_a_sketch_save_via_confirm_dialog(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
+):
+    navigate, calls = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(
+        tk_root,
+        _sketch_maze(4, 3),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
+    )
+    edit_area = find_all(frame, _BuilderEditArea)[0]
+    assert edit_area._session.exit is None  # fresh session: never pre-set
+
+    edit_area.save_maze()
+
+    dialogs = find_all(frame, ConfirmDialog)
+    assert len(dialogs) == 1
+    label_texts = [label.cget("text") for label in find_all(dialogs[0], tk.Label)]
+    assert any("Sketch" in text for text in label_texts)
+    # No save/navigation happened yet -- only the exit-not-set explanation.
+    assert calls == []
+    assert fake_maze_repository.list_names(MazeKind.SKETCH) == []
+
+
+def test_confirming_the_exit_not_set_dialog_saves_as_a_sketch_and_navigates_back(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
+):
+    navigate, calls = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(
+        tk_root,
+        _sketch_maze(4, 3),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
+    )
+    edit_area = find_all(frame, _BuilderEditArea)[0]
+
+    edit_area.save_maze()
+    find_all(frame, ConfirmDialog)[0]._on_confirm_clicked()
+
+    name_dialogs = find_all(frame, _SaveNameDialog)
+    assert len(name_dialogs) == 1
+    dialog = name_dialogs[0]
+    assert dialog._name_entry.get() == "4x3"  # suggested from grid dimensions
+
+    dialog._on_save_clicked()
+
+    assert fake_maze_repository.list_names(MazeKind.SKETCH) == ["4x3"]
+    saved = fake_maze_repository.load("4x3", MazeKind.SKETCH)
+    assert saved.kind is MazeKind.SKETCH
+    assert saved.id is None  # SKETCH is never id-eligible (AD-3)
+    assert len(calls) == 1
+    screen_id, navigated_maze = calls[0]
+    assert screen_id is ScreenId.BUILDER
+    assert navigated_maze == saved
+
+
+def test_saving_with_exit_set_promotes_sketch_to_classic_and_mints_a_maze_id(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
+):
+    navigate, calls = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(
+        tk_root,
+        _sketch_maze(4, 3),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
+    )
+    edit_area = find_all(frame, _BuilderEditArea)[0]
+    canvas = find_all(frame, tk.Canvas)[0]
+    _place_exit(edit_area, canvas, Position(2, 3))
+
+    edit_area.save_maze()
+
+    # Exit is set: no exit-not-set ConfirmDialog -- straight to naming.
+    assert find_all(frame, ConfirmDialog) == []
+    dialog = find_all(frame, _SaveNameDialog)[0]
+    dialog._on_save_clicked()
+
+    assert fake_maze_repository.list_names(MazeKind.CLASSIC) == ["4x3"]
+    saved = fake_maze_repository.load("4x3", MazeKind.CLASSIC)
+    assert saved.kind is MazeKind.CLASSIC
+    assert saved.id is not None  # CLASSIC is id-eligible: minted on first save (AD-3/AD-6)
+    assert len(calls) == 1
+    assert calls[0] == (ScreenId.BUILDER, saved)
+
+
+def test_saving_a_maze_that_already_has_an_id_keeps_it_unchanged(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
+):
+    # A future Edit-in-Builder resave (Story 3.9): the maze is already
+    # CLASSIC/SAVED_RANDOM with an id -- re-saving must carry it forward
+    # unchanged, never re-mint (AD-3/AD-6, `MazeRepository.save()`'s own
+    # contract).
+    navigate, calls = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    existing = fake_maze_repository.save(_classic_maze(4, 3), "existing")
+    assert existing.id is not None
+
+    frame = mount(
+        tk_root,
+        existing,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
+    )
+    edit_area = find_all(frame, _BuilderEditArea)[0]
+    canvas = find_all(frame, tk.Canvas)[0]
+    _place_exit(edit_area, canvas, Position(2, 3))
+
+    edit_area.save_maze()
+    dialog = find_all(frame, _SaveNameDialog)[0]
+    dialog._name_entry.delete(0, "end")
+    dialog._name_entry.insert(0, "existing")
+    # Re-saving under its own current name is itself a collision (the name
+    # is already in `existing_names`) -- the arm/confirm overwrite pattern
+    # applies here too, same as any other duplicate.
+    dialog._on_save_clicked()
+    assert dialog._save_button._label.cget("text") == "Overwrite"
+    dialog._on_save_clicked()
+
+    resaved = fake_maze_repository.load("existing", MazeKind.CLASSIC)
+    assert resaved.id == existing.id
+    assert calls[-1] == (ScreenId.BUILDER, resaved)
+
+
+def test_duplicate_name_arms_the_save_button_and_requires_a_second_click_to_overwrite(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
+):
+    navigate, calls = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    fake_maze_repository.save(_classic_maze(4, 3), "4x3")  # pre-existing collision
+
+    frame = mount(
+        tk_root,
+        _sketch_maze(4, 3),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
+    )
+    edit_area = find_all(frame, _BuilderEditArea)[0]
+    canvas = find_all(frame, tk.Canvas)[0]
+    _place_exit(edit_area, canvas, Position(2, 3))
+    edit_area.save_maze()
+    dialog = find_all(frame, _SaveNameDialog)[0]
+
+    dialog._on_save_clicked()  # first click on the colliding "4x3" name
+
+    assert dialog.winfo_exists()  # not yet closed -- armed instead
+    assert dialog._save_button._label.cget("text") == "Overwrite"
+    assert calls == []
+
+    dialog._on_save_clicked()  # second click, name unchanged: confirms
+
+    assert not dialog.winfo_exists()
+    assert len(calls) == 1
+    saved = fake_maze_repository.load("4x3", MazeKind.CLASSIC)
+    assert calls[0] == (ScreenId.BUILDER, saved)
+
+
+def test_editing_the_name_after_arming_resets_the_save_button(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
+):
+    navigate, calls = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    fake_maze_repository.save(_classic_maze(4, 3), "4x3")
+
+    frame = mount(
+        tk_root,
+        _sketch_maze(4, 3),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
+    )
+    edit_area = find_all(frame, _BuilderEditArea)[0]
+    canvas = find_all(frame, tk.Canvas)[0]
+    _place_exit(edit_area, canvas, Position(2, 3))
+    edit_area.save_maze()
+    dialog = find_all(frame, _SaveNameDialog)[0]
+    dialog._on_save_clicked()
+    assert dialog._save_button._label.cget("text") == "Overwrite"
+
+    dialog._name_entry.delete(0, "end")
+    dialog._name_entry.insert(0, "a-different-name")
+    dialog._on_name_changed()
+
+    assert dialog._save_button._label.cget("text") == "Save"
+    assert calls == []
+
+
+def test_saving_with_an_empty_name_shows_an_inline_error_and_does_not_save(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
+):
+    navigate, calls = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(
+        tk_root,
+        _sketch_maze(4, 3),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
+    )
+    edit_area = find_all(frame, _BuilderEditArea)[0]
+    edit_area.save_maze()
+    find_all(frame, ConfirmDialog)[0]._on_confirm_clicked()
+    dialog = find_all(frame, _SaveNameDialog)[0]
+    dialog._name_entry.delete(0, "end")
+
+    dialog._on_save_clicked()
+
+    assert dialog.winfo_exists()
+    assert dialog._message_label.cget("text") == "Name is required."
+    assert calls == []
+    assert fake_maze_repository.list_names(MazeKind.SKETCH) == []

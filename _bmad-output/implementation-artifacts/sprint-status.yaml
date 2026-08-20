@@ -69,7 +69,7 @@ development_status:
   3-3-zone-editing-destroy-restore-a-rectangular-zone: done
   3-4-entry-and-exit-marking: done
   3-5-direct-navigation-go-to: done
-  3-6-sketch-maze-save: backlog
+  3-6-sketch-maze-save: done
   3-7-builder-theme-toggle: backlog
   3-8-test-in-player-launch-the-game-from-the-builder: backlog
   3-9-edit-in-builder-launch-the-builder-from-the-game: backlog
@@ -106,7 +106,7 @@ development_status:
   epic-7: backlog
   epic-7-retrospective: optional
 generated: 2026-08-05
-last_updated: 08-19-2026 09:59
+last_updated: 08-20-2026 00:00
 project: Labyrinthes
 project_key: NOKEY
 story_location: _bmad-output/implementation-artifacts
