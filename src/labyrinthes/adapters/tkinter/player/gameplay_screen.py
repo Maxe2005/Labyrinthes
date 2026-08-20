@@ -94,6 +94,7 @@ from collections.abc import Callable
 from labyrinthes.adapters.tkinter.common.confirm_dialog import ConfirmDialog
 from labyrinthes.adapters.tkinter.common.hud_chip import HudChip
 from labyrinthes.adapters.tkinter.common.keybindings import bind_shortcut, keybinding
+from labyrinthes.adapters.tkinter.common.navigation import BuilderTestLaunch, ScreenId
 from labyrinthes.adapters.tkinter.common.pill_btn import PillButton
 from labyrinthes.adapters.tkinter.common.tokens import (
     SPACING,
@@ -221,6 +222,7 @@ class GameplayScreen(tk.Frame):
         *,
         maze_repository: MazeRepository,
         settings_repository: SettingsRepository,
+        navigate: Callable[[ScreenId, Maze | None | BuilderTestLaunch], None] | None = None,
         on_kind_changed: Callable[[MazeKind], None] | None = None,
         on_back_to_builder: Callable[[], None] | None = None,
     ) -> None:
@@ -228,7 +230,6 @@ class GameplayScreen(tk.Frame):
         super().__init__(parent, background=colors.window)
         self._theme = theme
         self._maze_repository = maze_repository
-        self._settings_repository = settings_repository
         self._maze = maze  # tracks kind/id across a save -- see `_build_save_zone()`
         self._on_kind_changed = on_kind_changed
         # The test-mode "Back to Builder" callback (Builder's Test in
@@ -236,6 +237,10 @@ class GameplayScreen(tk.Frame):
         # set, the win banner offers Restart + Back to Builder instead of
         # Continue, per the amendment.
         self._on_back_to_builder = on_back_to_builder
+        # Callback to navigate the router (e.g. "Edit in Builder").
+        # Set by `mount()` via `functools.partial` in `composition_root.py`.
+        self._navigate = navigate
+        self._settings_repository = settings_repository
         self._session = start_session(maze)
         # Apply the `game`-scoped settings-loaded mode/speed at mount. This
         # screen is rebuilt on re-navigate, so settings loaded here are fresh.
@@ -462,6 +467,7 @@ class GameplayScreen(tk.Frame):
 
         self._logo_key: str = read_theme_logo(self._settings_repository)
         self._build_logo_section(colors)
+        self._build_edit_in_builder_button(colors)
 
         self._sync_difficulty_widgets()
         self._sync_mode_button()
@@ -511,6 +517,23 @@ class GameplayScreen(tk.Frame):
             background=colors.window,
             foreground=colors.ink_soft,
         ).pack(anchor="w")
+
+    def _build_edit_in_builder_button(self, colors: ColorTokens) -> None:
+        if self._maze.kind not in {MazeKind.CLASSIC, MazeKind.SAVED_RANDOM}:
+            return
+        edit_kb = keybinding("edit_in_builder")
+        self._edit_in_builder_button = ToolButton(
+            self._sidebar,
+            "Edit in Builder",
+            theme=self._theme,
+            shortcut=edit_kb.display,
+            command=self._on_edit_in_builder_clicked,
+        )
+        self._edit_in_builder_button.pack(anchor="w", pady=(SPACING["lg"], SPACING["sm"]))
+
+    def _on_edit_in_builder_clicked(self) -> None:
+        if self._navigate is not None:
+            self._navigate(ScreenId.BUILDER, self._maze)
 
     def _build_maze_frame(self, colors: ColorTokens, theme: Theme) -> None:
         self._maze_frame = tk.Frame(

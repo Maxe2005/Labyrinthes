@@ -160,6 +160,7 @@ def mount(
             theme,
             maze_repository=maze_repository,
             settings_repository=settings_repository,
+            navigate=navigate,
             # Saving a `GENERATED` maze transitions its `kind` to
             # `SAVED_RANDOM` mid-session -- without this, the trailing
             # breadcrumb segment (built once above, from the *original*

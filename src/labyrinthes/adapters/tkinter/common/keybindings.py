@@ -104,6 +104,7 @@ KEYBINDINGS: tuple[Keybinding, ...] = (
     Keybinding("set_entry", "Set Entry", "e", ScreenId.BUILDER),
     Keybinding("set_exit", "Set Exit", "x", ScreenId.BUILDER),
     Keybinding("test_in_player", "Test in Player", "t", ScreenId.BUILDER),
+    Keybinding("edit_in_builder", "Edit in Builder", "f", ScreenId.BUILDER),
 )
 
 _BY_ACTION_ID: dict[str, Keybinding] = {kb.action_id: kb for kb in KEYBINDINGS}
