@@ -72,6 +72,8 @@ context: ['_bmad-output/implementation-artifacts/epic-3/epic-3-context.md']
 
 - **Iteration 1 (initial):** Created spec for Story 3.8 — Test in Player, adding the Builder-side pill + `t` shortcut and the `navigate(ScreenId.PLAYER, session.maze)` hand-off, reusing the Player's existing state-mount path.
 
+- **Iteration 2 (code review, 2026-08-20):** A 3-layer adversarial review (Blind Hunter, Edge Case Hunter, Verification Gap) found seven patch-level issues, all fixed in the `fix(...)` patch commit: (1) typing `t` into the `_SaveNameDialog` name field fired the new `test_in_player` `bind_all` shortcut and navigated away mid-save — now guarded by consuming `t`/`T` in the name entry, mirroring the existing `s`/`S` guard; (2) the "shortcut" test called `_test_in_player()` directly, so the `bind_shortcut` registration was never asserted — added `bind_all(...) != ""` assertions for the active-edit and New-Maze entry states; (3) the "not gated to maze kind" AC was only exercised with a `SKETCH` maze — added a `CLASSIC`-kind pill/navigation test; (4) the "exact in-progress object" assertion was trivially satisfied — the pill-click test now breaks an interior wall first and asserts the handed-off maze reflects the edit; (5) no `test_keybindings.py` pin for the new entry — added one (`t`, `ScreenId.BUILDER`, `T`); (6) the Builder module docstring inventory did not mention the new pill/shortcut — updated; (7) an inaccurate "mirrors the 'b'/'d'/'r' tests" comment — corrected. Full suite: 881 tests pass, `ruff check`/`ruff format --check` clean.
+
 ## Verification
 
 **Commands:**
