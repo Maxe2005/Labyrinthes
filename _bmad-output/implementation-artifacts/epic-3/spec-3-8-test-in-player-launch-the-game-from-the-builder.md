@@ -2,7 +2,7 @@
 title: 'Story 3.8: Test in Player — launch the Game from the Builder'
 type: 'feature'
 created: '2026-08-20'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
 baseline_revision: 'ed987a4'
 context: ['_bmad-output/implementation-artifacts/epic-3/epic-3-context.md']
@@ -81,4 +81,47 @@ context: ['_bmad-output/implementation-artifacts/epic-3/epic-3-context.md']
 - `ruff format --check src/ tests/` — passes, 144 files already formatted
 - `pytest tests/adapters/tkinter/builder/test_builder_screen.py tests/adapters/tkinter/common/test_keybindings.py tests/test_architecture_boundaries.py` — passes (88 tests, incl. the 4 new Test-in-Player tests)
 - `pytest tests/app/test_composition_root.py` — passes (10 tests, incl. the new handed-off-maze theme-toggle test)
-- `pytest tests/` — passes (877 tests)
+- `pytest tests/` — passes (881 tests after the review patch round; 877 at initial implementation)
+
+## Suggested Review Order
+
+**Hand-off trigger (entry point)**
+
+- Live in-memory hand-off of the in-progress maze straight to the Player gameplay screen
+  [`screen.py:641`](../../../src/labyrinthes/adapters/tkinter/builder/screen.py#L641)
+
+- `bind_all` wiring for the BUILDER-scoped `t` shortcut beside the Save binding
+  [`screen.py:282`](../../../src/labyrinthes/adapters/tkinter/builder/screen.py#L282)
+
+**UI surface**
+
+- Non-primary Test in Player pill beside the primary Save pill in the HUD row
+  [`screen.py:417`](../../../src/labyrinthes/adapters/tkinter/builder/screen.py#L417)
+
+- The `t`/`T` key-consumption guard in the Save-name entry, so typing a name can't fire the shortcut mid-save
+  [`screen.py:810`](../../../src/labyrinthes/adapters/tkinter/builder/screen.py#L810)
+
+- Docstring inventory updated to enumerate the new pill and shortcut
+  [`screen.py:27`](../../../src/labyrinthes/adapters/tkinter/builder/screen.py#L27)
+
+**Keybinding table**
+
+- New canonical `test_in_player` entry — `t`, BUILDER scope, uniqueness-checked
+  [`keybindings.py:106`](../../../src/labyrinthes/adapters/tkinter/common/keybindings.py#L106)
+
+**Tests**
+
+- Pill click hands the *edited* session maze to the Player (wall broken first)
+  [`test_builder_screen.py:1818`](../../../tests/adapters/tkinter/builder/test_builder_screen.py#L1818)
+
+- Unconditional availability proven for a non-SKETCH (CLASSIC) maze
+  [`test_builder_screen.py:1859`](../../../tests/adapters/tkinter/builder/test_builder_screen.py#L1859)
+
+- Shortcut registration asserted active and inert-in-entry-state
+  [`test_builder_screen.py:1891`](../../../tests/adapters/tkinter/builder/test_builder_screen.py#L1891)
+
+- New keybinding pinned to `t`/`T` in BUILDER scope
+  [`test_keybindings.py:191`](../../../tests/adapters/tkinter/common/test_keybindings.py#L191)
+
+- Theme toggle re-mounts the Player keeping the handed-off maze
+  [`test_composition_root.py:83`](../../../tests/app/test_composition_root.py#L83)
