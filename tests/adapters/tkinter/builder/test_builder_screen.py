@@ -16,9 +16,10 @@ from labyrinthes.adapters.tkinter.common import (
     ToolButton,
     TopBar,
 )
+from labyrinthes.adapters.tkinter.common.keybindings import keybinding
 from labyrinthes.adapters.tkinter.common.navigation import ScreenId
 from labyrinthes.adapters.tkinter.common.tokens import colors_for
-from labyrinthes.application.builder_session import BuilderTool
+from labyrinthes.application.builder_session import BuilderTool, apply_wall_toggle
 from labyrinthes.application.confirmation_settings import (
     write_confirm_invalid_input,
     write_confirm_redefine_marker,
@@ -1814,7 +1815,7 @@ def test_test_in_player_pill_renders_non_primary_with_the_canonical_shortcut(
     assert save_pill._primary is True
 
 
-def test_test_in_player_pill_click_navigates_to_player_with_the_session_maze(
+def test_test_in_player_pill_click_navigates_to_player_with_the_edited_session_maze(
     tk_root,
     navigate_stub,
     toggle_theme_stub,
@@ -1838,11 +1839,100 @@ def test_test_in_player_pill_click_navigates_to_player_with_the_session_maze(
         b for b in find_all(frame, PillButton) if b._label.cget("text") == "Test in Player"
     )
 
+    # Break an interior wall first so the "exact in-progress object"
+    # assertion isn't trivially satisfied by an unedited session -- the
+    # hand-off must reflect the live edited state, not the mounted maze.
+    broken = Wall(row=1, col=1, side="top")
+    pre_edit_grid = edit_area._session.maze.grid
+    assert pre_edit_grid.cell_at(Position(row=1, col=1)).has_top_wall
+    edit_area._session = apply_wall_toggle(edit_area._session, broken)
+
     test_pill._on_click()
 
     assert len(calls) == 1
     assert calls[0] == (ScreenId.PLAYER, edit_area._session.maze)
     assert calls[0][1] is edit_area._session.maze  # exact in-progress object
+    assert calls[0][1].grid is not pre_edit_grid  # the wall edit is handed off
+    assert not calls[0][1].grid.cell_at(Position(row=1, col=1)).has_top_wall
+
+
+def test_test_in_player_is_unconditionally_available_for_a_classic_maze(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
+):
+    # FR-8's "unconditionally available from any active Builder session" --
+    # not gated to maze kind (unlike FR-19's mirror).
+    navigate, calls = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    classic = _classic_maze(4, 3)
+    frame = mount(
+        tk_root,
+        classic,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
+    )
+    test_pill = next(
+        b for b in find_all(frame, PillButton) if b._label.cget("text") == "Test in Player"
+    )
+
+    test_pill._on_click()
+
+    assert len(calls) == 1
+    assert calls[0] == (ScreenId.PLAYER, classic)
+
+
+def test_test_in_player_shortcut_is_registered_for_an_active_edit_session(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
+):
+    navigate, _ = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    mount(
+        tk_root,
+        _sketch_maze(4, 3),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
+    )
+
+    assert tk_root.bind_all(keybinding("test_in_player").event) != ""
+
+
+def test_test_in_player_shortcut_is_not_registered_in_the_new_maze_entry_state(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    fake_settings_repository,
+    fake_maze_repository,
+):
+    navigate, _ = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    mount(
+        tk_root,
+        None,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
+    )
+
+    # I/O matrix "Builder in the New-Maze entry state": no active session,
+    # so 't' is inert there.
+    assert tk_root.bind_all(keybinding("test_in_player").event) == ""
 
 
 def test_test_in_player_shortcut_fires_the_same_handler_as_the_pill(
@@ -1866,9 +1956,9 @@ def test_test_in_player_shortcut_fires_the_same_handler_as_the_pill(
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
 
-    # `test_in_player`'s bound handler (BUILDER-scoped 't') calls exactly
-    # this method -- see `_BuilderEditArea.__init__`'s `bind_shortcut`
-    # (mirrors the 'b'/'d'/'r' keybinding tests).
+    # Verifies the handler method the `test_in_player` binding is wired to
+    # (the registration itself is asserted separately in
+    # `test_test_in_player_shortcut_is_registered_for_an_active_edit_session`).
     edit_area._test_in_player()
 
     assert len(calls) == 1

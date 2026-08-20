@@ -188,6 +188,16 @@ def test_set_entry_and_set_exit_keys_are_unique_within_the_builder_scope():
     assert len(builder_keys) == len(set(builder_keys))
 
 
+def test_test_in_player_keybinding_is_registered_on_the_t_keysym_in_builder_scope():
+    kb = keybinding("test_in_player")
+
+    assert kb.label == "Test in Player"
+    assert kb.key == "t"
+    assert kb.display == "T"
+    assert kb.event == "<KeyPress-t>"
+    assert kb.scope is ScreenId.BUILDER
+
+
 def test_bind_shortcut_does_not_register_an_uppercase_variant_for_a_multi_char_keysym(tk_root):
     # Regression: an unguarded `f"<KeyPress-{kb.key.upper()}>"` on a
     # multi-char keysym like "Up" produces "<KeyPress-UP>", which is not a

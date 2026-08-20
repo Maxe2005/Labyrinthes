@@ -2,7 +2,7 @@
 title: 'Story 3.8: Test in Player — launch the Game from the Builder'
 type: 'feature'
 created: '2026-08-20'
-status: 'in-progress'
+status: 'in-review'
 review_loop_iteration: 0
 baseline_revision: 'ed987a4'
 context: ['_bmad-output/implementation-artifacts/epic-3/epic-3-context.md']
