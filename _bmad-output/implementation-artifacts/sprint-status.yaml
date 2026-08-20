@@ -1,12 +1,50 @@
-generated: 2026-08-05
-last_updated: '08-17-2026 16:47'
-project: Labyrinthes
-project_key: NOKEY
-tracking_system: file-system
-story_location: _bmad-output/implementation-artifacts
+action_items:
+- action: Fix Router.navigate() silently closing an open SettingsWindow on frame-teardown
+  epic: 1
+  owner: Amelia (dev)
+  status: done
+- action: 'Add a persistence-hardening story: atomic writes (temp-file-plus-rename)
+    + typed LabyrinthesError for malformed content in MazeRepository/SettingsRepository'
+  epic: 1
+  owner: Amelia (dev)
+  status: done
+- action: When a deferred-work.md item is re-deferred a 2nd time by a later story's
+    review, flag it explicitly for scheduling instead of deferring a 3rd time silently
+  epic: 1
+  owner: Amelia (dev/process)
+  status: open
+- action: Fix Router.navigate() silently closing an open SettingsWindow on frame-teardown
+  epic: 2
+  id: epic-2-retro-item-1-router-cascade
+  owner: Amelia (dev)
+  ref: _bmad-output/implementation-artifacts/epic-2/epic-2-retrospective-2026-08-17.md
+  status: open
+- action: 'Add a persistence-hardening story: atomic writes (temp-file-plus-rename)
+    + typed LabyrinthesError for malformed content in MazeRepository/SettingsRepository'
+  epic: 2
+  id: epic-2-retro-item-2-persistence-hardening
+  owner: Amelia (dev)
+  ref: _bmad-output/implementation-artifacts/epic-2/epic-2-retrospective-2026-08-17.md
+  status: open
+- action: When a deferred-work.md item is re-deferred a 2nd time by a later story's
+    review, flag it explicitly for scheduling instead of deferring a 3rd time silently
+  epic: 2
+  id: epic-2-retro-item-3-redefer-flag
+  owner: Amelia (dev/process)
+  ref: _bmad-output/implementation-artifacts/epic-2/epic-2-retrospective-2026-08-17.md
+  status: open
+- action: Verify HARD-mode ready/moving color toggle is not hardcoded; confirm ready
+    color derives from configurable HARD-mode color setting
+  epic: 2
+  id: epic-2-retro-item-4-hardmode-toggle
+  owner: Winston (arch)
+  ref: _bmad-output/implementation-artifacts/epic-2/epic-2-retrospective-2026-08-17.md
+  status: open
 development_status:
-  epic-1: in-progress
   1-1-domain-model-foundation: done
+  1-10-accessibility-floor-keyboard-shortcut-consistency: done
+  1-11-settings-dialog-survives-screen-navigation: done
+  1-12-persistence-hardening-atomic-writes-typed-errors: done
   1-2-automated-domain-ui-boundary-test: done
   1-3-persistence-port-interfaces-mazerepository-settingsrepository: done
   1-4-concrete-mazerepository-single-shared-csv-read-write-implementation: done
@@ -15,90 +53,61 @@ development_status:
   1-7-single-composition-root-screen-router: done
   1-8-home-breadcrumb-navigation-settings-access: done
   1-9-light-dark-theme-toggle-wired-end-to-end: done
-  1-10-accessibility-floor-keyboard-shortcut-consistency: done
-  1-11-settings-dialog-survives-screen-navigation: done
-  1-12-persistence-hardening-atomic-writes-typed-errors: done
-  epic-1-retrospective: done
-  epic-2: done
   2-1-player-maze-selection-screen-classic-maze-browsing: done
+  2-10-confirmation-prompts-per-action: done
+  2-11-appearance-theme-logo: done
   2-2-random-maze-generation-with-validation: done
   2-3-random-maze-saving-reappears-after-restart: done
-  2-4-gameplay-screen-foundation-rendering-hud-baseline-movement-win-detection: 
-    done
+  2-4-gameplay-screen-foundation-rendering-hud-baseline-movement-win-detection: done
   2-5-movement-modes-smooth-vs-discrete-configurable-speed: done
   2-6-levels-progressive-visibility-1-4-max: done
   2-7-difficulty-unified-threshold-formula: done
   2-8-hard-mode-invisible-ball-fog-overlay-status-light: done
   2-9-timer-optional-time-limit-timeout-message: done
-  2-10-confirmation-prompts-per-action: done
-  2-11-appearance-theme-logo: done
+  3-1-new-maze-open-a-sketch: done
+  3-2-wall-editing-break-restore: done
+  3-3-zone-editing-destroy-restore-a-rectangular-zone: done
+  3-4-entry-and-exit-marking: done
+  3-5-direct-navigation-go-to: done
+  3-6-sketch-maze-save: done
+  3-7-builder-theme-toggle: done
+  3-8-test-in-player-launch-the-game-from-the-builder: done
+  3-9-edit-in-builder-launch-the-builder-from-the-game: done
+  4-1-builder-cursor-and-marker-glyphs: backlog
+  4-2-wall-tool-semantics-break-vs-pass-through: backlog
+  4-3-zone-selection-colored-outline-click-click: backlog
+  4-4-entry-exit-live-placement: backlog
+  4-5-reachability-counter-and-highlight: backlog
+  4-6-configurable-defaults: backlog
+  4-7-player-continue-regenerates-random: backlog
+  4-8-shell-windowing: backlog
+  4-9-top-bar-brand-logo: backlog
+  4-10-screen-layout-blocks: backlog
+  5-1-migration-script-folder-file-renaming: backlog
+  5-2-migration-script-settings-csv-header-renaming: backlog
+  5-3-migration-script-mazeid-backfill: backlog
+  6-1-recordsrepository-recordsservice: backlog
+  6-2-player-records-a-completion-on-win: backlog
+  6-3-home-personal-records-zone-with-record-group: backlog
+  6-4-first-activation-explainer-level-and-difficulty-tiers: backlog
+  6-5-first-activation-explainer-hard-mode-tier: backlog
+  epic-1: done
+  epic-1-retrospective: done
+  epic-2: done
   epic-2-retrospective: done
-  epic-3: backlog
-  3-1-new-maze-open-a-sketch: backlog
-  3-2-wall-editing-break-restore: backlog
-  3-3-zone-editing-destroy-restore-a-rectangular-zone: backlog
-  3-4-entry-and-exit-marking: backlog
-  3-5-direct-navigation-go-to: backlog
-  3-6-sketch-maze-save: backlog
-  3-7-builder-theme-toggle: backlog
-  3-8-test-in-player-launch-the-game-from-the-builder: backlog
-  3-9-edit-in-builder-launch-the-builder-from-the-game: backlog
+  epic-3: done
   epic-3-retrospective: optional
   epic-4: backlog
-  4-1-migration-script-folder-file-renaming: backlog
-  4-2-migration-script-settings-csv-header-renaming: backlog
-  4-3-migration-script-mazeid-backfill: backlog
   epic-4-retrospective: optional
   epic-5: backlog
-  5-1-recordsrepository-recordsservice: backlog
-  5-2-player-records-a-completion-on-win: backlog
-  5-3-home-personal-records-zone-with-record-group: backlog
-  5-4-first-activation-explainer-level-and-difficulty-tiers: backlog
-  5-5-first-activation-explainer-hard-mode-tier: backlog
   epic-5-retrospective: optional
   epic-6: backlog
   epic-6-retrospective: optional
-action_items:
-  - epic: 1
-    action: Fix Router.navigate() silently closing an open SettingsWindow on 
-      frame-teardown
-    owner: Amelia (dev)
-    status: done
-  - epic: 1
-    action: 'Add a persistence-hardening story: atomic writes (temp-file-plus-rename)
-      + typed LabyrinthesError for malformed content in MazeRepository/SettingsRepository'
-    owner: Amelia (dev)
-    status: done
-  - epic: 1
-    action: When a deferred-work.md item is re-deferred a 2nd time by a later 
-      story's review, flag it explicitly for scheduling instead of deferring a 
-      3rd time silently
-    owner: Amelia (dev/process)
-    status: open
-  - id: "epic-2-retro-item-1-router-cascade"
-    epic: 2
-    action: "Fix Router.navigate() silently closing an open SettingsWindow on frame-teardown"
-    owner: "Amelia (dev)"
-    status: open
-    ref: "_bmad-output/implementation-artifacts/epic-2/epic-2-retrospective-2026-08-17.md"
-  - id: "epic-2-retro-item-2-persistence-hardening"
-    epic: 2
-    action: "Add a persistence-hardening story: atomic writes (temp-file-plus-rename)
-      + typed LabyrinthesError for malformed content in MazeRepository/SettingsRepository"
-    owner: "Amelia (dev)"
-    status: open
-    ref: "_bmad-output/implementation-artifacts/epic-2/epic-2-retrospective-2026-08-17.md"
-  - id: "epic-2-retro-item-3-redefer-flag"
-    epic: 2
-    action: "When a deferred-work.md item is re-deferred a 2nd time by a later story's
-      review, flag it explicitly for scheduling instead of deferring a 3rd time silently"
-    owner: "Amelia (dev/process)"
-    status: open
-    ref: "_bmad-output/implementation-artifacts/epic-2/epic-2-retrospective-2026-08-17.md"
-  - id: "epic-2-retro-item-4-hardmode-toggle"
-    epic: 2
-    action: "Verify HARD-mode ready/moving color toggle is not hardcoded; confirm
-      ready color derives from configurable HARD-mode color setting"
-    owner: "Winston (arch)"
-    status: open
-    ref: "_bmad-output/implementation-artifacts/epic-2/epic-2-retrospective-2026-08-17.md"
+  epic-7: backlog
+  epic-7-retrospective: optional
+generated: 2026-08-05
+last_updated: 08-20-2026 00:00
+project: Labyrinthes
+project_key: NOKEY
+story_location: _bmad-output/implementation-artifacts
+tracking_system: file-system

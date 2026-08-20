@@ -74,6 +74,13 @@ second gated trigger stacking a second dialog (the dialog is non-modal, so
 clicks can still reach this screen). Each action reads its setting at
 action time -- never cached at mount -- so a Settings toggle takes effect
 without an app restart (AC-3).
+
+Story 3.8's amendment gives the screen an optional `on_back_to_builder`
+callback (`None` in normal gallery-driven gameplay). When set (a Builder
+"Test in Player" run), the win banner offers Restart + Back to Builder
+instead of Continue -- the latter returns to the Builder, restoring the
+session's markers from the `BuilderTestLaunch` payload it was mounted
+with.
 """
 
 from __future__ import annotations
@@ -87,6 +94,7 @@ from collections.abc import Callable
 from labyrinthes.adapters.tkinter.common.confirm_dialog import ConfirmDialog
 from labyrinthes.adapters.tkinter.common.hud_chip import HudChip
 from labyrinthes.adapters.tkinter.common.keybindings import bind_shortcut, keybinding
+from labyrinthes.adapters.tkinter.common.navigation import BuilderTestLaunch, ScreenId
 from labyrinthes.adapters.tkinter.common.pill_btn import PillButton
 from labyrinthes.adapters.tkinter.common.tokens import (
     SPACING,
@@ -106,6 +114,7 @@ from labyrinthes.application.hard_mode_settings import (
     read_hard_mode_moving_color,
     read_hard_mode_ready_color,
 )
+from labyrinthes.application.logos import _logo_path
 from labyrinthes.application.maze_repository import MazeRepository
 from labyrinthes.application.movement_settings import (
     read_movement_mode,
@@ -145,6 +154,7 @@ from labyrinthes.application.player_session import (
     tick as session_tick,
 )
 from labyrinthes.application.settings_repository import SettingsRepository
+from labyrinthes.application.theme_logo_settings import read_theme_logo
 from labyrinthes.application.time_limit_settings import read_time_limit
 from labyrinthes.domain.difficulty import Difficulty
 from labyrinthes.domain.duration import Duration
@@ -212,17 +222,25 @@ class GameplayScreen(tk.Frame):
         *,
         maze_repository: MazeRepository,
         settings_repository: SettingsRepository,
-        toggle_theme: Callable[[], None],
+        navigate: Callable[[ScreenId, Maze | None | BuilderTestLaunch], None] | None = None,
         on_kind_changed: Callable[[MazeKind], None] | None = None,
+        on_back_to_builder: Callable[[], None] | None = None,
     ) -> None:
         colors = colors_for(theme)
         super().__init__(parent, background=colors.window)
         self._theme = theme
         self._maze_repository = maze_repository
-        self._settings_repository = settings_repository
-        self._toggle_theme = toggle_theme
         self._maze = maze  # tracks kind/id across a save -- see `_build_save_zone()`
         self._on_kind_changed = on_kind_changed
+        # The test-mode "Back to Builder" callback (Builder's Test in
+        # Player, Story 3.8): `None` in normal gallery-driven gameplay. When
+        # set, the win banner offers Restart + Back to Builder instead of
+        # Continue, per the amendment.
+        self._on_back_to_builder = on_back_to_builder
+        # Callback to navigate the router (e.g. "Edit in Builder").
+        # Set by `mount()` via `functools.partial` in `composition_root.py`.
+        self._navigate = navigate
+        self._settings_repository = settings_repository
         self._session = start_session(maze)
         # Apply the `game`-scoped settings-loaded mode/speed at mount. This
         # screen is rebuilt on re-navigate, so settings loaded here are fresh.
@@ -447,11 +465,75 @@ class GameplayScreen(tk.Frame):
         )
         self._difficulty_plus_button.pack(side="left")
 
+        self._logo_key: str = read_theme_logo(self._settings_repository)
+        self._build_logo_section(colors)
+        self._build_edit_in_builder_button(colors)
+
         self._sync_difficulty_widgets()
         self._sync_mode_button()
 
     def _sync_mode_button(self) -> None:
         self._mode_button.set_active(self._session.mode is MovementMode.SMOOTH)
+
+    def _build_logo_section(self, colors: ColorTokens) -> None:
+        colors = colors_for(self._theme)
+        logo_frame = tk.Frame(self._sidebar, background=colors.window)
+        logo_frame.pack(anchor="w", pady=(SPACING["lg"], SPACING["sm"]))
+
+        tk.Label(
+            logo_frame,
+            text="Logo",
+            font=TYPOGRAPHY.body.to_tk_font(),
+            background=colors.window,
+            foreground=colors.ink,
+        ).pack(anchor="w")
+
+        try:
+            from PIL import Image, ImageTk
+
+            img = Image.open(_logo_path(self._logo_key))
+            img = img.resize((64, 64), Image.Resampling.LANCZOS)
+            self._logo_photo = ImageTk.PhotoImage(img)
+            logo_label = tk.Label(
+                logo_frame,
+                image=self._logo_photo,
+                background=colors.window,
+            )
+            logo_label.image = self._logo_photo
+            logo_label.pack(anchor="w", pady=(SPACING["xs"], 0))
+        except Exception:
+            tk.Label(
+                logo_frame,
+                text="—",
+                font=TYPOGRAPHY.body.to_tk_font(),
+                background=colors.window,
+                foreground=colors.ink_soft,
+            ).pack(anchor="w")
+
+        tk.Label(
+            logo_frame,
+            text=self._logo_key,
+            font=TYPOGRAPHY.body.to_tk_font(),
+            background=colors.window,
+            foreground=colors.ink_soft,
+        ).pack(anchor="w")
+
+    def _build_edit_in_builder_button(self, colors: ColorTokens) -> None:
+        if self._maze.kind not in {MazeKind.CLASSIC, MazeKind.SAVED_RANDOM}:
+            return
+        edit_kb = keybinding("edit_in_builder")
+        self._edit_in_builder_button = ToolButton(
+            self._sidebar,
+            "Edit in Builder",
+            theme=self._theme,
+            shortcut=edit_kb.display,
+            command=self._on_edit_in_builder_clicked,
+        )
+        self._edit_in_builder_button.pack(anchor="w", pady=(SPACING["lg"], SPACING["sm"]))
+
+    def _on_edit_in_builder_clicked(self) -> None:
+        if self._navigate is not None:
+            self._navigate(ScreenId.BUILDER, self._maze)
 
     def _build_maze_frame(self, colors: ColorTokens, theme: Theme) -> None:
         self._maze_frame = tk.Frame(
@@ -950,13 +1032,34 @@ class GameplayScreen(tk.Frame):
         # a `GENERATED` maze's Save pill (`_build_save_zone()`) can still
         # be showing underneath this banner (winning doesn't hide it), and
         # two simultaneous primary pills would violate that rule.
-        PillButton(
-            self._win_banner,
-            "Continue",
-            theme=self._theme,
-            primary=False,
-            command=self._on_continue_clicked,
-        ).pack(side="right", padx=SPACING["lg"], pady=SPACING["sm"])
+        if self._on_back_to_builder is not None:
+            # Test mode (Builder's Test in Player, Story 3.8): instead of
+            # Continue, the banner offers Restart (a fresh run, exactly the
+            # timeout banner's own Restart) and Back to Builder (returns to
+            # the Builder, restoring the session's markers from the
+            # `BuilderTestLaunch` payload the screen was mounted with).
+            PillButton(
+                self._win_banner,
+                "Restart",
+                theme=self._theme,
+                primary=False,
+                command=self._restart_run,
+            ).pack(side="right", padx=SPACING["lg"], pady=SPACING["sm"])
+            PillButton(
+                self._win_banner,
+                "Back to Builder",
+                theme=self._theme,
+                primary=False,
+                command=self._on_back_to_builder,
+            ).pack(side="right", pady=SPACING["sm"])
+        else:
+            PillButton(
+                self._win_banner,
+                "Continue",
+                theme=self._theme,
+                primary=False,
+                command=self._on_continue_clicked,
+            ).pack(side="right", padx=SPACING["lg"], pady=SPACING["sm"])
 
     def _on_continue_clicked(self) -> None:
         # Only dismisses the banner -- `solved` stays `True`, and

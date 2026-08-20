@@ -145,12 +145,12 @@ The PRD (`status: final`, updated 2026-08-05) is thorough and internally consist
 | FR-20 | Maze data format, MazeRepository | Epic 1, Story 1.4 | ✓ Covered |
 | FR-21 | Settings persistence, SettingsRepository | Epic 1, Story 1.5 | ✓ Covered |
 | FR-22 | Keyboard shortcuts, no collisions | Epic 1, Story 1.10 | ✓ Covered |
-| FR-23 | Legacy data migration to English | Epic 4, Stories 4.1–4.3 | ✓ Covered |
-| FR-24 | Water Chase mode *(deferred, P2)* | Epic 6 — no stories (intentional placeholder) | ⚠️ DEFERRED |
-| FR-25 | Exploration mode *(deferred, P2)* | Epic 6 — no stories (intentional placeholder) | ⚠️ DEFERRED |
+| FR-23 | Legacy data migration to English | Epic 5, Stories 5.1–5.3 | ✓ Covered |
+| FR-24 | Water Chase mode *(deferred, P2)* | Epic 7 — no stories (intentional placeholder) | ⚠️ DEFERRED |
+| FR-25 | Exploration mode *(deferred, P2)* | Epic 7 — no stories (intentional placeholder) | ⚠️ DEFERRED |
 | FR-26 | Home navigation hub | Epic 1, Stories 1.7 (router), 1.8 (breadcrumb/Settings) | ✓ Covered |
-| FR-27 | Personal Records | Epic 5, Stories 5.1–5.3 | ✓ Covered |
-| FR-28 | First-activation explainers | Epic 5, Stories 5.4–5.5 | ✓ Covered |
+| FR-27 | Personal Records | Epic 6, Stories 6.1–6.3 | ✓ Covered |
+| FR-28 | First-activation explainers | Epic 6, Stories 6.4–6.5 | ✓ Covered |
 
 No FRs found in epics.md that are absent from the PRD (no orphan coverage).
 
@@ -158,7 +158,7 @@ No FRs found in epics.md that are absent from the PRD (no orphan coverage).
 
 **Deferred by design (not a gap):**
 
-FR-24 (Water Chase) and FR-25 (Exploration) — the PRD itself designates these P2 and explicitly states "design detail remains to be refined when the time comes" (§4.6, Open Question 3). `epics.md`'s Epic 6 exists specifically to keep them tracked in the coverage map rather than silently dropped, and states its own re-scoping condition: revisit with a fresh epics/stories pass once Epics 1–5 ship. This was a deliberate, PRD-sanctioned decision made and confirmed with Max during epics/stories creation, not an oversight.
+FR-24 (Water Chase) and FR-25 (Exploration) — the PRD itself designates these P2 and explicitly states "design detail remains to be refined when the time comes" (§4.6, Open Question 3). `epics.md`'s Epic 7 exists specifically to keep them tracked in the coverage map rather than silently dropped, and states its own re-scoping condition: revisit with a fresh epics/stories pass once Epics 1–6 ship. This was a deliberate, PRD-sanctioned decision made and confirmed with Max during epics/stories creation, not an oversight.
 
 **Critical Missing FRs:** none.
 **High Priority Missing FRs:** none.
@@ -188,7 +188,7 @@ Found — the finalized bmad-ux spine pair, `status: final`, updated 2026-08-05:
 Exceptionally tight — the Architecture Spine lists both UX files in its own `sources:` frontmatter, and its `.memlog.md` documents the spine being explicitly amended (AD-10, AD-11, AD-12 added/amended) specifically to accommodate this UX spine's Information Architecture once it superseded an earlier two-composition-root assumption. Concretely:
 
 - UX's Home-as-sole-router / breadcrumb / Settings-as-dialog IA → AD-10 (single shell, screen router, `mount()` interface) and AD-11 (breadcrumb lives in `common/`).
-- UX's `record-group` pattern (flat/collapsed/expanded, ordering) → AD-12's `RecordsRepository`/`RecordsService` shape (`list_all()`, `get_best()`, service-level ordering) supports it directly — the architecture explicitly notes display grouping is "a UX-layer rendering decision, not something AD-12's shape needs to pre-decide," correctly leaving it to `epics.md` (Story 5.3), not baking UI opinion into the port.
+- UX's `record-group` pattern (flat/collapsed/expanded, ordering) → AD-12's `RecordsRepository`/`RecordsService` shape (`list_all()`, `get_best()`, service-level ordering) supports it directly — the architecture explicitly notes display grouping is "a UX-layer rendering decision, not something AD-12's shape needs to pre-decide," correctly leaving it to `epics.md` (Story 6.3), not baking UI opinion into the port.
 - UX's design-token system, shared widget catalog (`tool-btn`, `hud-chip`, etc.) → AD-11's `adapters/tkinter/common/` is exactly this token/widget home.
 - No UX-DR was found requiring an architectural capability the spine doesn't already provide — no UI component is unsupported by the current port/adapter shape.
 
@@ -208,7 +208,7 @@ Applied rigorously against `bmad-create-epics-and-stories` standards: user-value
 | 2. Play a Maze (Game/Player) | ✅ Pass | Every story is a direct player capability. |
 | 3. Build and Test a Maze (Builder) | ✅ Pass | Every story is a direct author capability. |
 | 4. Legacy Data Migration to English | ✅ Acceptable, flagged | See Minor Concern #5 — sits at the ops/feature boundary, judged acceptable since the sole user directly benefits. |
-| 5. Home Enrichment — Records & Explainers | ✅ Acceptable, flagged | Story 5.1 is plumbing (see Minor Concern #2); 5.2–5.5 are direct player-visible behavior. |
+| 5. Home Enrichment — Records & Explainers | ✅ Acceptable, flagged | Story 6.1 is plumbing (see Minor Concern #2); 6.2–6.5 are direct player-visible behavior. |
 | 6. (Deferred) New Play Modes | N/A | Correctly carries no stories — not evaluated against implementation-readiness criteria since it isn't claimed ready. |
 
 ### B. Epic Independence
@@ -218,8 +218,8 @@ Verified epic-by-epic that no epic requires a *later* epic to function:
 - Epic 1 stands alone (produces a working shell/Home even with Builder/Player still minimal).
 - Epic 2 depends only on Epic 1's outputs (router, `MazeRepository`, `SettingsRepository`, `common/` toolkit) — no reference to Epic 3 remains anywhere in Epic 2's stories.
 - Epic 3 depends on Epic 1 & 2 (Test-in-Player needs Epic 2's Player screen to route to) — a legitimate backward dependency, not a violation.
-- Epic 4 depends only on Epic 1 (`MazeRepository`'s writer, path constants) — does not require Epic 2 or 3's UI to exist, confirming it could even run earlier if ever resequenced.
-- Epic 5 depends on Epic 1 & 2 (win detection, Level/Difficulty/HARD controls) and soft-depends on Epic 4 (full legacy `MazeId` eligibility) without being blocked by it.
+- Epic 5 depends only on Epic 1 (`MazeRepository`'s writer, path constants) — does not require Epic 2 or 3's UI to exist, confirming it could even run earlier if ever resequenced.
+- Epic 6 depends on Epic 1 & 2 (win detection, Level/Difficulty/HARD controls) and soft-depends on Epic 5 (full legacy `MazeId` eligibility) without being blocked by it.
 
 **No violations found.**
 
@@ -227,7 +227,7 @@ Verified epic-by-epic that no epic requires a *later* epic to function:
 
 Re-ran an exhaustive scan of every `Story N.M` cross-reference in `epics.md` (28 references across 38 stories). All resolve to an earlier or equal-or-prior epic/story number. This confirms the 3 forward-dependency defects caught and fixed during the epics/stories workflow's own final-validation step stayed fixed:
 - Story 3.8 (Test in Player) no longer references Story 3.9 (Edit in Builder) — rewritten to be self-contained.
-- Story 4.1 (folder renaming) no longer references Story 4.3 (MazeId backfill) — rewritten to scope only renaming.
+- Story 5.1 (folder renaming) no longer references Story 5.3 (MazeId backfill) — rewritten to scope only renaming.
 - Story 1.10's accessibility AC no longer references entry/exit/wall components that don't exist until Epic 2/3 — narrowed to `common/`-scoped concerns only.
 
 **No remaining violations.**
@@ -240,11 +240,11 @@ All 38 stories use consistent Given/When/Then structure. Spot-checked for the tw
 
 ### E. Entity/Repository Creation Timing
 
-`MazeRepository` and `SettingsRepository` (Epic 1) are the only persistence implementations built before they're needed — both are mandated as single, shared, universally-needed implementations by AD-5/AD-7, not spec­ulative upfront scope. `RecordsRepository` is correctly deferred to Epic 5, exactly where it's first consumed. **No "create all tables upfront" pattern found.**
+`MazeRepository` and `SettingsRepository` (Epic 1) are the only persistence implementations built before they're needed — both are mandated as single, shared, universally-needed implementations by AD-5/AD-7, not spec­ulative upfront scope. `RecordsRepository` is correctly deferred to Epic 6, exactly where it's first consumed. **No "create all tables upfront" pattern found.**
 
 ### F. Starter Template / Greenfield-Brownfield Fit
 
-No starter template is specified by the Architecture Spine, and none is fabricated by Epic 1 — consistent with `pyproject.toml`/ruff/pytest tooling already being in place on the `rewrite` branch per `CLAUDE.md`. The plan correctly reads as hybrid: greenfield code (fresh `src/labyrinthes/` package) with a dedicated brownfield concern (Epic 4, legacy data migration) rather than either pattern applied uniformly.
+No starter template is specified by the Architecture Spine, and none is fabricated by Epic 1 — consistent with `pyproject.toml`/ruff/pytest tooling already being in place on the `rewrite` branch per `CLAUDE.md`. The plan correctly reads as hybrid: greenfield code (fresh `src/labyrinthes/` package) with a dedicated brownfield concern (Epic 5, legacy data migration) rather than either pattern applied uniformly.
 
 ### Findings by Severity
 
@@ -259,10 +259,10 @@ None.
 #### 🟡 Minor Concerns
 
 1. **Epic 1 mixes plumbing and UI stories.** Stories 1.1 (domain model), 1.2 (boundary test), and 1.3 (port interfaces) have no independently observable user behavior. Justified: they're building blocks the same epic's Stories 1.6–1.10 surface into real UI capability, and no other epic treats them as standalone deliverables. This is the closest the plan comes to a "technical milestone" pattern — acceptable given the architecture is already finalized and this reasoning was explicitly discussed and agreed with Max during epics/stories creation (fewer, larger foundation epic over several thin technical ones).
-2. **Story 5.1 is pure plumbing** (`RecordsRepository`/`RecordsService`) within Epic 5 — same justification as #1: Stories 5.2/5.3 in the same epic make it visible.
+2. **Story 6.1 is pure plumbing** (`RecordsRepository`/`RecordsService`) within Epic 6 — same justification as #1: Stories 6.2/6.3 in the same epic make it visible.
 3. **Visual/accessibility ACs will need tooling or disciplined manual QA.** Theme parity (Story 1.9), focus-indicator AA contrast (Story 1.10), and dark-mode token correctness have no Tkinter-native automated visual-regression path. Not a defect in the stories — a heads-up for whichever dev-story session implements them.
 4. **PRD/UX journey-naming mismatch** (PRD's UJ-1/2/3 vs. `EXPERIENCE.md`'s UJ-A/B/C, already noted in UX Alignment) — cosmetic; `epics.md` doesn't itself depend on either numbering scheme.
-5. **Epic 4 sits at the ops/feature boundary.** Judged acceptable: the sole user (the project's author) directly benefits from his own maze library becoming usable, matching FR-23's own framing as a real feature rather than incidental cleanup.
+5. **Epic 5 sits at the ops/feature boundary.** Judged acceptable: the sole user (the project's author) directly benefits from his own maze library becoming usable, matching FR-23's own framing as a real feature rather than incidental cleanup.
 
 ### Remediation Guidance
 
@@ -282,9 +282,9 @@ None. Zero critical and zero major findings across document discovery, PRD analy
 
 1. **Proceed to [SP] Sprint Planning** (`bmad-sprint-planning`) — `epics.md` is structurally sound (no forward dependencies, clean epic independence, full FR/UX-DR traceability) and ready to drive it.
 2. **Before or during Epic 1 implementation, decide on a visual-QA approach** for the accessibility/theme-parity ACs flagged in Minor Concern #3 (Story 1.6/1.9/1.10) — either a lightweight snapshot-test harness for Tkinter widget state, or an explicit manual-QA checklist step in Story 1.9/1.10's own dev-story session. Not a blocker, but worth deciding once rather than improvising per-story.
-3. **When Epic 6 (Water Chase/Exploration) is eventually picked up**, run a fresh, dedicated epics/stories pass for it rather than trying to retrofit stories into the current placeholder — its own goal statement already says this explicitly.
+3. **When Epic 7 (Water Chase/Exploration) is eventually picked up**, run a fresh, dedicated epics/stories pass for it rather than trying to retrofit stories into the current placeholder — its own goal statement already says this explicitly.
 4. **Optional documentation hygiene**: add a one-line cross-reference in either the PRD or `EXPERIENCE.md` mapping UJ-1/2/3 to UJ-A/B/C, closing Minor Concern #4. Zero risk to leave as-is; cheap to fix if you're touching either document anyway.
 
 ### Final Note
 
-This assessment reviewed 4 core artifacts (PRD + addendum, Architecture Spine, UX Design contract, Epics & Stories) across 5 validation dimensions and found **0 critical issues, 0 major issues, and 5 minor concerns** — 2 of which were already known and explicitly agreed with Max during epics/stories creation, and 3 newly surfaced by this independent pass (visual-QA tooling gap, Epic 4's ops/feature framing, the UJ-naming cross-reference). Three real defects (2 forward-dependency violations, 1 FR coverage gap) were caught and fixed *during* the epics/stories workflow's own final-validation step, before this readiness check even began — this check re-verified those fixes held and found no new structural defects. `epics.md` is ready to drive Sprint Planning as-is; the minor concerns are worth acting on but do not block starting implementation.
+This assessment reviewed 4 core artifacts (PRD + addendum, Architecture Spine, UX Design contract, Epics & Stories) across 5 validation dimensions and found **0 critical issues, 0 major issues, and 5 minor concerns** — 2 of which were already known and explicitly agreed with Max during epics/stories creation, and 3 newly surfaced by this independent pass (visual-QA tooling gap, Epic 5's ops/feature framing, the UJ-naming cross-reference). Three real defects (2 forward-dependency violations, 1 FR coverage gap) were caught and fixed *during* the epics/stories workflow's own final-validation step, before this readiness check even began — this check re-verified those fixes held and found no new structural defects. `epics.md` is ready to drive Sprint Planning as-is; the minor concerns are worth acting on but do not block starting implementation.

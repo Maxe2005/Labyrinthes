@@ -18,13 +18,13 @@ from __future__ import annotations
 import tkinter as tk
 from collections.abc import Callable
 
-from labyrinthes.adapters.tkinter.common.navigation import ScreenId
+from labyrinthes.adapters.tkinter.common.navigation import BuilderTestLaunch, ScreenId
 from labyrinthes.app.errors import UnregisteredScreenError
 from labyrinthes.domain.maze import Maze
 
 __all__ = ["MountFn", "Router", "ScreenId"]
 
-MountFn = Callable[[tk.Widget, Maze | None], tk.Frame]
+MountFn = Callable[[tk.Widget, Maze | None | BuilderTestLaunch], tk.Frame]
 
 
 class Router:
@@ -46,7 +46,7 @@ class Router:
         """Associate `screen_id` with the `mount` callable that builds its `Frame`."""
         self._mounts[screen_id] = mount
 
-    def navigate(self, screen_id: ScreenId, state: Maze | None = None) -> None:
+    def navigate(self, screen_id: ScreenId, state: Maze | None | BuilderTestLaunch = None) -> None:
         """Mount `screen_id`'s screen, passing `state`, and tear down the previous one.
 
         Raises `UnregisteredScreenError` -- leaving the currently-mounted

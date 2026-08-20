@@ -3,10 +3,11 @@
 Never imports `builder`/`player` or `adapters/storage/` (AD-1, AD-9). Renders
 no `Breadcrumb` of its own -- navigation depth 0, matching the locked
 `key-home.html` mockup (see the spec's Design Notes) -- only the `TopBar`'s
-brand mark/wordmark plus two `PillButton` entry points into Builder/Player.
+brand mark/wordmark plus `PillButton` entry points into Builder/Player/a new
+sketch.
 
-Story 1.10 wires those two entry points to the canonical keybinding table
-(`keybindings.py`): each `PillButton`'s printed `kbd-tag` and its real
+Story 1.10 wires the Builder/Player entry points to the canonical keybinding
+table (`keybindings.py`): each `PillButton`'s printed `kbd-tag` and its real
 `bind_shortcut()` registration both derive from the same `Keybinding`, and
 each navigate action is a single named function passed to both, so the
 `command=` click path and the "B"/"P" key-press path can never diverge.
@@ -16,6 +17,20 @@ through `mount()` (same shape Player already had, Story 2.1/2.2) so Home's
 `open_settings()` can hand it to `SettingsWindow` -- the Settings dialog is
 reachable from any screen's top bar, so its confirmation toggles must work
 from Home too (AC-3). `composition_root.build_app()` partial-binds it in.
+
+Story 3.1 adds a third entry point, "New Maze" (keybinding "C"): it opens
+`NewMazeDialog`, a `tk.Toplevel` parented to `frame` (Home's own screen
+frame -- the calling widget), not `parent` (the app's persistent
+container) -- unlike `SettingsWindow`, nothing about this dialog is worth
+surviving a navigate-away, so it is torn down along with `frame` if the
+user navigates away from Home while it's still open (see
+`new_maze_dialog.py`'s module docstring). On confirm, the dialog hands
+back a fully-formed `Maze` (`kind=MazeKind.SKETCH`, `id=None`,
+`grid=Grid.filled(columns, rows)`) that Home forwards to
+`navigate(ScreenId.BUILDER, maze)` (Story 3.2 re-routed this from
+`ScreenId.PLAYER`: a fresh sketch is edited in the Builder, not played) --
+Home never constructs the `Maze` itself, keeping that domain-shaping logic
+inside the dialog.
 """
 
 from __future__ import annotations
@@ -25,6 +40,7 @@ import tkinter as tk
 from labyrinthes.adapters.tkinter.common import (
     SPACING,
     NavigateFn,
+    NewMazeDialog,
     PillButton,
     ScreenId,
     SettingsWindow,
@@ -84,11 +100,20 @@ def mount(
     def go_to_player() -> None:
         navigate(ScreenId.PLAYER, None)
 
+    def go_to_new_maze() -> None:
+        NewMazeDialog(
+            frame,
+            theme=theme,
+            settings_repository=settings_repository,
+            on_confirm=lambda maze: navigate(ScreenId.BUILDER, maze),
+        )
+
     # Looked up once each so the printed button text, the printed kbd-tag,
     # and the real binding all read from the exact same `Keybinding` entry
     # -- not just the same *key*, but the same *label* too.
     open_builder_kb = keybinding("open_builder")
     open_player_kb = keybinding("open_player")
+    open_new_maze_kb = keybinding("open_new_maze")
 
     PillButton(
         entry_points,
@@ -104,8 +129,16 @@ def mount(
         shortcut=open_player_kb.display,
         command=go_to_player,
     ).pack(side="left", padx=SPACING["sm"])
+    PillButton(
+        entry_points,
+        open_new_maze_kb.label,
+        theme=theme,
+        shortcut=open_new_maze_kb.display,
+        command=go_to_new_maze,
+    ).pack(side="left", padx=SPACING["sm"])
 
     bind_shortcut(frame, open_builder_kb, go_to_builder)
     bind_shortcut(frame, open_player_kb, go_to_player)
+    bind_shortcut(frame, open_new_maze_kb, go_to_new_maze)
 
     return frame

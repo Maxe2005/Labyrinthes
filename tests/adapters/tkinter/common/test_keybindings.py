@@ -8,6 +8,7 @@ from labyrinthes.adapters.tkinter.common.keybindings import (
     bind_shortcut,
     keybinding,
 )
+from labyrinthes.adapters.tkinter.common.navigation import ScreenId
 
 
 def test_every_action_id_in_the_table_is_unique():
@@ -16,8 +17,17 @@ def test_every_action_id_in_the_table_is_unique():
 
 
 def test_every_key_in_the_table_is_unique_case_insensitively():
-    keys = [kb.key.lower() for kb in KEYBINDINGS]
-    assert len(keys) == len(set(keys))
+    # Keys are unique *within* each scope group, not globally (Story 3.2):
+    # `scope=None` entries are one group, each explicit `ScreenId` scope is
+    # its own separate group -- e.g. Home's 'b' (open_builder, scope=None)
+    # and Builder's 'b' (break_wall, scope=BUILDER) share a key but never
+    # collide, since Home and Builder are never mounted simultaneously.
+    by_scope: dict[object, list[str]] = {}
+    for kb in KEYBINDINGS:
+        by_scope.setdefault(kb.scope, []).append(kb.key.lower())
+
+    for scope, keys in by_scope.items():
+        assert len(keys) == len(set(keys)), f"duplicate key(s) in scope {scope!r}: {keys}"
 
 
 def test_display_is_the_uppercased_key():
@@ -149,6 +159,43 @@ def test_toggle_hard_mode_is_registered_on_the_h_keysym():
 def test_toggle_hard_mode_key_does_not_collide_with_any_other_key():
     keys = [kb.key.lower() for kb in KEYBINDINGS]
     assert keys.count("h") == 1
+
+
+def test_set_entry_keybinding_is_registered_on_the_e_keysym_in_builder_scope():
+    kb = keybinding("set_entry")
+
+    assert kb.label == "Set Entry"
+    assert kb.key == "e"
+    assert kb.display == "E"
+    assert kb.event == "<KeyPress-e>"
+    assert kb.scope is ScreenId.BUILDER
+
+
+def test_set_exit_keybinding_is_registered_on_the_x_keysym_in_builder_scope():
+    kb = keybinding("set_exit")
+
+    assert kb.label == "Set Exit"
+    assert kb.key == "x"
+    assert kb.display == "X"
+    assert kb.event == "<KeyPress-x>"
+    assert kb.scope is ScreenId.BUILDER
+
+
+def test_set_entry_and_set_exit_keys_are_unique_within_the_builder_scope():
+    builder_keys = [kb.key.lower() for kb in KEYBINDINGS if kb.scope is ScreenId.BUILDER]
+    assert "e" in builder_keys
+    assert "x" in builder_keys
+    assert len(builder_keys) == len(set(builder_keys))
+
+
+def test_test_in_player_keybinding_is_registered_on_the_t_keysym_in_builder_scope():
+    kb = keybinding("test_in_player")
+
+    assert kb.label == "Test in Player"
+    assert kb.key == "t"
+    assert kb.display == "T"
+    assert kb.event == "<KeyPress-t>"
+    assert kb.scope is ScreenId.BUILDER
 
 
 def test_bind_shortcut_does_not_register_an_uppercase_variant_for_a_multi_char_keysym(tk_root):

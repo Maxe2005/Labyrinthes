@@ -1,10 +1,17 @@
 import tkinter as tk
 
-from labyrinthes.adapters.tkinter.common import PillButton, SettingsWindow, Theme, TopBar
+from labyrinthes.adapters.tkinter.common import (
+    NewMazeDialog,
+    PillButton,
+    SettingsWindow,
+    Theme,
+    TopBar,
+)
 from labyrinthes.adapters.tkinter.common.keybindings import keybinding
 from labyrinthes.adapters.tkinter.common.navigation import ScreenId
 from labyrinthes.adapters.tkinter.home.screen import mount
 from labyrinthes.application.confirmation_settings import write_confirm_switch_maze
+from labyrinthes.domain.maze import MazeKind
 
 
 def test_mount_returns_a_frame_parented_under_the_given_parent(
@@ -77,7 +84,7 @@ def test_mount_renders_open_builder_and_open_player_entry_points(
     )
 
     labels = {button._label.cget("text") for button in find_all(frame, PillButton)}
-    assert labels == {"Open Builder", "Open Player"}
+    assert labels == {"Open Builder", "Open Player", "New Maze"}
 
 
 def test_open_builder_button_navigates_to_builder_with_no_state(
@@ -281,6 +288,104 @@ def test_mount_registers_the_open_player_shortcut(
     assert frame.bind_all(keybinding("open_player").event) != ""
 
 
+def test_new_maze_kbd_tag_matches_the_canonical_keybinding_table(
+    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+):
+    navigate, _ = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(
+        tk_root,
+        None,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+    )
+
+    new_maze = next(b for b in find_all(frame, PillButton) if b._label.cget("text") == "New Maze")
+
+    assert new_maze._kbd is not None
+    assert new_maze._kbd.cget("text") == keybinding("open_new_maze").display
+
+
+def test_mount_registers_the_open_new_maze_shortcut(
+    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+):
+    navigate, _ = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(
+        tk_root,
+        None,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+    )
+
+    assert frame.bind_all(keybinding("open_new_maze").event) != ""
+
+
+def test_new_maze_button_click_opens_a_dialog_parented_to_the_calling_screen_frame(
+    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+):
+    # `NewMazeDialog` is parented to `frame` (Home's own screen frame, the
+    # calling widget), not `tk_root` (the app's persistent container) --
+    # unlike `SettingsWindow`, nothing about this dialog is worth surviving
+    # a navigate-away, mirroring `GenerateRandomDialog`'s (Story 2.2)
+    # calling-widget parenting.
+    navigate, calls = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(
+        tk_root,
+        None,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+    )
+
+    new_maze = next(b for b in find_all(frame, PillButton) if b._label.cget("text") == "New Maze")
+    new_maze._on_click()
+
+    dialogs = [c for c in frame.winfo_children() if isinstance(c, NewMazeDialog)]
+    assert len(dialogs) == 1
+    assert calls == []
+
+
+def test_new_maze_dialog_confirm_navigates_to_player_with_the_new_sketch(
+    tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
+):
+    navigate, calls = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(
+        tk_root,
+        None,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+    )
+
+    new_maze = next(b for b in find_all(frame, PillButton) if b._label.cget("text") == "New Maze")
+    new_maze._on_click()
+
+    dialog = next(c for c in frame.winfo_children() if isinstance(c, NewMazeDialog))
+    dialog._entries["columns"].delete(0, "end")
+    dialog._entries["columns"].insert(0, "20")
+    dialog._entries["rows"].delete(0, "end")
+    dialog._entries["rows"].insert(0, "15")
+    dialog._on_confirm_clicked()
+
+    assert len(calls) == 1
+    screen_id, maze = calls[0]
+    assert screen_id is ScreenId.BUILDER
+    assert maze.kind is MazeKind.SKETCH
+    assert maze.id is None
+    assert maze.grid.width == 20
+    assert maze.grid.height == 15
+    assert not dialog.winfo_exists()
+
+
 def test_open_settings_from_home_reflects_a_stored_confirmation_value(
     tk_root, navigate_stub, toggle_theme_stub, find_all, fake_settings_repository
 ):
@@ -302,5 +407,8 @@ def test_open_settings_from_home_reflects_a_stored_confirmation_value(
     settings_windows = [c for c in tk_root.winfo_children() if isinstance(c, SettingsWindow)]
     assert len(settings_windows) == 1
     settings_windows[0]._select_category("Confirmation")
-    assert settings_windows[0]._confirmation_rows["Confirm before switching mazes"].get() is True
+    assert (
+        settings_windows[0]._confirmation_rows["Confirm before switching/restarting mazes"].get()
+        is True
+    )
     settings_windows[0].destroy()

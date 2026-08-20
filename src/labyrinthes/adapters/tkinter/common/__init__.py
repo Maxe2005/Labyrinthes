@@ -21,11 +21,13 @@ from labyrinthes.adapters.tkinter.common.keybindings import (
     keybinding,
 )
 from labyrinthes.adapters.tkinter.common.navigation import (
+    BuilderTestLaunch,
     NavigateFn,
     ScreenId,
     ScreenMountFn,
     ToggleThemeFn,
 )
+from labyrinthes.adapters.tkinter.common.new_maze_dialog import NewMazeDialog, OnConfirmFn
 from labyrinthes.adapters.tkinter.common.pill_btn import PillButton
 from labyrinthes.adapters.tkinter.common.settings_window import SettingsWindow
 from labyrinthes.adapters.tkinter.common.tokens import (
@@ -53,6 +55,7 @@ __all__ = [
     "TYPOGRAPHY",
     "Breadcrumb",
     "BreadcrumbSegment",
+    "BuilderTestLaunch",
     "ColorTokens",
     "ConfirmDialog",
     "FontSpec",
@@ -61,6 +64,8 @@ __all__ = [
     "KbdTag",
     "Keybinding",
     "NavigateFn",
+    "NewMazeDialog",
+    "OnConfirmFn",
     "PillButton",
     "ScreenId",
     "ScreenMountFn",

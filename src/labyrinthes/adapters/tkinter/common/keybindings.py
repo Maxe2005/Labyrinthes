@@ -1,5 +1,15 @@
 """The canonical keybinding table -- one source of truth (Story 1.10).
 
+Story 3.2 adds a `scope: ScreenId | None` field: keys are unique *within*
+each scope group, not globally. Entries with `scope=None` (every
+pre-existing entry) form one group; entries with an explicit `ScreenId`
+form their own separate group. This lets 'b'/'p' mean `open_builder`/
+`open_player` on Home (scope=None) and *also* `break_wall`/`pass_through`
+on Builder (scope=`ScreenId.BUILDER`) without a collision: Home and
+Builder are never mounted simultaneously, so their real `bind_all()`
+registrations never coexist, even though both keys appear (in different
+groups) in this one table.
+
 Before this module, `kbd_tag.py` printed shortcut text with no key binding
 behind it (its own docstring called this out as "Story 1.10's job"), and
 nothing stopped two controls from printing the same letter. Every printed
@@ -43,21 +53,26 @@ import tkinter as tk
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from labyrinthes.adapters.tkinter.common.navigation import ScreenId
+
 __all__ = ["KEYBINDINGS", "Keybinding", "bind_shortcut", "keybinding"]
 
 
 @dataclass(frozen=True)
 class Keybinding:
-    """One canonical shortcut: its action id, printed label, and key.
+    """One canonical shortcut: its action id, printed label, key, and scope.
 
     `.display`/`.event` are both derived from `key` alone -- there is no
     way to set the printed text and the bound Tk sequence to two different
-    keys by accident.
+    keys by accident. `scope` groups entries for uniqueness (see the module
+    docstring): `None` for the original screen-agnostic table, an explicit
+    `ScreenId` for a key that's only ever bound on that one screen.
     """
 
     action_id: str
     label: str
     key: str
+    scope: ScreenId | None = None
 
     @property
     def display(self) -> str:
@@ -73,6 +88,7 @@ class Keybinding:
 KEYBINDINGS: tuple[Keybinding, ...] = (
     Keybinding("open_builder", "Open Builder", "b"),
     Keybinding("open_player", "Open Player", "p"),
+    Keybinding("open_new_maze", "New Maze", "c"),
     Keybinding("generate_random", "Generate random", "n"),
     Keybinding("save_maze", "Save", "s"),
     Keybinding("move_up", "Move up", "Up"),
@@ -81,6 +97,14 @@ KEYBINDINGS: tuple[Keybinding, ...] = (
     Keybinding("move_right", "Move right", "Right"),
     Keybinding("toggle_movement_mode", "Toggle movement mode", "m"),
     Keybinding("toggle_hard_mode", "Toggle HARD mode", "h"),
+    Keybinding("break_wall", "Break Wall", "b", ScreenId.BUILDER),
+    Keybinding("pass_through", "Pass-through", "p", ScreenId.BUILDER),
+    Keybinding("destroy_zone", "Destroy Zone", "d", ScreenId.BUILDER),
+    Keybinding("restore_zone", "Restore Zone", "r", ScreenId.BUILDER),
+    Keybinding("set_entry", "Set Entry", "e", ScreenId.BUILDER),
+    Keybinding("set_exit", "Set Exit", "x", ScreenId.BUILDER),
+    Keybinding("test_in_player", "Test in Player", "t", ScreenId.BUILDER),
+    Keybinding("edit_in_builder", "Edit in Builder", "f", ScreenId.BUILDER),
 )
 
 _BY_ACTION_ID: dict[str, Keybinding] = {kb.action_id: kb for kb in KEYBINDINGS}

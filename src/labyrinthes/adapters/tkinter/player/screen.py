@@ -19,6 +19,12 @@ keeps that trailing label in sync if the mounted maze's own `kind`
 changes mid-session (saving a `GENERATED` maze into `SAVED_RANDOM`)
 without a full re-navigate.
 
+A `BuilderTestLaunch` state (Builder's "Test in Player", Story 3.8)
+mounts gameplay with a "Builder" breadcrumb segment -- clickable, back to
+the Builder restoring the session's markers -- in place of the "Player"
+one, plus an `on_back_to_builder` callback so the test-mode win banner's
+"Back to Builder" pill returns the same way.
+
 `mount()` dispatches purely on `state`: `state is None` mounts
 `ClassicMazeGallery` (browsing); `state is not None` mounts
 `GameplayScreen` -- real wall/HUD/ball rendering, movement, and win
@@ -32,6 +38,7 @@ import tkinter as tk
 from labyrinthes.adapters.tkinter.common import (
     SPACING,
     BreadcrumbSegment,
+    BuilderTestLaunch,
     NavigateFn,
     ScreenId,
     SettingsWindow,
@@ -57,7 +64,7 @@ _KIND_LABELS: dict[MazeKind, str] = {
 
 def mount(
     parent: tk.Widget,
-    state: Maze | None,
+    state: Maze | None | BuilderTestLaunch,
     navigate: NavigateFn,
     theme: Theme,
     toggle_theme: ToggleThemeFn,
@@ -79,7 +86,13 @@ def mount(
     `state is None` mounts the classic-maze selection gallery. `state is
     not None` mounts `GameplayScreen` for that `Maze` -- picking a maze in
     the gallery calls `navigate(ScreenId.PLAYER, maze)`, which re-runs this
-    very `mount()` with `state=maze`, taking this branch.
+    very `mount()` with `state=maze`, taking this branch. A
+    `BuilderTestLaunch` state (Builder's "Test in Player", Story 3.8)
+    mounts the same gameplay view but with a "Builder" breadcrumb segment
+    (clickable -- back to the Builder, restoring the session's markers from
+    the payload) in place of the "Player" one, and hands `GameplayScreen`
+    an `on_back_to_builder` callback so the test-mode win banner's "Back to
+    Builder" pill navigates the same way.
     """
     frame = tk.Frame(parent)
 
@@ -89,12 +102,26 @@ def mount(
         # `Router.navigate()`, so `SettingsWindow` survives navigating away
         # from Player instead of being torn down as a cascade side effect
         # of `frame.destroy()`. See `SettingsWindow`'s module docstring.
-        SettingsWindow(parent, theme=theme, settings_repository=settings_repository)
+        SettingsWindow(
+            parent,
+            theme=theme,
+            settings_repository=settings_repository,
+            show_logo_picker=True,
+        )
+
+    is_test_launch = isinstance(state, BuilderTestLaunch)
+    test_launch = state if is_test_launch else None
 
     if state is None:
         breadcrumb_segments = [
             BreadcrumbSegment("Home", on_click=lambda: navigate(ScreenId.HOME, None)),
             BreadcrumbSegment("Player"),
+        ]
+    elif is_test_launch:
+        breadcrumb_segments = [
+            BreadcrumbSegment("Home", on_click=lambda: navigate(ScreenId.HOME, None)),
+            BreadcrumbSegment("Builder", on_click=lambda: navigate(ScreenId.BUILDER, test_launch)),
+            BreadcrumbSegment(_KIND_LABELS[test_launch.maze.kind]),
         ]
     else:
         breadcrumb_segments = [
@@ -126,17 +153,22 @@ def mount(
             pady=SPACING["section-gap"],
         )
     else:
+        maze = test_launch.maze if is_test_launch else state
         gameplay = GameplayScreen(
             frame,
-            state,
+            maze,
             theme,
             maze_repository=maze_repository,
             settings_repository=settings_repository,
+            navigate=navigate,
             # Saving a `GENERATED` maze transitions its `kind` to
             # `SAVED_RANDOM` mid-session -- without this, the trailing
             # breadcrumb segment (built once above, from the *original*
             # `state.kind`) would keep showing "Random Maze" forever.
             on_kind_changed=lambda kind: top_bar.set_breadcrumb_label(2, _KIND_LABELS[kind]),
+            on_back_to_builder=(
+                (lambda: navigate(ScreenId.BUILDER, test_launch)) if is_test_launch else None
+            ),
         )
         gameplay.pack(
             fill="both",
