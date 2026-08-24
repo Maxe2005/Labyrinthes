@@ -166,16 +166,24 @@ def test_escape_binding_is_registered(tk_root, fake_settings_repository):
     assert dialog.bind("<Escape>") != ""
 
 
-def test_return_on_every_field_is_bound_to_trigger_create(tk_root, fake_settings_repository):
+def test_fields_are_wired_to_a_field_navigator_ending_at_the_create_button(
+    tk_root, fake_settings_repository
+):
     # `tk_root` is withdrawn (unreliable real X11 KeyPress synthesis, per
-    # this suite's convention) -- assert the binding is registered, and
-    # exercise the actual create behavior via `_on_confirm_clicked()`
-    # directly (see `test_valid_dimensions_create_a_sketch_maze_and_confirm_once`).
+    # this suite's convention) -- assert the wiring and binding registration
+    # here, and exercise `FieldNavigator`'s actual step/boundary behavior
+    # directly in `test_field_navigation.py`.
     on_confirm, _ = _confirm_stub()
     dialog = _dialog(tk_root, on_confirm, fake_settings_repository)
 
+    assert dialog._navigator._order == [
+        dialog._entries["columns"],
+        dialog._entries["rows"],
+        dialog._confirm_button,
+    ]
     for entry in dialog._entries.values():
-        assert entry.bind("<Return>") != ""
+        for sequence in ("<Up>", "<Down>", "<Left>", "<Right>", "<Return>"):
+            assert entry.bind(sequence) != ""
 
 
 def test_bounds_are_read_from_settings_not_hardcoded(tk_root, fake_settings_repository):

@@ -17,12 +17,17 @@ no navigation/generation -- the same "no crash, no state change" gate
 `ClassicMazeGallery._on_jump` already established, not a disabled-button
 pattern (no `common/` widget supports one).
 
-Each `Entry` binds `<Return>` to trigger Generate and local
-`<KeyPress-n>`/`<KeyPress-N>` returning `"break"`, mirroring Story 2.1's
-review-fixed focus-collision guard on `ClassicMazeGallery`'s own jump
-entry, so the global `generate_random` shortcut can't refire while typing.
-`Cancel` (default `PillButton`) and `<Escape>` both close the dialog with
-no side effect.
+Each `Entry` binds local `<KeyPress-n>`/`<KeyPress-N>` returning `"break"`,
+mirroring Story 2.1's review-fixed focus-collision guard on
+`ClassicMazeGallery`'s own jump entry, so the global `generate_random`
+shortcut can't refire while typing. `Cancel` (default `PillButton`) and
+`<Escape>` both close the dialog with no side effect.
+
+Field-to-field keyboard navigation (Up/Down, boundary-aware Left/Right,
+Enter-advances-then-Generate) is delegated to the shared `FieldNavigator`
+-- see that module's docstring for the full behavior; this dialog only
+supplies the field order and the `Generate` button as the chain's final
+stop.
 """
 
 from __future__ import annotations
@@ -30,6 +35,7 @@ from __future__ import annotations
 import tkinter as tk
 from collections.abc import Callable
 
+from labyrinthes.adapters.tkinter.common.field_navigation import FieldNavigator
 from labyrinthes.adapters.tkinter.common.pill_btn import PillButton
 from labyrinthes.adapters.tkinter.common.tokens import SPACING, TYPOGRAPHY, Theme, colors_for
 from labyrinthes.domain.maze_generation import validate_start_position
@@ -93,6 +99,10 @@ class GenerateRandomDialog(tk.Toplevel):
         )
         self._generate_button.pack(side="left")
 
+        self._navigator = FieldNavigator(
+            [self._entries[key] for key in _FIELD_ORDER], self._generate_button
+        )
+
         self.bind("<Escape>", self._on_cancel)
 
         self._validate()
@@ -117,7 +127,6 @@ class GenerateRandomDialog(tk.Toplevel):
         entry.insert(0, initial_text)
         entry.pack(side="left")
         entry.bind("<KeyRelease>", self._on_field_changed)
-        entry.bind("<Return>", self._on_generate_clicked)
         # Consume "n"/"N" locally before they reach the global
         # `generate_random` shortcut's `bind_all()` handler -- mirrors
         # `ClassicMazeGallery._jump_entry`'s identical fix (Story 2.1).

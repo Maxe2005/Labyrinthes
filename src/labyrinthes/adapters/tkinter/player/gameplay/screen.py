@@ -1,9 +1,20 @@
 """`GameplayScreen` -- rendering, HUD, movement modes, win detection (Story 2.4/2.5).
 
 A `MazeCanvas` renders the mounted `Maze`'s walls/entry/exit/ball once, an
-HUD row of `HudChip`s shows Level/Difficulty/Time/Pos, arrow keys drive a
-pure `domain.movement.attempt_move` + `application.player_session`
-orchestration loop, and reaching `maze.exit` shows an inline win banner.
+HUD row of `HudChip`s (`hud.py`'s `_HudRow`) shows Level/Difficulty/Time/Pos,
+arrow keys drive a pure `domain.movement.attempt_move` +
+`application.player_session` orchestration loop, and reaching `maze.exit`
+shows an inline win banner (`banners.py`'s `_OutcomeBanner`).
+
+This screen is the session-orchestrating controller: it owns `self._session`
+and every method that reads or mutates it, and pushes the results into two
+composed, session-agnostic widgets --
+`hud.py`'s `_HudRow` (the chip row + HARD status light) and `sidebar.py`'s
+`_Sidebar` (the Movement/Mode/Levels/Difficulty/Logo/Edit-in-Builder
+column) -- through their small `set_*`/`sync_*` setters. Both widgets hold
+no session state of their own; every button's *command* is still a callback
+into this class, since deciding what a click does (including the
+`_toplevel_has_focus()` guard) is this controller's job, not theirs.
 
 Story 2.5 adds configurable movement modes and speed. The screen reads the
 `game`-scoped `MOVEMENT_MODE`/`MOVEMENT_SPEED` settings at mount, applies
@@ -34,10 +45,10 @@ wrapped) directly under the "Levels" group. Difficulty changes reroute
 through `set_difficulty` (a no-op once solved), which re-initializes
 `visibility` from the current position; the same `_sync_visibility()` redraw
 fires on the resulting identity change. The Difficulty controls are disabled
-(shared `ToolButton.set_enabled`) whenever the level is ONE or MAX --
-unlockable from Level 2 onward, and inert at MAX (no partitions/walls to
-threshold), matching the legacy `Niveau_max` gate. Both controls share the
-toplevel focus guard and have no global shortcut.
+(`_Sidebar.set_difficulty(..., enabled=False)`) whenever the level is ONE or
+MAX -- unlockable from Level 2 onward, and inert at MAX (no partitions/walls
+to threshold), matching the legacy `Niveau_max` gate. Both controls share
+the toplevel focus guard and have no global shortcut.
 
 Story 2.8 adds HARD mode: a "Mode" sidebar group with a single HARD
 `ToolButton` (bound to the `h` shortcut) toggles `session.hard_mode`, and a
@@ -92,18 +103,13 @@ import tkinter as tk
 from collections.abc import Callable
 
 from labyrinthes.adapters.tkinter.common.confirm_dialog import ConfirmDialog
-from labyrinthes.adapters.tkinter.common.hud_chip import HudChip
 from labyrinthes.adapters.tkinter.common.keybindings import bind_shortcut, keybinding
 from labyrinthes.adapters.tkinter.common.navigation import BuilderTestLaunch, ScreenId
 from labyrinthes.adapters.tkinter.common.pill_btn import PillButton
-from labyrinthes.adapters.tkinter.common.tokens import (
-    SPACING,
-    TYPOGRAPHY,
-    ColorTokens,
-    Theme,
-    colors_for,
-)
-from labyrinthes.adapters.tkinter.common.tool_btn import ToolButton
+from labyrinthes.adapters.tkinter.common.tokens import SPACING, ColorTokens, Theme, colors_for
+from labyrinthes.adapters.tkinter.player.gameplay.banners import _OutcomeBanner
+from labyrinthes.adapters.tkinter.player.gameplay.hud import _HudRow
+from labyrinthes.adapters.tkinter.player.gameplay.sidebar import _Sidebar
 from labyrinthes.adapters.tkinter.player.maze_canvas import MazeCanvas
 from labyrinthes.adapters.tkinter.player.save_maze_dialog import SaveMazeDialog
 from labyrinthes.application.confirmation_settings import (
@@ -114,7 +120,6 @@ from labyrinthes.application.hard_mode_settings import (
     read_hard_mode_moving_color,
     read_hard_mode_ready_color,
 )
-from labyrinthes.application.logos import _logo_path
 from labyrinthes.application.maze_repository import MazeRepository
 from labyrinthes.application.movement_settings import (
     read_movement_mode,
@@ -253,8 +258,8 @@ class GameplayScreen(tk.Frame):
         self._start_time = time.monotonic()
         self._tick_job: str | None = None
         self._animation_job: str | None = None
-        self._win_banner: tk.Frame | None = None
-        self._timeout_banner: tk.Frame | None = None
+        self._win_banner: _OutcomeBanner | None = None
+        self._timeout_banner: _OutcomeBanner | None = None
         # Story 2.10: the open `ConfirmDialog`, if any -- `None` when no
         # prompt is showing. `_maybe_confirm`'s guard (`is not None` ->
         # no-op) stops a second gated trigger from stacking a second dialog
@@ -266,8 +271,38 @@ class GameplayScreen(tk.Frame):
         # toggles / repository color reads when nothing changed (Story 2.8).
         self._last_hard_sync_state: tuple[bool, bool] | None = None
 
-        self._build_hud(colors)
-        self._build_sidebar(colors)
+        self._hud = _HudRow(
+            self,
+            theme=theme,
+            level=_level_label(self._session.level),
+            difficulty=_difficulty_label(self._session.difficulty),
+            time=self._session.elapsed.to_clock_string(),
+            pos=_pos_text(self._session.position),
+        )
+        self._hud.pack(fill="x", pady=(0, SPACING["lg"]))
+
+        self._sidebar = _Sidebar(
+            self,
+            theme=theme,
+            mode_active=self._session.mode is MovementMode.SMOOTH,
+            speed_label=_speed_label(self._session.speed),
+            hard_active=self._session.hard_mode,
+            level_label=_level_label(self._session.level),
+            difficulty_label=_difficulty_label(self._session.difficulty),
+            difficulty_enabled=self._difficulty_enabled(),
+            logo_key=read_theme_logo(settings_repository),
+            show_edit_in_builder=self._maze.kind in {MazeKind.CLASSIC, MazeKind.SAVED_RANDOM},
+            on_toggle_mode=self._toggle_mode,
+            on_cycle_speed=self._cycle_speed,
+            on_toggle_hard_mode=self._toggle_hard_mode,
+            on_level_minus=functools.partial(self._cycle_level, -1),
+            on_level_plus=functools.partial(self._cycle_level, +1),
+            on_difficulty_minus=functools.partial(self._cycle_difficulty, -1),
+            on_difficulty_plus=functools.partial(self._cycle_difficulty, +1),
+            on_edit_in_builder=self._on_edit_in_builder_clicked,
+        )
+        self._sidebar.pack(side="left", fill="y", padx=(0, SPACING["lg"]))
+
         self._build_maze_frame(colors, theme)
         self._rendered_visibility = self._session.visibility
         self._save_zone = tk.Frame(self, background=colors.window)
@@ -292,244 +327,6 @@ class GameplayScreen(tk.Frame):
         self._tick_job = self.after(_TICK_INTERVAL_MS, self._on_tick)
 
     # -- construction ------------------------------------------------------
-
-    def _build_hud(self, colors: ColorTokens) -> None:
-        hud_row = tk.Frame(self, background=colors.window)
-        hud_row.pack(fill="x", pady=(0, SPACING["lg"]))
-
-        self._level_chip = HudChip(
-            hud_row, "Level", _level_label(self._session.level), theme=self._theme
-        )
-        self._level_chip.pack(side="left", padx=(0, SPACING["sm"]))
-
-        self._difficulty_chip = HudChip(
-            hud_row, "Difficulty", _difficulty_label(self._session.difficulty), theme=self._theme
-        )
-        self._difficulty_chip.pack(side="left", padx=(0, SPACING["sm"]))
-
-        self._time_chip = HudChip(
-            hud_row, "Time", self._session.elapsed.to_clock_string(), theme=self._theme, live=True
-        )
-        self._time_chip.pack(side="left", padx=(0, SPACING["sm"]))
-
-        self._pos_chip = HudChip(
-            hud_row, "Pos", _pos_text(self._session.position), theme=self._theme
-        )
-        self._pos_chip.pack(side="left")
-
-        # HARD-mode status light (Story 2.8): a 10px round light + a
-        # Ready/Moving label, per the mockup's `.status-wrap`. Built but
-        # hidden at mount -- HARD starts off -- `_sync_hard_mode_visuals()`
-        # packs it in (and recolors it) only while HARD is active.
-        self._status_light_frame = tk.Frame(hud_row, background=colors.window)
-        self._status_light_canvas = tk.Canvas(
-            self._status_light_frame,
-            width=10,
-            height=10,
-            background=colors.window,
-            highlightthickness=0,
-            bd=0,
-        )
-        self._status_light = self._status_light_canvas.create_oval(
-            0, 0, 10, 10, fill=colors.accent, outline=""
-        )
-        self._status_light_canvas.pack(side="left", padx=(0, SPACING["xs"]))
-        self._status_label = tk.Label(
-            self._status_light_frame,
-            text="Ready",
-            font=TYPOGRAPHY.label.to_tk_font(),
-            background=colors.window,
-            foreground=colors.ink_soft,
-        )
-        self._status_label.pack(side="left")
-        self._status_light_frame.pack(side="left", padx=(SPACING["sm"], 0))
-        self._status_light_frame.pack_forget()
-
-    def _build_sidebar(self, colors: ColorTokens) -> None:
-        self._sidebar = tk.Frame(self, background=colors.window)
-        self._sidebar.pack(side="left", fill="y", padx=(0, SPACING["lg"]))
-
-        tk.Label(
-            self._sidebar,
-            text="Movement",
-            font=TYPOGRAPHY.body.to_tk_font(),
-            background=colors.window,
-            foreground=colors.ink,
-        ).pack(anchor="w", pady=(0, SPACING["sm"]))
-
-        mode_kb = keybinding("toggle_movement_mode")
-        self._mode_button = ToolButton(
-            self._sidebar,
-            "Smooth",
-            theme=self._theme,
-            shortcut=mode_kb.display,
-            command=self._toggle_mode,
-        )
-        self._mode_button.pack(anchor="w", pady=(0, SPACING["sm"]))
-
-        self._speed_button = ToolButton(
-            self._sidebar,
-            _speed_label(self._session.speed),
-            theme=self._theme,
-            command=self._cycle_speed,
-        )
-        self._speed_button.pack(anchor="w")
-
-        tk.Label(
-            self._sidebar,
-            text="Mode",
-            font=TYPOGRAPHY.body.to_tk_font(),
-            background=colors.window,
-            foreground=colors.ink,
-        ).pack(anchor="w", pady=(SPACING["lg"], SPACING["sm"]))
-
-        hard_kb = keybinding("toggle_hard_mode")
-        self._mode_hard_button = ToolButton(
-            self._sidebar,
-            "HARD",
-            theme=self._theme,
-            shortcut=hard_kb.display,
-            command=self._toggle_hard_mode,
-        )
-        self._mode_hard_button.pack(anchor="w")
-
-        tk.Label(
-            self._sidebar,
-            text="Levels",
-            font=TYPOGRAPHY.body.to_tk_font(),
-            background=colors.window,
-            foreground=colors.ink,
-        ).pack(anchor="w", pady=(SPACING["lg"], SPACING["sm"]))
-
-        level_row = tk.Frame(self._sidebar, background=colors.window)
-        level_row.pack(anchor="w")
-
-        self._level_minus_button = ToolButton(
-            level_row,
-            "−",
-            theme=self._theme,
-            command=functools.partial(self._cycle_level, -1),
-        )
-        self._level_minus_button.pack(side="left", padx=(0, SPACING["sm"]))
-
-        self._level_value_label = tk.Label(
-            level_row,
-            text=_level_label(self._session.level),
-            font=TYPOGRAPHY.hud_stat.to_tk_font(),
-            background=colors.window,
-            foreground=colors.ink,
-        )
-        self._level_value_label.pack(side="left", padx=(0, SPACING["sm"]))
-
-        self._level_plus_button = ToolButton(
-            level_row,
-            "+",
-            theme=self._theme,
-            command=functools.partial(self._cycle_level, +1),
-        )
-        self._level_plus_button.pack(side="left")
-
-        tk.Label(
-            self._sidebar,
-            text="Difficulty",
-            font=TYPOGRAPHY.body.to_tk_font(),
-            background=colors.window,
-            foreground=colors.ink,
-        ).pack(anchor="w", pady=(SPACING["lg"], SPACING["sm"]))
-
-        difficulty_row = tk.Frame(self._sidebar, background=colors.window)
-        difficulty_row.pack(anchor="w")
-
-        self._difficulty_minus_button = ToolButton(
-            difficulty_row,
-            "−",
-            theme=self._theme,
-            command=functools.partial(self._cycle_difficulty, -1),
-        )
-        self._difficulty_minus_button.pack(side="left", padx=(0, SPACING["sm"]))
-
-        self._difficulty_value_label = tk.Label(
-            difficulty_row,
-            text=_difficulty_label(self._session.difficulty),
-            font=TYPOGRAPHY.hud_stat.to_tk_font(),
-            background=colors.window,
-            foreground=colors.ink,
-        )
-        self._difficulty_value_label.pack(side="left", padx=(0, SPACING["sm"]))
-
-        self._difficulty_plus_button = ToolButton(
-            difficulty_row,
-            "+",
-            theme=self._theme,
-            command=functools.partial(self._cycle_difficulty, +1),
-        )
-        self._difficulty_plus_button.pack(side="left")
-
-        self._logo_key: str = read_theme_logo(self._settings_repository)
-        self._build_logo_section(colors)
-        self._build_edit_in_builder_button(colors)
-
-        self._sync_difficulty_widgets()
-        self._sync_mode_button()
-
-    def _sync_mode_button(self) -> None:
-        self._mode_button.set_active(self._session.mode is MovementMode.SMOOTH)
-
-    def _build_logo_section(self, colors: ColorTokens) -> None:
-        colors = colors_for(self._theme)
-        logo_frame = tk.Frame(self._sidebar, background=colors.window)
-        logo_frame.pack(anchor="w", pady=(SPACING["lg"], SPACING["sm"]))
-
-        tk.Label(
-            logo_frame,
-            text="Logo",
-            font=TYPOGRAPHY.body.to_tk_font(),
-            background=colors.window,
-            foreground=colors.ink,
-        ).pack(anchor="w")
-
-        try:
-            from PIL import Image, ImageTk
-
-            img = Image.open(_logo_path(self._logo_key))
-            img = img.resize((64, 64), Image.Resampling.LANCZOS)
-            self._logo_photo = ImageTk.PhotoImage(img)
-            logo_label = tk.Label(
-                logo_frame,
-                image=self._logo_photo,
-                background=colors.window,
-            )
-            logo_label.image = self._logo_photo
-            logo_label.pack(anchor="w", pady=(SPACING["xs"], 0))
-        except Exception:
-            tk.Label(
-                logo_frame,
-                text="—",
-                font=TYPOGRAPHY.body.to_tk_font(),
-                background=colors.window,
-                foreground=colors.ink_soft,
-            ).pack(anchor="w")
-
-        tk.Label(
-            logo_frame,
-            text=self._logo_key,
-            font=TYPOGRAPHY.body.to_tk_font(),
-            background=colors.window,
-            foreground=colors.ink_soft,
-        ).pack(anchor="w")
-
-    def _build_edit_in_builder_button(self, colors: ColorTokens) -> None:
-        if self._maze.kind not in {MazeKind.CLASSIC, MazeKind.SAVED_RANDOM}:
-            return
-        edit_kb = keybinding("edit_in_builder")
-        self._edit_in_builder_button = ToolButton(
-            self._sidebar,
-            "Edit in Builder",
-            theme=self._theme,
-            shortcut=edit_kb.display,
-            command=self._on_edit_in_builder_clicked,
-        )
-        self._edit_in_builder_button.pack(anchor="w", pady=(SPACING["lg"], SPACING["sm"]))
 
     def _on_edit_in_builder_clicked(self) -> None:
         if self._navigate is not None:
@@ -626,7 +423,7 @@ class GameplayScreen(tk.Frame):
             self._maze_canvas.set_ball_position(self._session.position)
 
         if self._session.position != previous_position:
-            self._pos_chip.set_value(_pos_text(self._session.position))
+            self._hud.set_pos(_pos_text(self._session.position))
 
         if self._session.solved:
             # Refresh elapsed from the wall clock before showing the win
@@ -735,8 +532,8 @@ class GameplayScreen(tk.Frame):
 
     def _sync_level_widgets(self) -> None:
         label = _level_label(self._session.level)
-        self._level_chip.set_value(label)
-        self._level_value_label.configure(text=label)
+        self._hud.set_level(label)
+        self._sidebar.set_level(label)
 
     def _cycle_difficulty(self, delta: int) -> None:
         if not self._toplevel_has_focus():
@@ -752,14 +549,9 @@ class GameplayScreen(tk.Frame):
 
     def _sync_difficulty_widgets(self) -> None:
         enabled = self._difficulty_enabled()
-        self._difficulty_minus_button.set_enabled(enabled)
-        self._difficulty_plus_button.set_enabled(enabled)
-        colors = colors_for(self._theme)
-        self._difficulty_value_label.configure(
-            text=_difficulty_label(self._session.difficulty),
-            foreground=colors.ink if enabled else colors.ghost,
-        )
-        self._difficulty_chip.set_value(_difficulty_label(self._session.difficulty))
+        label = _difficulty_label(self._session.difficulty)
+        self._sidebar.set_difficulty(label, enabled=enabled)
+        self._hud.set_difficulty(label)
 
     def _difficulty_enabled(self) -> bool:
         return self._session.level not in (Level.ONE, Level.MAX)
@@ -776,13 +568,16 @@ class GameplayScreen(tk.Frame):
         write_movement_mode(self._settings_repository, new_mode)
         self._sync_mode_button()
 
+    def _sync_mode_button(self) -> None:
+        self._sidebar.sync_mode_button(self._session.mode is MovementMode.SMOOTH)
+
     def _cycle_speed(self) -> None:
         if not self._toplevel_has_focus():
             return
         new_speed = _SPEED_CYCLE[(_SPEED_CYCLE.index(self._session.speed) + 1) % len(_SPEED_CYCLE)]
         self._session = session_set_speed(self._session, new_speed)
         write_movement_speed(self._settings_repository, new_speed)
-        self._speed_button.set_text(_speed_label(new_speed))
+        self._sidebar.set_speed_label(_speed_label(new_speed))
 
     # -- HARD mode (Story 2.8) ------------------------------------------
 
@@ -814,7 +609,7 @@ class GameplayScreen(tk.Frame):
         # "active" while `session.hard_mode` is still `False` (the
         # `_toggle_mode`/`_sync_mode_button` convention -- the button always
         # mirrors the session).
-        self._mode_hard_button.set_active(self._session.hard_mode)
+        self._sidebar.sync_hard_button(self._session.hard_mode)
         self._sync_hard_mode_visuals()
 
     def _sync_hard_mode_visuals(self) -> None:
@@ -840,21 +635,19 @@ class GameplayScreen(tk.Frame):
         self._last_hard_sync_state = state
         self._maze_canvas.set_hard_mode_moving(moving)
         if not hard:
-            self._status_light_frame.pack_forget()
+            self._hud.hide_hard_mode_status()
             return
-        self._status_light_frame.pack(side="left", padx=(SPACING["sm"], 0))
         ready_color, moving_color = self._hard_mode_colors()
-        self._status_light_canvas.itemconfigure(
-            self._status_light, fill=moving_color if moving else ready_color
+        self._hud.show_hard_mode_status(
+            moving=moving, ready_color=ready_color, moving_color=moving_color
         )
-        self._status_label.configure(text="Moving" if moving else "Ready")
 
     # -- elapsed-time ticking ----------------------------------------------
 
     def _on_tick(self) -> None:
         elapsed_ms = int((time.monotonic() - self._start_time) * 1000)
         self._session = session_tick(self._session, Duration(milliseconds=elapsed_ms))
-        self._time_chip.set_value(self._session.elapsed.to_clock_string())
+        self._hud.set_time(self._session.elapsed.to_clock_string())
         # The timeout check sits after the chip update, before the
         # reschedule: the timeout branch fires once the limit is reached on
         # an unsolved run and stops the loop here (no reschedule). The
@@ -889,50 +682,23 @@ class GameplayScreen(tk.Frame):
         self._cancel_tick_job()
         self._cancel_animation_job()
         self._session = session_set_timed_out(self._session, True)
-        self._time_chip.set_value(self._session.elapsed.to_clock_string())
+        self._hud.set_time(self._session.elapsed.to_clock_string())
         self._show_timeout_banner()
 
     def _show_timeout_banner(self) -> None:
-        # Mirrors `_show_win_banner` (UX-DR9): the same accent-bg frame, the
-        # same `before=self._maze_frame` placement, non-modal inline -- never
-        # a `messagebox`.
-        colors = colors_for(self._theme)
-        self._timeout_banner = tk.Frame(
+        # Mirrors `_show_win_banner` (UX-DR9): the same `_OutcomeBanner`
+        # shape, the same `before=self._maze_frame` placement, non-modal
+        # inline -- never a `messagebox`.
+        self._timeout_banner = _OutcomeBanner(
             self,
-            background=colors.accent_bg,
-            highlightthickness=1,
-            highlightbackground=colors.accent,
-            highlightcolor=colors.accent,
+            theme=self._theme,
+            message="Time's up — the exit wasn't reached.",
+            buttons=[
+                ("Restart", self._restart_run),
+                ("Continue", self._on_timeout_continue_clicked),
+            ],
         )
         self._timeout_banner.pack(fill="x", pady=(0, SPACING["lg"]), before=self._maze_frame)
-
-        tk.Label(
-            self._timeout_banner,
-            text="Time's up — the exit wasn't reached.",
-            font=TYPOGRAPHY.body.to_tk_font(),
-            background=colors.accent_bg,
-            foreground=colors.ink,
-        ).pack(side="left", padx=SPACING["lg"], pady=SPACING["sm"])
-
-        # Both `primary=False`: a `GENERATED` maze's Save pill can still be
-        # showing below this banner (timeout doesn't hide it), and the
-        # at-most-one-primary rule (`PillButton` docstring, Story 2.4)
-        # forbids a second one. The pills are click-only local targets --
-        # no global shortcut, so no `_toplevel_has_focus()` guard needed.
-        PillButton(
-            self._timeout_banner,
-            "Restart",
-            theme=self._theme,
-            primary=False,
-            command=self._restart_run,
-        ).pack(side="right", padx=SPACING["lg"], pady=SPACING["sm"])
-        PillButton(
-            self._timeout_banner,
-            "Continue",
-            theme=self._theme,
-            primary=False,
-            command=self._on_timeout_continue_clicked,
-        ).pack(side="right", pady=SPACING["sm"])
 
     def _on_timeout_continue_clicked(self) -> None:
         # Only dismisses the banner -- `timed_out` stays `True`, the run
@@ -975,8 +741,8 @@ class GameplayScreen(tk.Frame):
         self._sync_level_widgets()
         self._sync_difficulty_widgets()
         self._sync_mode_button()
-        self._time_chip.set_value(self._session.elapsed.to_clock_string())
-        self._pos_chip.set_value(_pos_text(self._session.position))
+        self._hud.set_time(self._session.elapsed.to_clock_string())
+        self._hud.set_pos(_pos_text(self._session.position))
         if self._timeout_banner is not None:
             self._timeout_banner.destroy()
             self._timeout_banner = None
@@ -987,7 +753,7 @@ class GameplayScreen(tk.Frame):
         # ball shows again; resetting `_last_hard_sync_state` forces the sync
         # to actually run (Story 2.8). The HARD button mirrors the session
         # too, so a restart from a HARD-on timeout de-activates it.
-        self._mode_hard_button.set_active(False)
+        self._sidebar.sync_hard_button(False)
         self._last_hard_sync_state = None
         self._sync_hard_mode_visuals()
         self._tick_job = self.after(_TICK_INTERVAL_MS, self._on_tick)
@@ -1005,61 +771,30 @@ class GameplayScreen(tk.Frame):
         # `_on_animation_tick`) the win banner is about to show, so the
         # frozen Time chip and the banner's "Solved in MM:SS." text never
         # disagree.
-        self._time_chip.set_value(self._session.elapsed.to_clock_string())
+        self._hud.set_time(self._session.elapsed.to_clock_string())
         self._show_win_banner()
 
     def _show_win_banner(self) -> None:
-        colors = colors_for(self._theme)
-        self._win_banner = tk.Frame(
+        # `on_back_to_builder is not None` is test mode (Builder's Test in
+        # Player, Story 3.8): instead of Continue, the banner offers
+        # Restart (a fresh run, exactly the timeout banner's own Restart)
+        # and Back to Builder (returns to the Builder, restoring the
+        # session's markers from the `BuilderTestLaunch` payload the screen
+        # was mounted with).
+        if self._on_back_to_builder is not None:
+            buttons = [
+                ("Restart", self._restart_run),
+                ("Back to Builder", self._on_back_to_builder),
+            ]
+        else:
+            buttons = [("Continue", self._on_continue_clicked)]
+        self._win_banner = _OutcomeBanner(
             self,
-            background=colors.accent_bg,
-            highlightthickness=1,
-            highlightbackground=colors.accent,
-            highlightcolor=colors.accent,
+            theme=self._theme,
+            message=f"Solved in {self._session.elapsed.to_clock_string()}.",
+            buttons=buttons,
         )
         self._win_banner.pack(fill="x", pady=(0, SPACING["lg"]), before=self._maze_frame)
-
-        tk.Label(
-            self._win_banner,
-            text=f"Solved in {self._session.elapsed.to_clock_string()}.",
-            font=TYPOGRAPHY.body.to_tk_font(),
-            background=colors.accent_bg,
-            foreground=colors.ink,
-        ).pack(side="left", padx=SPACING["lg"], pady=SPACING["sm"])
-
-        # `primary=False`: per `PillButton`'s own docstring ("at most one
-        # `primary` pill sits on a screen at a time"), not `True` here --
-        # a `GENERATED` maze's Save pill (`_build_save_zone()`) can still
-        # be showing underneath this banner (winning doesn't hide it), and
-        # two simultaneous primary pills would violate that rule.
-        if self._on_back_to_builder is not None:
-            # Test mode (Builder's Test in Player, Story 3.8): instead of
-            # Continue, the banner offers Restart (a fresh run, exactly the
-            # timeout banner's own Restart) and Back to Builder (returns to
-            # the Builder, restoring the session's markers from the
-            # `BuilderTestLaunch` payload the screen was mounted with).
-            PillButton(
-                self._win_banner,
-                "Restart",
-                theme=self._theme,
-                primary=False,
-                command=self._restart_run,
-            ).pack(side="right", padx=SPACING["lg"], pady=SPACING["sm"])
-            PillButton(
-                self._win_banner,
-                "Back to Builder",
-                theme=self._theme,
-                primary=False,
-                command=self._on_back_to_builder,
-            ).pack(side="right", pady=SPACING["sm"])
-        else:
-            PillButton(
-                self._win_banner,
-                "Continue",
-                theme=self._theme,
-                primary=False,
-                command=self._on_continue_clicked,
-            ).pack(side="right", padx=SPACING["lg"], pady=SPACING["sm"])
 
     def _on_continue_clicked(self) -> None:
         # Only dismisses the banner -- `solved` stays `True`, and

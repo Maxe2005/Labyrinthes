@@ -132,16 +132,24 @@ def test_escape_binding_is_registered(tk_root):
     assert dialog.bind("<Escape>") != ""
 
 
-def test_return_on_every_field_is_bound_to_trigger_generate(tk_root):
+def test_fields_are_wired_to_a_field_navigator_ending_at_the_generate_button(tk_root):
     # `tk_root` is withdrawn (unreliable real X11 KeyPress synthesis, per
-    # this suite's convention) -- assert the binding is registered, and
-    # exercise the actual generate behavior via `_on_generate_clicked()`
-    # directly (see `test_valid_input_confirms_once_and_destroys_the_dialog`).
+    # this suite's convention) -- assert the wiring and binding registration
+    # here, and exercise `FieldNavigator`'s actual step/boundary behavior
+    # directly in `test_field_navigation.py`.
     on_confirm, _ = _confirm_stub()
     dialog = _dialog(tk_root, on_confirm)
 
+    assert dialog._navigator._order == [
+        dialog._entries["columns"],
+        dialog._entries["rows"],
+        dialog._entries["start_col"],
+        dialog._entries["start_row"],
+        dialog._generate_button,
+    ]
     for entry in dialog._entries.values():
-        assert entry.bind("<Return>") != ""
+        for sequence in ("<Up>", "<Down>", "<Left>", "<Right>", "<Return>"):
+            assert entry.bind(sequence) != ""
 
 
 def test_every_entry_locally_consumes_n_before_the_global_generate_random_shortcut(tk_root):
