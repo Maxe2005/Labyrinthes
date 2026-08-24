@@ -14,6 +14,12 @@ the "leave errors visible, no state change" pattern, not a disabled-button
 one (no `common/` widget supports one, and the spec explicitly rules it
 out).
 
+Field-to-field keyboard navigation (Up/Down, boundary-aware Left/Right,
+Enter-advances-then-Create) is delegated to the shared
+`FieldNavigator` -- see that module's docstring for the full behavior;
+this dialog only supplies the field order and the `Create` button as the
+chain's final stop.
+
 Bounds come from the shared `read_maze_size_bounds(settings_repository)`
 reader (FR-4: "The bounds are defined once, in settings, and read by both
 the Builder and the Game") -- never hardcoded here, and never written back.
@@ -29,6 +35,7 @@ from __future__ import annotations
 import tkinter as tk
 from collections.abc import Callable
 
+from labyrinthes.adapters.tkinter.common.field_navigation import FieldNavigator
 from labyrinthes.adapters.tkinter.common.pill_btn import PillButton
 from labyrinthes.adapters.tkinter.common.tokens import SPACING, TYPOGRAPHY, Theme, colors_for
 from labyrinthes.application.maze_size_bounds import read_maze_size_bounds
@@ -89,6 +96,10 @@ class NewMazeDialog(tk.Toplevel):
         )
         self._confirm_button.pack(side="left")
 
+        self._navigator = FieldNavigator(
+            [self._entries[key] for key in _FIELD_ORDER], self._confirm_button
+        )
+
         self.bind("<Escape>", self._on_cancel)
 
         self._validate()
@@ -113,7 +124,6 @@ class NewMazeDialog(tk.Toplevel):
         entry.insert(0, initial_text)
         entry.pack(side="left")
         entry.bind("<KeyRelease>", self._on_field_changed)
-        entry.bind("<Return>", self._on_confirm_clicked)
         # Consume "b"/"B", "c"/"C", "p"/"P" locally before they reach the
         # global `open_builder`/`open_new_maze`/`open_player` shortcuts'
         # `bind_all()` handlers -- this dialog is opened from Home while
