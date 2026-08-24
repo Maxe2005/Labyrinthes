@@ -97,6 +97,7 @@ KEYBINDINGS: tuple[Keybinding, ...] = (
     Keybinding("move_right", "Move right", "Right"),
     Keybinding("toggle_movement_mode", "Toggle movement mode", "m"),
     Keybinding("toggle_hard_mode", "Toggle HARD mode", "h"),
+    Keybinding("toggle_break_pass_through", "Toggle Break/Pass-through", "space", ScreenId.BUILDER),
     Keybinding("break_wall", "Break Wall", "b", ScreenId.BUILDER),
     Keybinding("pass_through", "Pass-through", "p", ScreenId.BUILDER),
     Keybinding("destroy_zone", "Destroy Zone", "d", ScreenId.BUILDER),
