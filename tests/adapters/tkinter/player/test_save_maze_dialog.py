@@ -172,7 +172,7 @@ def test_name_entry_locally_consumes_s_before_the_global_save_maze_shortcut(tk_r
 # disabling the field's own arrow-key cursor navigation -- confirmed live.
 # `GameplayScreen._on_move` guards itself instead by checking
 # `self.focus_get()`; see `test_move_is_a_no_op_while_a_text_entry_holds_focus`
-# in `test_gameplay_screen.py`.
+# in `test_gameplay/test_screen.py`.
 
 
 def test_whitespace_only_name_is_rejected_as_required(tk_root):

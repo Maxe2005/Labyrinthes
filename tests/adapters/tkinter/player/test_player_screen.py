@@ -5,7 +5,7 @@ import pytest
 from labyrinthes.adapters.tkinter.common import SettingsWindow, Theme, TopBar
 from labyrinthes.adapters.tkinter.common.navigation import ScreenId
 from labyrinthes.adapters.tkinter.player.classic_gallery import ClassicMazeGallery
-from labyrinthes.adapters.tkinter.player.gameplay_screen import GameplayScreen
+from labyrinthes.adapters.tkinter.player.gameplay import GameplayScreen
 from labyrinthes.adapters.tkinter.player.screen import mount
 from labyrinthes.application.confirmation_settings import write_confirm_restart
 from labyrinthes.domain.grid import Grid

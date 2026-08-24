@@ -47,7 +47,7 @@ from labyrinthes.adapters.tkinter.common import (
     TopBar,
 )
 from labyrinthes.adapters.tkinter.player.classic_gallery import ClassicMazeGallery
-from labyrinthes.adapters.tkinter.player.gameplay_screen import GameplayScreen
+from labyrinthes.adapters.tkinter.player.gameplay import GameplayScreen
 from labyrinthes.application.maze_repository import MazeRepository
 from labyrinthes.application.settings_repository import SettingsRepository
 from labyrinthes.domain.maze import Maze, MazeKind

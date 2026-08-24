@@ -3,7 +3,7 @@
 Free functions over a frozen dataclass, matching `maze_size_bounds.
 read_maze_size_bounds`'s established style (not a stateless class): no
 Tkinter, no wall-clock reads (`time.monotonic()` stays entirely in
-`adapters/tkinter/player/gameplay_screen.py`, which passes the already-
+`adapters/tkinter/player/gameplay/screen.py`, which passes the already-
 computed elapsed `Duration` in).
 
 Story 2.5 reworks the keypress-snap model into a leg/animation model. A
