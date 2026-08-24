@@ -37,14 +37,14 @@ def test_wall_bar_count_matches_the_grids_set_wall_bits(tk_root):
     assert len(canvas.find_withtag("wall")) == 12
 
 
-def test_entry_marker_is_a_single_filled_circle_at_the_entry_cell(tk_root):
+def test_entry_marker_is_a_single_filled_square_at_the_entry_cell(tk_root):
     maze = _maze(width=2, height=2)
 
     canvas = MazeCanvas(tk_root, maze, maze.entry, theme=Theme.LIGHT)
 
     entry_items = canvas.find_withtag("entry-marker")
     assert len(entry_items) == 1
-    assert canvas.type(entry_items[0]) == "oval"
+    assert canvas.type(entry_items[0]) == "rectangle"
 
 
 def test_exit_marker_is_a_single_polygon_shape_distinct_from_the_entry_circle(tk_root):

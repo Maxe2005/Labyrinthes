@@ -220,7 +220,8 @@ class MazeCanvas(tk.Canvas):
     def _draw_entry_marker(self, colors: ColorTokens) -> None:
         cx, cy = self._cell_center(self._maze.entry)
         radius = self._radius(_MARKER_SCALE)
-        self.create_oval(
+        # Filled square (entry = square, exit = diamond, player = circle).
+        self.create_rectangle(
             cx - radius,
             cy - radius,
             cx + radius,
