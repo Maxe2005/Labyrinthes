@@ -508,7 +508,7 @@ def test_break_mode_click_on_a_border_wall_is_a_no_op(
     assert walls_chip._value_label.cget("text") == "0"
 
 
-def test_pass_through_mode_arrow_key_across_a_wall_breaks_it_and_moves_the_cursor(
+def test_break_mode_arrow_key_across_a_wall_breaks_it_and_moves_the_cursor(
     tk_root,
     navigate_stub,
     toggle_theme_stub,
@@ -529,12 +529,7 @@ def test_pass_through_mode_arrow_key_across_a_wall_breaks_it_and_moves_the_curso
         maze_repository=fake_maze_repository,
     )
 
-    pass_through_button = next(
-        b for b in find_all(frame, ToolButton) if b._label.cget("text") == "Pass-through"
-    )
-    pass_through_button._on_click()
-    assert pass_through_button.active is True
-
+    # Break tool is active by default
     edit_area = find_all(frame, _BuilderEditArea)[0]
     walls_chip = next(
         c for c in find_all(frame, HudChip) if c._caption.cget("text") == "WALLS BROKEN"
@@ -546,7 +541,7 @@ def test_pass_through_mode_arrow_key_across_a_wall_breaks_it_and_moves_the_curso
     assert walls_chip._value_label.cget("text") == "1"
 
 
-def test_break_mode_arrow_key_moves_the_cursor_without_breaking_any_wall(
+def test_pass_through_mode_arrow_key_moves_the_cursor_through_walls(
     tk_root,
     navigate_stub,
     toggle_theme_stub,
@@ -568,13 +563,14 @@ def test_break_mode_arrow_key_moves_the_cursor_without_breaking_any_wall(
     )
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
+    edit_area._activate_pass_through()
     walls_chip = next(
         c for c in find_all(frame, HudChip) if c._caption.cget("text") == "WALLS BROKEN"
     )
 
-    edit_area._on_move(Direction.RIGHT)  # Break tool is active by default; blocked, no break
+    edit_area._on_move(Direction.RIGHT)  # Pass-through tool: moves through walls freely
 
-    assert edit_area._session.cursor == Position(row=0, col=0)
+    assert edit_area._session.cursor == Position(row=0, col=1)
     assert walls_chip._value_label.cget("text") == "0"
 
 

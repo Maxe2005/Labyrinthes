@@ -288,6 +288,9 @@ class _BuilderEditArea(tk.Frame):
             bind_shortcut(self, keybinding(action_id), functools.partial(self._on_move, direction))
         bind_shortcut(self, keybinding("break_wall"), self._activate_break)
         bind_shortcut(self, keybinding("pass_through"), self._activate_pass_through)
+        bind_shortcut(
+            self, keybinding("toggle_break_pass_through"), self._toggle_break_pass_through
+        )
         bind_shortcut(self, keybinding("destroy_zone"), self._activate_destroy_zone)
         bind_shortcut(self, keybinding("restore_zone"), self._activate_restore_zone)
         bind_shortcut(self, keybinding("set_entry"), self._activate_set_entry)
@@ -310,7 +313,7 @@ class _BuilderEditArea(tk.Frame):
             break_kb.label,
             theme=self._theme,
             shortcut=break_kb.display,
-            tooltip="Click a wall segment to break or restore it",
+            tooltip="Moving the cursor across a wall breaks it",
             group=group,
             command=self._activate_break,
         )
@@ -321,7 +324,7 @@ class _BuilderEditArea(tk.Frame):
             pass_kb.label,
             theme=self._theme,
             shortcut=pass_kb.display,
-            tooltip="Moving the cursor across a wall breaks it",
+            tooltip="Moving the cursor crosses walls freely",
             group=group,
             command=self._activate_pass_through,
         )
@@ -482,6 +485,13 @@ class _BuilderEditArea(tk.Frame):
         self._session = set_tool(self._session, BuilderTool.SET_EXIT)
         self._set_exit_button.set_active(True)
         self._sync_markers()
+
+    def _toggle_break_pass_through(self) -> None:
+        """Toggle between Break and Pass-through tools via Space key."""
+        if self._session.tool is BuilderTool.BREAK:
+            self._activate_pass_through()
+        elif self._session.tool is BuilderTool.PASS_THROUGH:
+            self._activate_break()
 
     # -- editing -----------------------------------------------------
 

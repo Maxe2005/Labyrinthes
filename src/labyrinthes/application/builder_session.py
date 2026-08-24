@@ -1,5 +1,5 @@
 """`BuilderSession` -- immutable Builder-edit-session state, plus pure
-orchestration (Stories 3.2/3.3/3.4).
+orchestration (Stories 3.2/3.3/3.4, 4.2).
 
 Free functions over a frozen dataclass, matching `player_session.py`'s
 established style: no Tkinter, no wall-clock reads, no repository access
@@ -11,14 +11,18 @@ Technical Decisions call this "an adapter-local mutable session wrapper
 wiring stays in `adapters/tkinter/builder/`).
 
 Six tools:
-- `BuilderTool.BREAK` -- `apply_wall_toggle(session, wall)` toggles the
-  wall the adapter hit-tested from a click (breaks if present, restores
-  if absent); the cursor never moves. `move_cursor` just moves the cursor,
-  leaving every wall alone.
-- `BuilderTool.PASS_THROUGH` -- `move_cursor` breaks whatever interior
-  wall blocks the requested move, then moves the cursor into the target
-  cell; a border wall stops the cursor without breaking anything (FR-2's
-  closed-border invariant always wins).
+- `BuilderTool.BREAK` -- `move_cursor` breaks whatever interior wall
+  blocks the requested move, then moves the cursor into the target cell;
+  a border wall stops the cursor without breaking anything (FR-2's
+  closed-border invariant always wins). `apply_wall_toggle(session, wall)`
+  toggles the wall the adapter hit-tested from a click (breaks if present,
+  restores if absent); the cursor never moves. (Epic 4 swaps the
+  movement semantics from Epic 3: Break now breaks on movement,
+  Pass-through moves freely.)
+- `BuilderTool.PASS_THROUGH` -- `move_cursor` is a plain `attempt_move` --
+  the cursor moves if open, stays put if blocked; no wall state changes.
+  Border walls block as usual. (Epic 4 swaps the movement semantics from
+  Epic 3: Pass-through now moves freely, Break breaks on movement.)
 - `BuilderTool.DESTROY_ZONE` / `BuilderTool.RESTORE_ZONE` (Story 3.3) --
   `apply_zone_operation(session, tool, corner_a, corner_b)` batches
   `domain.zone_editing.destroy_zone`/`restore_zone` over the rectangle the
@@ -215,28 +219,41 @@ def apply_zone_operation(
 def move_cursor(session: BuilderSession, direction: Direction) -> BuilderSession:
     """Move the editing cursor one cell in `direction`.
 
-    In `BREAK` mode this is a plain `attempt_move` -- the cursor moves if
-    open, stays put if blocked; no wall state changes.
+    In `BREAK` mode (the new semantics, formerly Pass-through): a blocked
+    move breaks the interior wall it ran into first
+    (`domain.wall_editing.break_wall`, via `wall_between`), then moves the
+    cursor into the now-open target cell. A blocked *border* wall leaves
+    the cursor in place and breaks nothing (closed-border invariant).
 
-    In `PASS_THROUGH` mode, a blocked move breaks the wall it ran into
-    first (`domain.wall_editing.break_wall`, via `wall_between`), then
-    moves the cursor into the now-open target cell. A blocked *border*
-    wall leaves the cursor in place and breaks nothing.
+    In `PASS_THROUGH` mode (the new semantics, formerly Break): the cursor
+    moves freely through walls without breaking them; only the grid bounds
+    (the outer border) stop the cursor.
     """
     grid = session.maze.grid
     target = attempt_move(grid, session.cursor, direction)
 
-    if target != session.cursor or session.tool is not BuilderTool.PASS_THROUGH:
-        return replace(session, cursor=target)
+    if session.tool is BuilderTool.BREAK:
+        # Break mode: break walls on movement (former Pass-through behavior)
+        if target != session.cursor:
+            return replace(session, cursor=target)
 
-    wall = wall_between(session.cursor, direction)
-    if is_border_wall(grid, wall):
-        return session
+        wall = wall_between(session.cursor, direction)
+        if is_border_wall(grid, wall):
+            return session
 
-    new_grid = break_wall(grid, wall)
-    new_maze = dataclasses.replace(session.maze, grid=new_grid)
-    new_target = attempt_move(new_grid, session.cursor, direction)
-    return replace(session, maze=new_maze, cursor=new_target)
+        new_grid = break_wall(grid, wall)
+        new_maze = dataclasses.replace(session.maze, grid=new_grid)
+        new_target = attempt_move(new_grid, session.cursor, direction)
+        return replace(session, maze=new_maze, cursor=new_target)
+
+    # Pass-through mode: move freely through walls, only grid bounds stop the cursor
+    candidate = Position(
+        row=session.cursor.row + direction.row_delta,
+        col=session.cursor.col + direction.col_delta,
+    )
+    if 0 <= candidate.row < grid.height and 0 <= candidate.col < grid.width:
+        return replace(session, cursor=candidate)
+    return session
 
 
 def broken_wall_count(session: BuilderSession) -> int:
