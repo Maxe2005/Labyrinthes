@@ -75,7 +75,7 @@ development_status:
   3-9-edit-in-builder-launch-the-builder-from-the-game: done
   4-1-builder-cursor-and-marker-glyphs: done
   4-2-wall-tool-semantics-break-vs-pass-through: done
-  4-3-zone-selection-colored-outline-click-click: backlog
+  4-3-zone-selection-colored-outline-click-click: done
   4-4-entry-exit-live-placement: backlog
   4-5-reachability-counter-and-highlight: backlog
   4-6-configurable-defaults: backlog
@@ -106,7 +106,7 @@ development_status:
   epic-7: backlog
   epic-7-retrospective: optional
 generated: 2026-08-05
-last_updated: 08-20-2026 00:00
+last_updated: 08-24-2026 00:00
 project: Labyrinthes
 project_key: NOKEY
 story_location: _bmad-output/implementation-artifacts
