@@ -73,7 +73,7 @@ development_status:
   3-7-builder-theme-toggle: done
   3-8-test-in-player-launch-the-game-from-the-builder: done
   3-9-edit-in-builder-launch-the-builder-from-the-game: done
-  4-1-builder-cursor-and-marker-glyphs: backlog
+  4-1-builder-cursor-and-marker-glyphs: done
   4-2-wall-tool-semantics-break-vs-pass-through: backlog
   4-3-zone-selection-colored-outline-click-click: backlog
   4-4-entry-exit-live-placement: backlog
