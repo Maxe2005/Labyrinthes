@@ -1036,22 +1036,26 @@ class _BuilderMazeCanvas(tk.Canvas):
 
     def _draw_cursor(self, position: Position, colors: ColorTokens) -> int:
         size = self._cell_size
-        x0, y0 = position.col * size, position.row * size
-        return self.create_rectangle(
-            x0,
-            y0,
-            x0 + size,
-            y0 + size,
-            outline=colors.accent,
-            width=_WALL_WIDTH,
+        cx = position.col * size + size // 2
+        cy = position.row * size + size // 2
+        radius = int(round(size * _MARKER_SCALE / 2))
+        return self.create_oval(
+            cx - radius,
+            cy - radius,
+            cx + radius,
+            cy + radius,
+            fill=colors.accent,
+            outline="",
             tags=("cursor",),
         )
 
     def set_cursor(self, position: Position) -> None:
-        """Move the cursor rectangle to `position`'s cell, without redrawing walls."""
+        """Move the cursor circle to `position`'s cell, without redrawing walls."""
         size = self._cell_size
-        x0, y0 = position.col * size, position.row * size
-        self.coords(self._cursor_id, x0, y0, x0 + size, y0 + size)
+        cx = position.col * size + size // 2
+        cy = position.row * size + size // 2
+        radius = int(round(size * _MARKER_SCALE / 2))
+        self.coords(self._cursor_id, cx - radius, cy - radius, cx + radius, cy + radius)
 
     def _pixel_to_cell(self, x: int, y: int) -> Position:
         """The grid cell containing pixel `(x, y)`, clamped to the grid's
@@ -1148,11 +1152,11 @@ class _BuilderMazeCanvas(tk.Canvas):
             self._draw_ghost(ghost, colors)
 
     def _draw_entry_marker(self, position: Position, colors: ColorTokens) -> None:
-        # Filled circle (Stories' shape + color distinction: entry = circle,
-        # exit = diamond), radius `_marker_radius`.
+        # Filled square (entry = square, exit = diamond, builder/player = circle),
+        # radius `_marker_radius`.
         cx, cy = self._cell_center(position)
         r = self._marker_radius
-        self.create_oval(
+        self.create_rectangle(
             cx - r,
             cy - r,
             cx + r,
