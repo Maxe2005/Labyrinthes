@@ -297,6 +297,8 @@ class _BuilderEditArea(tk.Frame):
         bind_shortcut(self, keybinding("set_exit"), self._activate_set_exit)
         bind_shortcut(self, keybinding("save_maze"), self.save_maze)
         bind_shortcut(self, keybinding("test_in_player"), self._test_in_player)
+        # Escape cancels armed zone anchor (click-click gesture, Story 4.3).
+        self.bind_all("<Escape>", self._cancel_armed_anchor, add="+")
 
     # -- construction --------------------------------------------------
 
@@ -338,7 +340,10 @@ class _BuilderEditArea(tk.Frame):
             destroy_kb.label,
             theme=self._theme,
             shortcut=destroy_kb.display,
-            tooltip="Click-and-drag across a rectangle to break every wall inside it",
+            tooltip=(
+                "Click-and-drag or click-click across a rectangle to break "
+                "every wall inside it; Escape cancels"
+            ),
             group=group,
             command=self._activate_destroy_zone,
         )
@@ -349,7 +354,10 @@ class _BuilderEditArea(tk.Frame):
             restore_kb.label,
             theme=self._theme,
             shortcut=restore_kb.display,
-            tooltip="Click-and-drag across a rectangle to restore every wall inside it",
+            tooltip=(
+                "Click-and-drag or click-click across a rectangle to restore "
+                "every wall inside it; Escape cancels"
+            ),
             group=group,
             command=self._activate_restore_zone,
         )
@@ -492,6 +500,14 @@ class _BuilderEditArea(tk.Frame):
             self._activate_pass_through()
         elif self._session.tool is BuilderTool.PASS_THROUGH:
             self._activate_break()
+
+    def _cancel_armed_anchor(self, _event: tk.Event | None = None) -> None:
+        """Cancel the armed zone anchor (click-click gesture) on Escape key.
+
+        Also cancels any ongoing drag operation so that releasing the mouse
+        button does not apply the zone operation.
+        """
+        self._canvas._cancel_drag()
 
     # -- editing -----------------------------------------------------
 
@@ -975,6 +991,12 @@ class _BuilderMazeCanvas(tk.Canvas):
         self._cell_size = _cell_size(grid.width, grid.height)
         self._drag_anchor: Position | None = None
         self._drag_tool: BuilderTool | None = None
+        # Armed anchor for click-click zone gesture (Story 4.3): set on first
+        # click when a zone tool is active, cleared on Escape or second click.
+        self._armed_anchor: Position | None = None
+        self._armed_tool: BuilderTool | None = None
+        self._anchor_just_armed: bool = False
+        self._zone_outline_id: int | None = None
         self._marker_radius = int(round(self._cell_size * _MARKER_SCALE / 2))
         self._ghost_font = FontSpec(
             family=TYPOGRAPHY.heading.family,
@@ -1002,6 +1024,8 @@ class _BuilderMazeCanvas(tk.Canvas):
 
         self.bind("<Button-1>", self._on_click)
         self.bind("<ButtonRelease-1>", self._on_release)
+        # Live outline during zone selection (drag or click-click gesture).
+        self.bind("<B1-Motion>", self._on_motion)
 
     def _draw_walls(self, grid: Grid, colors: ColorTokens) -> None:
         # Only genuine wall positions: a "top" bit is only meaningful for a
@@ -1080,11 +1104,28 @@ class _BuilderMazeCanvas(tk.Canvas):
         self._drag_anchor = self._pixel_to_cell(event.x, event.y)
         # Snapshot the active tool now -- the gesture this press might
         # start is governed by whichever tool was active at press time,
-        # even if the user switches tools before releasing. Wall
-        # hit-testing only matters under the Break tool: marker tools place
-        # via `_on_release`'s same-cell click, so a wall hit under them is
-        # wasted work.
+        # even if the user switches tools before releasing.
         self._drag_tool = self._capture_tool()
+
+        # If a zone tool is active, arm the anchor for click-click gesture.
+        # The anchor is armed on first click (press), and the live outline
+        # follows the mouse via _on_motion. A second click commits the zone.
+        # Only arm if no anchor is already armed (first click of the gesture).
+        if (
+            self._drag_tool in (BuilderTool.DESTROY_ZONE, BuilderTool.RESTORE_ZONE)
+            and self._armed_anchor is None
+        ):
+            self._armed_anchor = self._drag_anchor
+            self._armed_tool = self._drag_tool
+            self._anchor_just_armed = True
+            # Draw initial outline at the anchor cell (zero-size rectangle).
+            self._draw_zone_outline(self._armed_anchor, self._armed_anchor)
+            # Bind motion to update outline during click-click gesture (button released).
+            self.bind("<Motion>", self._on_motion)
+
+        # Wall hit-testing only matters under the Break tool: marker tools
+        # place via `_on_release`'s same-cell click, so a wall hit under
+        # them is wasted work.
         if self._drag_tool is not BuilderTool.BREAK:
             return
         hit = self.find_closest(event.x, event.y, halo=_CLICK_HALO)
@@ -1095,6 +1136,61 @@ class _BuilderMazeCanvas(tk.Canvas):
             # Closest item was the cursor rectangle, not a wall bar/gap.
             return
         self._on_wall_clicked(wall)
+
+    def _on_motion(self, event: tk.Event) -> None:
+        """Update the live zone outline during drag or click-click gesture."""
+        if self._armed_anchor is None or self._armed_tool is None:
+            return
+        end = self._pixel_to_cell(event.x, event.y)
+        self._draw_zone_outline(self._armed_anchor, end)
+
+    def _draw_zone_outline(self, anchor: Position, end: Position) -> None:
+        """Draw or update the live colored rectangle outline for zone selection."""
+        colors = colors_for(self._theme)
+        # Distinct color per tool: destroy=accent (blue), restore=entry (green)
+        if self._armed_tool is BuilderTool.DESTROY_ZONE:
+            outline_color = colors.accent
+        else:
+            outline_color = colors.entry
+        x0, y0 = self._cell_bounds(anchor)[:2]
+        x1, y1 = self._cell_bounds(end)[2:]
+        # Normalize so top-left is always (min_x, min_y)
+        x0, x1 = sorted((x0, x1))
+        y0, y1 = sorted((y0, y1))
+        if self._zone_outline_id is not None:
+            self.coords(self._zone_outline_id, x0, y0, x1, y1)
+        else:
+            self._zone_outline_id = self.create_rectangle(
+                x0,
+                y0,
+                x1,
+                y1,
+                outline=outline_color,
+                width=2,
+                dash=(4, 4),
+                tags=("zone-outline",),
+            )
+
+    def _clear_zone_outline(self) -> None:
+        """Remove the live zone outline and reset armed anchor state."""
+        if self._zone_outline_id is not None:
+            self.delete(self._zone_outline_id)
+            self._zone_outline_id = None
+        self._armed_anchor = None
+        self._armed_tool = None
+        self._anchor_just_armed = False
+        # Unbind motion when anchor is cleared.
+        self.unbind("<Motion>")
+
+    def _cancel_drag(self) -> None:
+        """Cancel an ongoing drag operation (e.g., on Escape key).
+
+        Clears the drag anchor/tool and the zone outline, so that
+        releasing the mouse button does not apply the zone operation.
+        """
+        self._drag_anchor = None
+        self._drag_tool = None
+        self._clear_zone_outline()
 
     def _on_release(self, event: tk.Event) -> None:
         # The click-vs-drag split is decided purely by comparing the press
@@ -1111,6 +1207,25 @@ class _BuilderMazeCanvas(tk.Canvas):
         # a stale anchor/tool as a zone operation.
         self._drag_anchor = None
         self._drag_tool = None
+
+        # Click-click gesture: if an anchor was armed (first click with zone
+        # tool), check if this release commits the zone (different cell) or
+        # is the first click's release (same cell -- keep anchor armed) or
+        # a second click on the same cell (cancel gesture).
+        if self._armed_anchor is not None and self._armed_tool is not None:
+            if end != self._armed_anchor:
+                # Second click on different cell: commit the zone
+                self._on_zone_dragged(self._armed_tool, self._armed_anchor, end)
+                self._clear_zone_outline()
+            elif self._anchor_just_armed:
+                # First click's release on same cell: keep anchor armed for
+                # click-click gesture (outline follows mouse until second click)
+                self._anchor_just_armed = False
+            else:
+                # Second click on same cell as armed anchor: cancel gesture
+                self._clear_zone_outline()
+            return
+
         if tool is None:
             return
         if end != anchor:
