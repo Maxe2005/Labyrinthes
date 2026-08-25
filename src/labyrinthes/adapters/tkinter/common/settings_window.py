@@ -63,6 +63,7 @@ from labyrinthes.adapters.tkinter.common.tokens import (
     Theme,
     colors_for,
 )
+from labyrinthes.application.builder_session import BuilderTool
 from labyrinthes.application.confirmation_settings import (
     read_confirm_invalid_input,
     read_confirm_level_change,
@@ -75,12 +76,22 @@ from labyrinthes.application.confirmation_settings import (
     write_confirm_restart,
     write_confirm_switch_maze,
 )
+from labyrinthes.application.defaults_settings import (
+    read_builder_default_tool,
+    read_new_maze_defaults,
+    read_random_maze_defaults,
+    write_builder_default_tool,
+    write_new_maze_default_columns,
+    write_new_maze_default_rows,
+    write_random_maze_default_columns,
+    write_random_maze_default_rows,
+)
 from labyrinthes.application.settings_repository import SettingsRepository
 from labyrinthes.application.theme_logo_settings import read_theme_logo, write_theme_logo
 
 __all__ = ["SettingsWindow"]
 
-_CATEGORIES = ("Appearance", "Confirmation")
+_CATEGORIES = ("Appearance", "Confirmation", "Defaults")
 _APPEARANCE_PLACEHOLDER = "Appearance settings are coming soon."
 
 # `(row text, reader, writer)` for the confirmation toggles -- one per
@@ -121,6 +132,7 @@ class SettingsWindow(tk.Toplevel):
         self._settings_repository = settings_repository
         self._show_logo_picker = show_logo_picker
         self._nav_focused: dict[str, bool] = {}
+        self._default_dimension_errors: dict[tk.Entry, tk.Label] = {}
         colors = colors_for(theme)
         self.configure(background=colors.window)
 
@@ -198,8 +210,10 @@ class SettingsWindow(tk.Toplevel):
         self._confirmation_rows = {}
         if name == "Appearance":
             self._build_appearance(self._content)
-        else:
+        elif name == "Confirmation":
             self._build_confirmation(self._content)
+        else:
+            self._build_defaults(self._content)
 
     def _build_appearance(self, container: tk.Frame) -> None:
         colors = colors_for(self._theme)
@@ -355,3 +369,159 @@ class SettingsWindow(tk.Toplevel):
             )
             checkbutton.pack(anchor="w", fill="x", padx=SPACING["2xl"], pady=SPACING["sm"])
             self._confirmation_rows[text] = variable
+
+    def _build_defaults(self, container: tk.Frame) -> None:
+        colors = colors_for(self._theme)
+
+        # Default Builder tool dropdown
+        tool_frame = tk.Frame(container, background=colors.window)
+        tool_frame.pack(fill="x", padx=SPACING["2xl"], pady=SPACING["md"])
+
+        tk.Label(
+            tool_frame,
+            text="Default Builder tool",
+            font=TYPOGRAPHY.body.to_tk_font(),
+            background=colors.window,
+            foreground=colors.ink,
+            anchor="w",
+        ).pack(anchor="w", pady=(0, SPACING["xs"]))
+
+        current_tool = read_builder_default_tool(self._settings_repository)
+        tool_var = tk.StringVar(value=current_tool.value)
+        tool_options = [t.value for t in BuilderTool]
+
+        tool_menu = tk.OptionMenu(tool_frame, tool_var, *tool_options)
+        tool_menu.configure(
+            background=colors.window,
+            foreground=colors.ink,
+            activebackground=colors.window,
+            activeforeground=colors.ink,
+            font=TYPOGRAPHY.body.to_tk_font(),
+            cursor="hand2",
+        )
+        tool_menu.pack(fill="x")
+
+        def on_tool_change(*_args: str) -> None:
+            write_builder_default_tool(self._settings_repository, BuilderTool(tool_var.get()))
+
+        tool_var.trace_add("write", on_tool_change)
+
+        # Dimension fields - New Maze defaults
+        new_maze_frame = tk.Frame(container, background=colors.window)
+        new_maze_frame.pack(fill="x", padx=SPACING["2xl"], pady=(SPACING["lg"], SPACING["md"]))
+
+        tk.Label(
+            new_maze_frame,
+            text="New Maze defaults",
+            font=TYPOGRAPHY.body.to_tk_font(),
+            background=colors.window,
+            foreground=colors.ink,
+            anchor="w",
+        ).pack(anchor="w", pady=(0, SPACING["xs"]))
+
+        new_maze_cols, new_maze_rows = read_new_maze_defaults(self._settings_repository)
+        self._add_default_dimension_field(
+            new_maze_frame,
+            "Columns",
+            str(new_maze_cols),
+            lambda v: write_new_maze_default_columns(self._settings_repository, v),
+        )
+        self._add_default_dimension_field(
+            new_maze_frame,
+            "Rows",
+            str(new_maze_rows),
+            lambda v: write_new_maze_default_rows(self._settings_repository, v),
+        )
+
+        # Dimension fields - Random Maze defaults
+        random_maze_frame = tk.Frame(container, background=colors.window)
+        random_maze_frame.pack(fill="x", padx=SPACING["2xl"], pady=(SPACING["lg"], SPACING["md"]))
+
+        tk.Label(
+            random_maze_frame,
+            text="Random Maze defaults",
+            font=TYPOGRAPHY.body.to_tk_font(),
+            background=colors.window,
+            foreground=colors.ink,
+            anchor="w",
+        ).pack(anchor="w", pady=(0, SPACING["xs"]))
+
+        random_maze_cols, random_maze_rows = read_random_maze_defaults(self._settings_repository)
+        self._add_default_dimension_field(
+            random_maze_frame,
+            "Columns",
+            str(random_maze_cols),
+            lambda v: write_random_maze_default_columns(self._settings_repository, v),
+        )
+        self._add_default_dimension_field(
+            random_maze_frame,
+            "Rows",
+            str(random_maze_rows),
+            lambda v: write_random_maze_default_rows(self._settings_repository, v),
+        )
+
+    def _add_default_dimension_field(
+        self,
+        parent: tk.Frame,
+        label: str,
+        initial_value: str,
+        writer: callable,
+    ) -> None:
+        colors = colors_for(self._theme)
+
+        row = tk.Frame(parent, background=colors.window)
+        row.pack(fill="x", pady=(0, SPACING["xs"]))
+
+        tk.Label(
+            row,
+            text=label,
+            font=TYPOGRAPHY.body.to_tk_font(),
+            background=colors.window,
+            foreground=colors.ink,
+            width=8,
+            anchor="w",
+        ).pack(side="left")
+
+        entry = tk.Entry(row, width=6)
+        entry.insert(0, initial_value)
+        entry.pack(side="left")
+        entry.bind("<KeyRelease>", lambda _e: self._validate_default_dimension(entry, writer))
+
+        error_label = tk.Label(
+            parent,
+            text="",
+            font=TYPOGRAPHY.body_secondary.to_tk_font(),
+            background=colors.window,
+            foreground=colors.exit,
+            anchor="w",
+            justify="left",
+        )
+        error_label.pack(fill="x", pady=(0, SPACING["sm"]))
+
+        self._default_dimension_errors[entry] = error_label
+
+    def _validate_default_dimension(self, entry: tk.Entry, writer: callable) -> None:
+        from labyrinthes.domain.maze_size_bounds import DEFAULT_MAZE_SIZE_BOUNDS
+
+        text = entry.get()
+        error_label = self._default_dimension_errors.get(entry)
+        if error_label is None:
+            return
+
+        try:
+            value = int(text)
+            if value < 1:
+                error_label.configure(text="Must be a positive number.")
+                return
+            # We don't know if this is columns or rows here, but the writers
+            # will clamp on read. For UX, we can check against the max bounds.
+            max_bound = max(
+                DEFAULT_MAZE_SIZE_BOUNDS.max_columns, DEFAULT_MAZE_SIZE_BOUNDS.max_rows
+            )
+            if value > max_bound:
+                error_label.configure(text=f"Maximum is {max_bound}.")
+                return
+            error_label.configure(text="")
+            writer(value)
+        except ValueError:
+            error_label.configure(text="Enter a whole number.")

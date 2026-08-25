@@ -38,6 +38,7 @@ from collections.abc import Callable
 from labyrinthes.adapters.tkinter.common.field_navigation import FieldNavigator
 from labyrinthes.adapters.tkinter.common.pill_btn import PillButton
 from labyrinthes.adapters.tkinter.common.tokens import SPACING, TYPOGRAPHY, Theme, colors_for
+from labyrinthes.application.defaults_settings import read_new_maze_defaults
 from labyrinthes.application.maze_size_bounds import read_maze_size_bounds
 from labyrinthes.application.settings_repository import SettingsRepository
 from labyrinthes.domain.grid import Grid
@@ -71,6 +72,8 @@ class NewMazeDialog(tk.Toplevel):
         self._on_confirm = on_confirm
         # Read-with-fallback, never written back to (see module docstring).
         self._bounds = read_maze_size_bounds(settings_repository)
+        # Read defaults at construction time (Story 4.6).
+        default_columns, default_rows = read_new_maze_defaults(settings_repository)
 
         colors = colors_for(theme)
         self.configure(background=colors.window)
@@ -81,8 +84,8 @@ class NewMazeDialog(tk.Toplevel):
         form = tk.Frame(self, background=colors.window)
         form.pack(padx=SPACING["2xl"], pady=SPACING["2xl"], fill="both", expand=True)
 
-        self._add_field(form, "columns", str(self._bounds.min_columns))
-        self._add_field(form, "rows", str(self._bounds.min_rows))
+        self._add_field(form, "columns", str(default_columns))
+        self._add_field(form, "rows", str(default_rows))
         self._entries["columns"].focus_set()
 
         buttons = tk.Frame(self, background=colors.window)

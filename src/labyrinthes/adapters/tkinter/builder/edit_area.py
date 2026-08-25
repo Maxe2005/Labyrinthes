@@ -136,6 +136,7 @@ class _BuilderEditArea(tk.Frame):
         maze_repository: MazeRepository,
         entry: Position | None = None,
         exit: Position | None = None,
+        default_tool: BuilderTool = BuilderTool.BREAK,
     ) -> None:
         colors = colors_for(theme)
         super().__init__(parent, background=colors.window)
@@ -144,7 +145,9 @@ class _BuilderEditArea(tk.Frame):
         self._navigate = navigate
         self._settings_repository = settings_repository
         self._maze_repository = maze_repository
-        self._session: BuilderSession = start_builder_session(maze, entry=entry, exit=exit)
+        self._session: BuilderSession = start_builder_session(
+            maze, entry=entry, exit=exit, default_tool=default_tool
+        )
         # The open marker-redefinition `ConfirmDialog`, if any -- `None`
         # when no prompt is showing (Story 3.4). `_maybe_confirm`'s guard
         # (`is not None` -> no-op) stops a second gated trigger from
@@ -264,9 +267,19 @@ class _BuilderEditArea(tk.Frame):
         )
         self._set_exit_button.pack(fill="x", pady=(SPACING["sm"], 0))
 
-        # `start_builder_session()` defaults to `BuilderTool.BREAK` -- reflect
-        # that in the initial button styling.
-        self._break_button.set_active(True)
+        # Reflect the initial active tool from the session.
+        if self._session.tool is BuilderTool.BREAK:
+            self._break_button.set_active(True)
+        elif self._session.tool is BuilderTool.PASS_THROUGH:
+            self._pass_through_button.set_active(True)
+        elif self._session.tool is BuilderTool.DESTROY_ZONE:
+            self._destroy_zone_button.set_active(True)
+        elif self._session.tool is BuilderTool.RESTORE_ZONE:
+            self._restore_zone_button.set_active(True)
+        elif self._session.tool is BuilderTool.SET_ENTRY:
+            self._set_entry_button.set_active(True)
+        elif self._session.tool is BuilderTool.SET_EXIT:
+            self._set_exit_button.set_active(True)
 
     def _build_hud(self, parent: tk.Widget, colors: ColorTokens) -> None:
         hud_row = tk.Frame(parent, background=colors.window)

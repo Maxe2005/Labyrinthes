@@ -107,7 +107,11 @@ class BuilderSession:
 
 
 def start_builder_session(
-    maze: Maze, *, entry: Position | None = None, exit: Position | None = None
+    maze: Maze,
+    *,
+    entry: Position | None = None,
+    exit: Position | None = None,
+    default_tool: BuilderTool = BuilderTool.BREAK,
 ) -> BuilderSession:
     """A fresh `BuilderSession` for `maze`: cursor at `maze.entry`, Break tool
     active (mirrors `player_session.start_session`'s "ball at `maze.entry`"
@@ -118,12 +122,16 @@ def start_builder_session(
     path hands the session's own markers back in so a round-trip restores
     exactly what the Builder had set (`BuilderTestLaunch`'s payload), rather
     than resetting an unset exit to `None` / a set one to a fresh default.
+
+    `default_tool` sets the initial active tool (fallback: Break). Read in the
+    adapter layer and passed in -- the application layer gains no settings
+    dependency (Story 4.6).
     """
     resolved_entry = maze.entry if entry is None else entry
     return BuilderSession(
         maze=maze,
         cursor=resolved_entry,
-        tool=BuilderTool.BREAK,
+        tool=default_tool,
         entry=resolved_entry,
         exit=exit,
     )

@@ -38,6 +38,7 @@ from labyrinthes.adapters.tkinter.common import (
     ToggleThemeFn,
     TopBar,
 )
+from labyrinthes.application.defaults_settings import read_builder_default_tool
 from labyrinthes.application.maze_repository import MazeRepository
 from labyrinthes.application.settings_repository import SettingsRepository
 from labyrinthes.domain.maze import Maze
@@ -108,6 +109,7 @@ def mount(
     maze = state.maze if isinstance(state, BuilderTestLaunch) else state
     entry = state.entry if isinstance(state, BuilderTestLaunch) else None
     exit_marker = state.exit if isinstance(state, BuilderTestLaunch) else None
+    default_tool = read_builder_default_tool(settings_repository)
     edit_area = _BuilderEditArea(
         frame,
         maze,
@@ -117,6 +119,7 @@ def mount(
         maze_repository=maze_repository,
         entry=entry,
         exit=exit_marker,
+        default_tool=default_tool,
     )
     edit_area.pack(
         fill="both",
