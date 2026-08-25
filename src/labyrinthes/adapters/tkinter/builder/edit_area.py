@@ -100,7 +100,7 @@ from labyrinthes.application.confirmation_settings import read_confirm_redefine_
 from labyrinthes.application.maze_repository import MazeRepository
 from labyrinthes.application.settings_repository import SettingsRepository
 from labyrinthes.domain.errors import DomainValidationError
-from labyrinthes.domain.level_visibility import Wall, is_border_cell
+from labyrinthes.domain.level_visibility import Wall
 from labyrinthes.domain.maze import Maze, MazeKind
 from labyrinthes.domain.movement import Direction
 from labyrinthes.domain.position import Position
@@ -170,6 +170,7 @@ class _BuilderEditArea(tk.Frame):
         bind_shortcut(self, keybinding("restore_zone"), self._activate_restore_zone)
         bind_shortcut(self, keybinding("set_entry"), self._activate_set_entry)
         bind_shortcut(self, keybinding("set_exit"), self._activate_set_exit)
+        bind_shortcut(self, keybinding("place_marker"), self._place_marker_at_cursor)
         bind_shortcut(self, keybinding("save_maze"), self.save_maze)
         bind_shortcut(self, keybinding("test_in_player"), self._test_in_player)
         # Escape cancels armed zone anchor (click-click gesture, Story 4.3).
@@ -257,7 +258,7 @@ class _BuilderEditArea(tk.Frame):
             exit_kb.label,
             theme=self._theme,
             shortcut=exit_kb.display,
-            tooltip="Click a border cell to mark it as the maze exit",
+            tooltip="Click a cell to mark it as the maze exit (not on entry)",
             group=group,
             command=self._activate_set_exit,
         )
@@ -456,14 +457,9 @@ class _BuilderEditArea(tk.Frame):
         )
 
     def _place_exit(self, position: Position) -> None:
-        # Border-cell-only: a non-border target is a silent no-op, never a
-        # prompt (the ghost only ever previews border cells, so this is the
-        # accidental/exploratory click path). Same-cell is a no-op, and so
-        # is placing on the entry's cell (start and goal never share a
-        # cell); first placement is direct; only a redefinition is gated by
-        # the setting.
-        if not is_border_cell(self._session.maze.grid, position):
-            return
+        # Any cell except the entry: a target on the entry is a silent no-op.
+        # Same-cell is a no-op; first placement is direct; only a redefinition
+        # is gated by the setting.
         if self._session.exit == position:
             return
         if self._session.entry == position:
@@ -530,24 +526,37 @@ class _BuilderEditArea(tk.Frame):
     def _clear_confirm_dialog(self) -> None:
         self._confirm_dialog = None
 
+    def _place_marker_at_cursor(self) -> None:
+        """Place the entry or exit marker at the current cursor position via Enter key.
+
+        Delegates to the existing `_place_entry`/`_place_exit` methods which
+        handle the redefinition confirmation flow.
+        """
+        if self._session.tool is BuilderTool.SET_ENTRY:
+            self._place_entry(self._session.cursor)
+        elif self._session.tool is BuilderTool.SET_EXIT:
+            self._place_exit(self._session.cursor)
+
     def _sync_markers(self) -> None:
-        # The ghost preview is rendered only while Set Exit is active, at
-        # the cursor cell if that cell is on the border and holds no
-        # marker -- never a standing default/placeholder position for an
-        # unset exit, and never drawn over the entry/exit it would preview
-        # (the I/O matrix's "filled diamond marker replaces the ghost").
+        # Ghost previews for Set Entry (filled square) and Set Exit (filled
+        # diamond) -- shown at the cursor cell when the respective tool is
+        # active, except on the other marker's cell and except on the
+        # marker's own cell (no ghost over an already-placed marker).
         # Every session change that could affect markers (tool switch,
         # cursor move, a placement) re-syncs through this single method.
-        ghost: Position | None = None
+        entry_ghost: Position | None = None
+        exit_ghost: Position | None = None
         cursor = self._session.cursor
-        if (
-            self._session.tool is BuilderTool.SET_EXIT
-            and is_border_cell(self._session.maze.grid, cursor)
-            and cursor != self._session.entry
-            and cursor != self._session.exit
-        ):
-            ghost = cursor
-        self._canvas.refresh_markers(self._session.entry, self._session.exit, ghost)
+        tool = self._session.tool
+        entry_blocked = cursor in (self._session.exit, self._session.entry)
+        exit_blocked = cursor in (self._session.entry, self._session.exit)
+        if tool is BuilderTool.SET_ENTRY and not entry_blocked:
+            entry_ghost = cursor
+        elif tool is BuilderTool.SET_EXIT and not exit_blocked:
+            exit_ghost = cursor
+        self._canvas.refresh_markers(
+            self._session.entry, self._session.exit, entry_ghost, exit_ghost
+        )
 
     def _sync_after_wall_change(self) -> None:
         self._canvas.refresh_walls(self._session.maze.grid)

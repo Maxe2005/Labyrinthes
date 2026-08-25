@@ -162,7 +162,7 @@ def test_clicking_a_border_cell_with_set_exit_places_the_exit_marker(
     assert len(canvas.find_withtag("marker")) == 2
 
 
-def test_clicking_an_interior_cell_with_set_exit_is_a_no_op(
+def test_clicking_an_interior_cell_with_set_exit_places_the_exit_marker(
     tk_root,
     navigate_stub,
     toggle_theme_stub,
@@ -170,6 +170,8 @@ def test_clicking_an_interior_cell_with_set_exit_is_a_no_op(
     fake_settings_repository,
     fake_maze_repository,
 ):
+    # Exit can now be placed on any cell except the entry (Story 4.4).
+    write_confirm_redefine_marker(fake_settings_repository, False)
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
     frame = mount(
@@ -187,9 +189,10 @@ def test_clicking_an_interior_cell_with_set_exit_is_a_no_op(
 
     _drag_zone(canvas, Position(1, 1), Position(1, 1))
 
-    assert edit_area._session.exit is None
-    assert edit_area._session.maze.exit == Position(2, 3)
-    assert len(canvas.find_withtag("marker")) == 1  # only the seeded entry
+    assert edit_area._session.exit == Position(1, 1)
+    assert edit_area._session.maze.exit == Position(1, 1)
+    # Entry (seeded) + exit = two distinct marker items.
+    assert len(canvas.find_withtag("marker")) == 2
 
 
 def test_set_exit_ghost_preview_follows_the_cursor_along_the_border(
@@ -205,6 +208,7 @@ def test_set_exit_ghost_preview_follows_the_cursor_along_the_border(
     # only once the cursor reaches an unmarked border cell. The movement
     # goes through the real `_on_move` path (walls pre-opened by
     # `_open_top_row_maze`) so the tracking contract is pinned end-to-end.
+    # Ghost is now a filled diamond (1 item) per Story 4.4.
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
     frame = mount(
@@ -225,7 +229,7 @@ def test_set_exit_ghost_preview_follows_the_cursor_along_the_border(
     edit_area._on_move(Direction.RIGHT)  # cursor (0,1), border, unmarked
 
     ghost = canvas.find_withtag("ghost-marker")
-    assert len(ghost) == 2  # dashed rect + "?" glyph
+    assert len(ghost) == 1  # filled diamond
     cx, cy = canvas._cell_center(Position(0, 1))
     x0, y0, x1, y1 = canvas.bbox(ghost[0])
     assert (x0 + x1) // 2 == cx
@@ -239,7 +243,7 @@ def test_set_exit_ghost_preview_follows_the_cursor_along_the_border(
     assert (y0 + y1) // 2 == cy
 
 
-def test_set_exit_ghost_is_hidden_when_the_cursor_moves_to_an_interior_cell(
+def test_set_exit_ghost_preview_follows_the_cursor_on_interior_cells(
     tk_root,
     navigate_stub,
     toggle_theme_stub,
@@ -247,6 +251,7 @@ def test_set_exit_ghost_is_hidden_when_the_cursor_moves_to_an_interior_cell(
     fake_settings_repository,
     fake_maze_repository,
 ):
+    # Ghost now shows on interior cells too (except the entry cell) per Story 4.4.
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
     frame = mount(
@@ -263,11 +268,16 @@ def test_set_exit_ghost_is_hidden_when_the_cursor_moves_to_an_interior_cell(
     edit_area._activate_set_exit()
     edit_area._on_move(Direction.RIGHT)  # cursor (0,1): border, ghost shows
 
-    assert len(canvas.find_withtag("ghost-marker")) == 2
+    assert len(canvas.find_withtag("ghost-marker")) == 1  # filled diamond
 
-    edit_area._on_move(Direction.DOWN)  # cursor (1,1): interior, ghost hidden
+    edit_area._on_move(Direction.DOWN)  # cursor (1,1): interior, ghost still shows
 
-    assert canvas.find_withtag("ghost-marker") == ()
+    ghost = canvas.find_withtag("ghost-marker")
+    assert len(ghost) == 1  # filled diamond on interior cell
+    cx, cy = canvas._cell_center(Position(1, 1))
+    x0, y0, x1, y1 = canvas.bbox(ghost[0])
+    assert (x0 + x1) // 2 == cx
+    assert (y0 + y1) // 2 == cy
 
 
 def test_set_exit_ghost_is_never_drawn_over_an_existing_marker(
@@ -281,6 +291,7 @@ def test_set_exit_ghost_is_never_drawn_over_an_existing_marker(
     # The ghost never covers a marker cell: neither the seeded entry at the
     # cursor's start cell nor the exit once placed at the cursor's cell --
     # the I/O matrix's "filled diamond marker replaces the ghost".
+    # Ghost is now a filled diamond (1 item) per Story 4.4.
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
     frame = mount(
@@ -297,7 +308,7 @@ def test_set_exit_ghost_is_never_drawn_over_an_existing_marker(
     edit_area._activate_set_exit()
     edit_area._on_move(Direction.RIGHT)  # cursor (0,1), border, unmarked
 
-    assert len(canvas.find_withtag("ghost-marker")) == 2
+    assert len(canvas.find_withtag("ghost-marker")) == 1  # filled diamond
 
     _drag_zone(canvas, Position(0, 1), Position(0, 1))  # place exit at (0,1)
 
@@ -305,10 +316,10 @@ def test_set_exit_ghost_is_never_drawn_over_an_existing_marker(
 
     edit_area._on_move(Direction.RIGHT)  # cursor (0,2): ghost reappears
 
-    assert len(canvas.find_withtag("ghost-marker")) == 2
+    assert len(canvas.find_withtag("ghost-marker")) == 1  # filled diamond
 
 
-def test_set_exit_ghost_is_never_rendered_for_other_tools(
+def test_ghost_is_never_rendered_for_non_marker_tools(
     tk_root,
     navigate_stub,
     toggle_theme_stub,
@@ -316,6 +327,7 @@ def test_set_exit_ghost_is_never_rendered_for_other_tools(
     fake_settings_repository,
     fake_maze_repository,
 ):
+    # Non-marker tools (Break, Pass-through, zone tools) never show ghosts.
     navigate, _ = navigate_stub
     toggle_theme, _ = toggle_theme_stub
     frame = mount(
@@ -333,7 +345,13 @@ def test_set_exit_ghost_is_never_rendered_for_other_tools(
     edit_area._activate_break()
     assert canvas.find_withtag("ghost-marker") == ()
 
-    edit_area._activate_set_entry()
+    edit_area._activate_pass_through()
+    assert canvas.find_withtag("ghost-marker") == ()
+
+    edit_area._activate_destroy_zone()
+    assert canvas.find_withtag("ghost-marker") == ()
+
+    edit_area._activate_restore_zone()
     assert canvas.find_withtag("ghost-marker") == ()
 
 
