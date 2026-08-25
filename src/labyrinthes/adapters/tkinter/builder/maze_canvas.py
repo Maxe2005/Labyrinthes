@@ -25,13 +25,13 @@ outline that follows the mouse; a second click on a different cell commits
 the zone, a second click on the same cell (or Escape, via `_cancel_drag`)
 cancels it.
 
-Entry/exit marking (Story 3.4): `refresh_markers()` renders the entry as a
-filled square (`colors.entry`), the exit as a filled diamond (`colors.exit`),
-and, only while Set Exit is active, a dashed-`?` ghost preview
-(`colors.ghost`) at the cursor cell when that cell is on the border and
-holds no marker -- driven entirely by `_BuilderEditArea._sync_markers`,
-which recomputes the ghost position and calls this method; the canvas itself
-holds no marker-placement logic.
+Entry/exit marking (Stories 3.4, 4.4): `refresh_markers()` renders the entry
+as a filled square (`colors.entry`), the exit as a filled diamond
+(`colors.exit`), and, while Set Entry/Set Exit is active, a filled ghost
+preview matching the marker shape (square for entry, diamond for exit) at
+the cursor cell -- driven entirely by `_BuilderEditArea._sync_markers`,
+which recomputes the ghost positions and calls this method; the canvas
+itself holds no marker-placement logic.
 
 Kept local to `adapters/tkinter/builder/` per the Boundaries (Builder-
 specific widgets never move to `adapters/tkinter/common/`).
@@ -42,7 +42,7 @@ from __future__ import annotations
 import tkinter as tk
 from collections.abc import Callable
 
-from labyrinthes.adapters.tkinter.common import TYPOGRAPHY, FontSpec, Theme
+from labyrinthes.adapters.tkinter.common import Theme
 from labyrinthes.adapters.tkinter.common.tokens import ColorTokens, colors_for
 from labyrinthes.application.builder_session import BuilderTool
 from labyrinthes.domain.grid import Grid
@@ -59,11 +59,6 @@ _WALL_WIDTH = 2
 # Fraction of a cell a marker's radius spans -- same scale as the Player's
 # `maze_canvas._MARKER_SCALE` (Story 3.4's marker geometry reference).
 _MARKER_SCALE = 0.6
-# Fraction of a cell the Set Exit ghost's dashed outline is inset from the
-# cell edge (scales with the cell so it never overflows the smallest cells).
-_GHOST_INSET_SCALE = 0.25
-# Fraction of a cell the ghost's "?" glyph's font size spans.
-_GHOST_FONT_SCALE = 0.55
 # Search radius (px) `find_closest()` accepts around a click -- without it,
 # a click meant for a *broken* (gap) wall would have to land exactly on the
 # invisible hairline drawn there (see `_draw_wall_bar`).
@@ -119,11 +114,6 @@ class _BuilderMazeCanvas(tk.Canvas):
         self._anchor_just_armed: bool = False
         self._zone_outline_id: int | None = None
         self._marker_radius = int(round(self._cell_size * _MARKER_SCALE / 2))
-        self._ghost_font = FontSpec(
-            family=TYPOGRAPHY.heading.family,
-            size=max(8, int(self._cell_size * _GHOST_FONT_SCALE)),
-            weight="700",
-        ).to_tk_font()
         colors = colors_for(theme)
 
         super().__init__(
@@ -377,16 +367,18 @@ class _BuilderMazeCanvas(tk.Canvas):
         self,
         entry: Position | None,
         exit: Position | None,
-        ghost: Position | None,
+        entry_ghost: Position | None,
+        exit_ghost: Position | None,
     ) -> None:
-        """Redraw the entry/exit markers and any Set Exit ghost preview.
+        """Redraw the entry/exit markers and any Set Entry/Set Exit ghost previews.
 
         Destroys every tagged `marker`/`ghost-marker` item and redraws from
         scratch, so a stale marker at a previous position can never linger
         after a placement/undo/redefinition -- this is the single redraw
         seam `_BuilderEditArea._sync_markers` drives. Colors come from the
-        active theme via `colors_for`; the ghost is dashed + `?`-glyphed
-        and purely informational, never hit-testable as a wall or a marker.
+        active theme via `colors_for`; ghosts are filled shapes matching
+        their respective markers (square for entry, diamond for exit) and
+        purely informational, never hit-testable.
         """
         colors = colors_for(self._theme)
         self.delete("marker", "ghost-marker")
@@ -394,8 +386,10 @@ class _BuilderMazeCanvas(tk.Canvas):
             self._draw_entry_marker(entry, colors)
         if exit is not None:
             self._draw_exit_marker(exit, colors)
-        if ghost is not None:
-            self._draw_ghost(ghost, colors)
+        if entry_ghost is not None:
+            self._draw_entry_ghost(entry_ghost, colors)
+        if exit_ghost is not None:
+            self._draw_exit_ghost(exit_ghost, colors)
 
     def _draw_entry_marker(self, position: Position, colors: ColorTokens) -> None:
         # Filled square (entry = square, exit = diamond, builder/player = circle),
@@ -430,29 +424,35 @@ class _BuilderMazeCanvas(tk.Canvas):
             tags=("marker",),
         )
 
-    def _draw_ghost(self, position: Position, colors: ColorTokens) -> None:
-        # Dashed outline + `?` glyph at the cursor cell, `colors.ghost`,
-        # non-interactive (tags `ghost-marker` only -- never hit-testable).
-        # The inset and glyph size scale with the cell size so the preview
-        # stays inside the smallest cells (Story 3.4's marker geometry).
-        x0, y0, x1, y1 = self._cell_bounds(position)
-        inset = max(2, int(self._cell_size * _GHOST_INSET_SCALE))
+    def _draw_entry_ghost(self, position: Position, colors: ColorTokens) -> None:
+        # Filled square (entry = square, exit = diamond, builder/player = circle),
+        # radius `_marker_radius`, in `colors.entry`.
+        cx, cy = self._cell_center(position)
+        r = self._marker_radius
         self.create_rectangle(
-            x0 + inset,
-            y0 + inset,
-            x1 - inset,
-            y1 - inset,
-            outline=colors.ghost,
-            dash=(3, 3),
-            width=_WALL_WIDTH,
+            cx - r,
+            cy - r,
+            cx + r,
+            cy + r,
+            outline=colors.entry,
+            fill=colors.entry,
             tags=("ghost-marker",),
         )
+
+    def _draw_exit_ghost(self, position: Position, colors: ColorTokens) -> None:
+        # Filled diamond (exit = diamond), radius `_marker_radius`, in `colors.exit`.
         cx, cy = self._cell_center(position)
-        self.create_text(
+        r = self._marker_radius
+        self.create_polygon(
             cx,
+            cy - r,
+            cx + r,
             cy,
-            text="?",
-            fill=colors.ghost,
-            font=self._ghost_font,
+            cx,
+            cy + r,
+            cx - r,
+            cy,
+            outline=colors.exit,
+            fill=colors.exit,
             tags=("ghost-marker",),
         )

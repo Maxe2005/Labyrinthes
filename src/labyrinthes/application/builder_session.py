@@ -34,14 +34,13 @@ Six tools:
   re-read of `session.tool` at release time would let a single continuous
   gesture be interpreted under two different tools.
 - `BuilderTool.SET_ENTRY` / `BuilderTool.SET_EXIT` (Story 3.4) --
-  `apply_set_entry`/`apply_set_exit` place the optional session entry/exit
-  markers, keeping `session.maze`'s required `entry`/`exit` fields in sync
-  via `dataclasses.replace`. Both refuse targets that would collide with
-  the *other* marker (start and goal never share a cell) with
-  `DomainValidationError` -- the adapter swallows it as a no-op.
-  `apply_set_exit` additionally refuses a non-border cell;
-  `apply_set_entry` additionally refuses an out-of-bounds cell. Neither
-  moves the cursor.
+   `apply_set_entry`/`apply_set_exit` place the optional session entry/exit
+   markers, keeping `session.maze`'s required `entry`/`exit` fields in sync
+   via `dataclasses.replace`. Both refuse targets that would collide with
+   the *other* marker (start and goal never share a cell) with
+   `DomainValidationError` -- the adapter swallows it as a no-op.
+   `apply_set_entry` additionally refuses an out-of-bounds cell. Neither
+   moves the cursor.
 """
 
 from __future__ import annotations
@@ -51,7 +50,7 @@ import enum
 from dataclasses import dataclass, replace
 
 from labyrinthes.domain.errors import DomainValidationError
-from labyrinthes.domain.level_visibility import Wall, is_border_cell, is_border_wall
+from labyrinthes.domain.level_visibility import Wall, is_border_wall
 from labyrinthes.domain.maze import Maze
 from labyrinthes.domain.movement import Direction, attempt_move
 from labyrinthes.domain.position import Position
@@ -157,17 +156,14 @@ def apply_set_entry(session: BuilderSession, position: Position) -> BuilderSessi
 
 
 def apply_set_exit(session: BuilderSession, position: Position) -> BuilderSession:
-    """Place the session exit marker on `position`, a border cell only.
+    """Place the session exit marker on `position`, any cell except the entry.
 
-    A non-border target propagates `DomainValidationError` from the domain
-    `is_border_cell` guard, and a target already holding the entry marker
-    (start and goal never share a cell) does too -- the adapter catches
-    and swallows both as a no-op. Rebuilds `session.maze` with
-    `exit=position` and mirrors the position into the session's optional
-    `exit`. The cursor is left unchanged.
+    A target already holding the entry marker (start and goal never share
+    a cell) propagates `DomainValidationError` -- the adapter catches and
+    swallows it as a no-op. Rebuilds `session.maze` with `exit=position`
+    and mirrors the position into the session's optional `exit`. The cursor
+    is left unchanged.
     """
-    if not is_border_cell(session.maze.grid, position):
-        raise DomainValidationError(f"Cannot set the exit at {position!r}: not a border cell")
     if position == session.entry:
         raise DomainValidationError(
             f"Cannot set the exit at {position!r}: the entry already marks that cell"
