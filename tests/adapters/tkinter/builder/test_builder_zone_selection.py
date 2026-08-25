@@ -99,8 +99,8 @@ def test_zone_selection_click_click_gesture_arms_and_commits(
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
     canvas = find_all(frame, tk.Canvas)[0]
-    walls_chip = next(
-        c for c in find_all(frame, HudChip) if c._caption.cget("text") == "WALLS BROKEN"
+    reach_chip = next(
+        c for c in find_all(frame, HudChip) if c._caption.cget("text") == "UNREACHABLE"
     )
     edit_area._activate_destroy_zone()
 
@@ -109,15 +109,16 @@ def test_zone_selection_click_click_gesture_arms_and_commits(
     assert canvas._armed_anchor == Position(0, 0)
     assert canvas._armed_tool is BuilderTool.DESTROY_ZONE
     assert canvas._zone_outline_id is not None
-    assert walls_chip._value_label.cget("text") == "0"  # No change yet
+    # Initial unreachable: 11
+    assert reach_chip._value_label.cget("text") == "11"
 
     # Second click at (1,1) -- commits the zone
     _click_at_cell_no_drag(canvas, Position(1, 1))
     assert canvas._armed_anchor is None
     assert canvas._armed_tool is None
     assert canvas._zone_outline_id is None
-    # Zone should be destroyed
-    assert walls_chip._value_label.cget("text") != "0"
+    # Zone destroyed: 8 cells reachable = 4 unreachable
+    assert reach_chip._value_label.cget("text") == "4"
 
 
 def test_zone_selection_outline_follows_mouse_during_click_click_gesture(
@@ -192,8 +193,8 @@ def test_zone_selection_escape_cancels_armed_anchor(
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
     canvas = find_all(frame, tk.Canvas)[0]
-    walls_chip = next(
-        c for c in find_all(frame, HudChip) if c._caption.cget("text") == "WALLS BROKEN"
+    reach_chip = next(
+        c for c in find_all(frame, HudChip) if c._caption.cget("text") == "UNREACHABLE"
     )
     edit_area._activate_destroy_zone()
 
@@ -207,8 +208,8 @@ def test_zone_selection_escape_cancels_armed_anchor(
     assert canvas._armed_anchor is None
     assert canvas._armed_tool is None
     assert canvas._zone_outline_id is None
-    # No zone operation should have been applied
-    assert walls_chip._value_label.cget("text") == "0"
+    # No zone operation should have been applied; unreachable stays 11
+    assert reach_chip._value_label.cget("text") == "11"
 
 
 def test_zone_selection_escape_during_drag_cancels_drag(
@@ -235,8 +236,8 @@ def test_zone_selection_escape_during_drag_cancels_drag(
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
     canvas = find_all(frame, tk.Canvas)[0]
-    walls_chip = next(
-        c for c in find_all(frame, HudChip) if c._caption.cget("text") == "WALLS BROKEN"
+    reach_chip = next(
+        c for c in find_all(frame, HudChip) if c._caption.cget("text") == "UNREACHABLE"
     )
     edit_area._activate_destroy_zone()
 
@@ -257,7 +258,7 @@ def test_zone_selection_escape_during_drag_cancels_drag(
 
     # Release at (2,2) -- should NOT apply the zone (drag was cancelled)
     _release_at_cell(canvas, Position(2, 2))
-    assert walls_chip._value_label.cget("text") == "0"
+    assert reach_chip._value_label.cget("text") == "11"
 
 
 def test_zone_selection_restore_zone_click_click_gesture(
@@ -321,8 +322,8 @@ def test_zone_selection_same_cell_click_is_no_op(
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
     canvas = find_all(frame, tk.Canvas)[0]
-    walls_chip = next(
-        c for c in find_all(frame, HudChip) if c._caption.cget("text") == "WALLS BROKEN"
+    reach_chip = next(
+        c for c in find_all(frame, HudChip) if c._caption.cget("text") == "UNREACHABLE"
     )
     edit_area._activate_destroy_zone()
 
@@ -330,8 +331,8 @@ def test_zone_selection_same_cell_click_is_no_op(
     _click_at_cell_no_drag(canvas, Position(1, 1))
     _click_at_cell_no_drag(canvas, Position(1, 1))
 
-    # No zone operation applied
-    assert walls_chip._value_label.cget("text") == "0"
+    # No zone operation applied; unreachable stays 11
+    assert reach_chip._value_label.cget("text") == "11"
     assert canvas._armed_anchor is None
 
 
@@ -371,10 +372,11 @@ def test_zone_selection_tool_switch_mid_gesture_uses_press_time_tool(
     # Second click -- should use Destroy Zone (press-time tool)
     _click_at_cell_no_drag(canvas, Position(1, 1))
     # Zone should be destroyed, not restored
-    walls_chip = next(
-        c for c in find_all(frame, HudChip) if c._caption.cget("text") == "WALLS BROKEN"
+    reach_chip = next(
+        c for c in find_all(frame, HudChip) if c._caption.cget("text") == "UNREACHABLE"
     )
-    assert walls_chip._value_label.cget("text") != "0"
+    # Destroy zone (0,0)-(1,1) makes 8 cells reachable = 4 unreachable
+    assert reach_chip._value_label.cget("text") == "4"
 
 
 def test_zone_selection_break_tool_does_not_arm_anchor(

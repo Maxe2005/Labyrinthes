@@ -11,7 +11,6 @@ from labyrinthes.adapters.tkinter.common import (
 )
 from labyrinthes.domain.level_visibility import Wall
 from labyrinthes.domain.position import Position
-from labyrinthes.domain.wall_editing import count_broken_walls
 from labyrinthes.domain.zone_editing import destroy_zone
 from tests.adapters.tkinter.builder._helpers import (
     _click_at_cell,
@@ -53,17 +52,21 @@ def test_destroy_zone_drag_destroys_the_rectangle_in_one_operation(
     assert destroy_button.active is True
 
     canvas = find_all(frame, tk.Canvas)[0]
-    walls_chip = next(
-        c for c in find_all(frame, HudChip) if c._caption.cget("text") == "WALLS BROKEN"
+    reach_chip = next(
+        c for c in find_all(frame, HudChip) if c._caption.cget("text") == "UNREACHABLE"
     )
     cursor_before = edit_area._session.cursor
     canvas_cursor_coords_before = canvas.coords(canvas._cursor_id)
 
+    # Destroy zone from (0,0) to (1,1) opens ALL interior walls in that rectangle,
+    # connecting not just the 2x2 block but also to cells below and right.
+    # Initial: 12 cells, 1 reachable = 11 unreachable
+    # After destroy zone (0,0)-(1,1): 8 cells reachable = 4 unreachable
     _drag_zone(canvas, Position(0, 0), Position(1, 1))
 
     expected_grid = destroy_zone(_sketch_maze(4, 3).grid, Position(0, 0), Position(1, 1))
     assert edit_area._session.maze.grid == expected_grid
-    assert walls_chip._value_label.cget("text") == str(count_broken_walls(expected_grid))
+    assert reach_chip._value_label.cget("text") == "4"
     # A zone operation never moves the editing cursor -- neither the
     # session's own cursor nor the on-canvas cursor rectangle.
     assert edit_area._session.cursor == cursor_before
@@ -95,20 +98,22 @@ def test_restore_zone_drag_over_a_just_destroyed_zone_returns_it_to_its_initial_
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
     canvas = find_all(frame, tk.Canvas)[0]
-    walls_chip = next(
-        c for c in find_all(frame, HudChip) if c._caption.cget("text") == "WALLS BROKEN"
+    reach_chip = next(
+        c for c in find_all(frame, HudChip) if c._caption.cget("text") == "UNREACHABLE"
     )
     original_grid = edit_area._session.maze.grid
 
     edit_area._activate_destroy_zone()
     _drag_zone(canvas, Position(0, 0), Position(1, 1))
-    assert walls_chip._value_label.cget("text") != "0"
+    # After destroy: 4 unreachable
+    assert reach_chip._value_label.cget("text") == "4"
 
     edit_area._activate_restore_zone()
     _drag_zone(canvas, Position(0, 0), Position(1, 1))
 
     assert edit_area._session.maze.grid == original_grid
-    assert walls_chip._value_label.cget("text") == "0"
+    # After restore: back to 11 unreachable
+    assert reach_chip._value_label.cget("text") == "11"
 
 
 def test_zone_tool_active_press_and_release_on_the_same_cell_is_a_no_op(
@@ -134,8 +139,8 @@ def test_zone_tool_active_press_and_release_on_the_same_cell_is_a_no_op(
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
     canvas = find_all(frame, tk.Canvas)[0]
-    walls_chip = next(
-        c for c in find_all(frame, HudChip) if c._caption.cget("text") == "WALLS BROKEN"
+    reach_chip = next(
+        c for c in find_all(frame, HudChip) if c._caption.cget("text") == "UNREACHABLE"
     )
     original_grid = edit_area._session.maze.grid
     edit_area._activate_destroy_zone()
@@ -143,7 +148,7 @@ def test_zone_tool_active_press_and_release_on_the_same_cell_is_a_no_op(
     _drag_zone(canvas, Position(1, 1), Position(1, 1))
 
     assert edit_area._session.maze.grid == original_grid
-    assert walls_chip._value_label.cget("text") == "0"
+    assert reach_chip._value_label.cget("text") == "11"
 
 
 def test_break_mode_click_and_drag_only_toggles_the_directly_clicked_wall(
@@ -173,8 +178,8 @@ def test_break_mode_click_and_drag_only_toggles_the_directly_clicked_wall(
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
     canvas = find_all(frame, tk.Canvas)[0]
-    walls_chip = next(
-        c for c in find_all(frame, HudChip) if c._caption.cget("text") == "WALLS BROKEN"
+    reach_chip = next(
+        c for c in find_all(frame, HudChip) if c._caption.cget("text") == "UNREACHABLE"
     )
 
     wall = Wall(1, 1, "top")
@@ -182,7 +187,10 @@ def test_break_mode_click_and_drag_only_toggles_the_directly_clicked_wall(
     canvas._on_click(_FakeEvent(int((x0 + x1) / 2), int((y0 + y1) / 2)))
     canvas._on_release(_FakeEvent(3 * canvas._cell_size, 2 * canvas._cell_size))
 
-    assert walls_chip._value_label.cget("text") == "1"
+    # Clicking Wall(1,1,"top") (between (0,1) and (1,1)) doesn't connect
+    # new cells to entry since (0,1) is still walled from (0,0).
+    # Unreachable stays 11
+    assert reach_chip._value_label.cget("text") == "11"
     assert edit_area._session.maze.grid.cell_at(Position(1, 1)).has_top_wall is False
 
 
@@ -328,8 +336,8 @@ def test_switching_from_break_to_a_zone_tool_mid_drag_does_not_trigger_a_zone_op
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
     canvas = find_all(frame, tk.Canvas)[0]
-    walls_chip = next(
-        c for c in find_all(frame, HudChip) if c._caption.cget("text") == "WALLS BROKEN"
+    reach_chip = next(
+        c for c in find_all(frame, HudChip) if c._caption.cget("text") == "UNREACHABLE"
     )
 
     wall = Wall(1, 1, "top")  # Break is active by default
@@ -339,7 +347,8 @@ def test_switching_from_break_to_a_zone_tool_mid_drag_does_not_trigger_a_zone_op
     _release_at_cell(canvas, Position(2, 2))
 
     # Only the press-time single wall toggle applied -- no zone-wide change.
-    assert walls_chip._value_label.cget("text") == "1"
+    # Clicking Wall(1,1,"top") doesn't connect new cells to entry.
+    assert reach_chip._value_label.cget("text") == "11"
     assert edit_area._session.maze.grid.cell_at(Position(1, 1)).has_top_wall is False
 
 

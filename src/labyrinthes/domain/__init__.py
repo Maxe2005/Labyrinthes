@@ -36,6 +36,7 @@ from labyrinthes.domain.movement import Direction, attempt_move
 from labyrinthes.domain.movement_mode import MovementMode
 from labyrinthes.domain.movement_speed import MovementSpeed, cell_crossing_duration
 from labyrinthes.domain.position import Position
+from labyrinthes.domain.reachability import inaccessible_cells
 
 __all__ = [
     "DEFAULT_MAZE_SIZE_BOUNDS",
@@ -62,6 +63,7 @@ __all__ = [
     "cell_crossing_duration",
     "generate_random_maze",
     "initial_level_visibility",
+    "inaccessible_cells",
     "is_border_wall",
     "note_collision",
     "partition_grid",

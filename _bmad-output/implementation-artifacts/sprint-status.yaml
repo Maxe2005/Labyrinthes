@@ -77,7 +77,7 @@ development_status:
   4-2-wall-tool-semantics-break-vs-pass-through: done
   4-3-zone-selection-colored-outline-click-click: done
   4-4-entry-exit-live-placement: done
-  4-5-reachability-counter-and-highlight: backlog
+  4-5-reachability-counter-and-highlight: done
   4-6-configurable-defaults: backlog
   4-7-player-continue-regenerates-random: backlog
   4-8-shell-windowing: backlog

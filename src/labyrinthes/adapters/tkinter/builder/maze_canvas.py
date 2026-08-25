@@ -456,3 +456,33 @@ class _BuilderMazeCanvas(tk.Canvas):
             fill=colors.exit,
             tags=("ghost-marker",),
         )
+
+    # -- Reachability highlight (Story 4.5) ------------------------------
+
+    def draw_reachability_highlight(self, cells: frozenset[Position]) -> None:
+        """Draw a colored outline around each cell in `cells`.
+
+        The outline is drawn as a rectangle inset by 2px from the cell bounds,
+        using the theme's accent color for visibility. Items are tagged
+        "reachability-highlight" for bulk clearing.
+        """
+        colors = colors_for(self._theme)
+        highlight_color = colors.accent
+        for position in cells:
+            x0, y0, x1, y1 = self._cell_bounds(position)
+            # Inset by 2px so the outline sits inside the cell, not on the wall
+            inset = 2
+            self.create_rectangle(
+                x0 + inset,
+                y0 + inset,
+                x1 - inset,
+                y1 - inset,
+                outline=highlight_color,
+                width=2,
+                fill="",
+                tags=("reachability-highlight",),
+            )
+
+    def clear_reachability_highlight(self) -> None:
+        """Remove all reachability highlight outlines."""
+        self.delete("reachability-highlight")
