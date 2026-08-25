@@ -91,7 +91,6 @@ from labyrinthes.application.builder_session import (
     apply_set_exit,
     apply_wall_toggle,
     apply_zone_operation,
-    broken_wall_count,
     move_cursor,
     set_tool,
     start_builder_session,
@@ -104,6 +103,7 @@ from labyrinthes.domain.level_visibility import Wall
 from labyrinthes.domain.maze import Maze, MazeKind
 from labyrinthes.domain.movement import Direction
 from labyrinthes.domain.position import Position
+from labyrinthes.domain.reachability import inaccessible_cells
 
 __all__ = ["_BuilderEditArea"]
 
@@ -276,14 +276,16 @@ class _BuilderEditArea(tk.Frame):
         self._grid_chip = HudChip(hud_row, "Grid", f"{grid.width}×{grid.height}", theme=self._theme)
         self._grid_chip.pack(side="left", padx=(0, SPACING["sm"]))
 
-        self._walls_chip = HudChip(
+        # Reachability counter (Story 4.5) -- replaces "Walls broken"
+        self._reachability_chip = HudChip(
             hud_row,
-            "Walls broken",
-            str(broken_wall_count(self._session)),
+            "Unreachable",
+            self._compute_reachability_count(),
             theme=self._theme,
             live=True,
+            command=self._toggle_reachability_highlight,
         )
-        self._walls_chip.pack(side="left")
+        self._reachability_chip.pack(side="left")
 
         # "Draft" status (AC3, Story 3.6): shown only for a `SKETCH`-kind
         # maze -- set once, at construction, from the maze this area was
@@ -323,6 +325,10 @@ class _BuilderEditArea(tk.Frame):
             shortcut=test_kb.display,
             command=self._test_in_player,
         ).pack(side="right")
+
+        # Reachability highlight state
+        self._reachability_highlight_active: bool = False
+        self._inaccessible_cells: frozenset[Position] = frozenset()
 
     def _build_canvas(self, parent: tk.Widget) -> None:
         self._canvas = _BuilderMazeCanvas(
@@ -482,6 +488,7 @@ class _BuilderEditArea(tk.Frame):
             # silent no-op (mirrors `_apply_set_exit`).
             return
         self._sync_markers()
+        self._update_reachability_on_marker_change()
 
     def _apply_set_exit(self, position: Position) -> None:
         try:
@@ -491,6 +498,7 @@ class _BuilderEditArea(tk.Frame):
             # "adapter swallows" path -- mirrors `_on_wall_clicked`).
             return
         self._sync_markers()
+        self._update_reachability_on_marker_change()
 
     def _maybe_confirm(
         self,
@@ -560,7 +568,43 @@ class _BuilderEditArea(tk.Frame):
 
     def _sync_after_wall_change(self) -> None:
         self._canvas.refresh_walls(self._session.maze.grid)
-        self._walls_chip.set_value(str(broken_wall_count(self._session)))
+        self._update_reachability()
+
+    def _compute_reachability_count(self) -> str:
+        """Compute the reachability count for the HUD chip."""
+        entry = self._session.entry
+        if entry is None:
+            return "—"
+        inaccessible = inaccessible_cells(self._session.maze, entry)
+        return str(len(inaccessible))
+
+    def _update_reachability(self) -> None:
+        """Update the reachability HUD chip and refresh highlight if active."""
+        self._reachability_chip.set_value(self._compute_reachability_count())
+        if self._reachability_highlight_active:
+            # Recompute and redraw highlight
+            entry = self._session.entry
+            if entry is not None:
+                self._inaccessible_cells = inaccessible_cells(self._session.maze, entry)
+                self._canvas.draw_reachability_highlight(self._inaccessible_cells)
+
+    def _toggle_reachability_highlight(self) -> None:
+        """Toggle the reachability highlight on the canvas."""
+        entry = self._session.entry
+        if entry is None:
+            return
+        if self._reachability_highlight_active:
+            self._canvas.clear_reachability_highlight()
+            self._reachability_highlight_active = False
+            self._inaccessible_cells = frozenset()
+        else:
+            self._inaccessible_cells = inaccessible_cells(self._session.maze, entry)
+            self._canvas.draw_reachability_highlight(self._inaccessible_cells)
+            self._reachability_highlight_active = True
+
+    def _update_reachability_on_marker_change(self) -> None:
+        """Update reachability when entry/exit markers change."""
+        self._update_reachability()
 
     def _test_in_player(self) -> None:
         """Hand the in-progress `Maze` straight to the Player's gameplay screen.
