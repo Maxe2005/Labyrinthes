@@ -98,6 +98,7 @@ from __future__ import annotations
 
 import dataclasses
 import functools
+import random
 import time
 import tkinter as tk
 from collections.abc import Callable
@@ -165,6 +166,7 @@ from labyrinthes.domain.difficulty import Difficulty
 from labyrinthes.domain.duration import Duration
 from labyrinthes.domain.level import Level
 from labyrinthes.domain.maze import Maze, MazeKind
+from labyrinthes.domain.maze_generation import generate_random_maze
 from labyrinthes.domain.movement import Direction
 from labyrinthes.domain.movement_mode import MovementMode
 from labyrinthes.domain.movement_speed import MovementSpeed, cell_crossing_duration
@@ -787,7 +789,9 @@ class GameplayScreen(tk.Frame):
                 ("Back to Builder", self._on_back_to_builder),
             ]
         else:
-            buttons = [("Continue", self._on_continue_clicked)]
+            is_generated = self._maze.kind is MazeKind.GENERATED
+            continue_label = "New random maze" if is_generated else "Continue"
+            buttons = [(continue_label, self._on_continue_clicked)]
         self._win_banner = _OutcomeBanner(
             self,
             theme=self._theme,
@@ -797,12 +801,29 @@ class GameplayScreen(tk.Frame):
         self._win_banner.pack(fill="x", pady=(0, SPACING["lg"]), before=self._maze_frame)
 
     def _on_continue_clicked(self) -> None:
-        # Only dismisses the banner -- `solved` stays `True`, and
-        # `player_session` functions are already no-ops once solved (see
-        # the story's Design Notes), so nothing else needs resetting here.
+        # For generated mazes, regenerate a new random maze with the same
+        # dimensions and entry position (FR-33). For classic/saved-random,
+        # just dismiss the banner (existing behavior).
+        if self._maze.kind is MazeKind.GENERATED:
+            self._regenerate_random_maze()
+        else:
+            if self._win_banner is not None:
+                self._win_banner.destroy()
+                self._win_banner = None
+
+    def _regenerate_random_maze(self) -> None:
+        """Generate a new random maze with the same width, height, and entry."""
         if self._win_banner is not None:
             self._win_banner.destroy()
             self._win_banner = None
+
+        width = self._maze.grid.width
+        height = self._maze.grid.height
+        entry = self._maze.entry
+
+        new_maze = generate_random_maze(width, height, entry, random.Random())
+        if self._navigate is not None:
+            self._navigate(ScreenId.PLAYER, new_maze)
 
     # -- save flow (Story 2.3, unchanged) -------------------------------
 
