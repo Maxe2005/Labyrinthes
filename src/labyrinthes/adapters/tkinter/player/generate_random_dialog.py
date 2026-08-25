@@ -65,6 +65,8 @@ class GenerateRandomDialog(tk.Toplevel):
         *,
         theme: Theme,
         bounds: MazeSizeBounds,
+        default_columns: int,
+        default_rows: int,
         on_confirm: OnConfirmFn,
     ) -> None:
         super().__init__(parent)
@@ -82,8 +84,8 @@ class GenerateRandomDialog(tk.Toplevel):
         form = tk.Frame(self, background=colors.window)
         form.pack(padx=SPACING["2xl"], pady=SPACING["2xl"], fill="both", expand=True)
 
-        self._add_field(form, "columns", str(bounds.min_columns))
-        self._add_field(form, "rows", str(bounds.min_rows))
+        self._add_field(form, "columns", str(default_columns))
+        self._add_field(form, "rows", str(default_rows))
         self._add_field(form, "start_col", "0")
         self._add_field(form, "start_row", "0")
         self._entries["columns"].focus_set()

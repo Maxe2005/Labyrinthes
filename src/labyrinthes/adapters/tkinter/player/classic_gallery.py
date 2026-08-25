@@ -62,6 +62,7 @@ from labyrinthes.application.confirmation_settings import (
     read_confirm_invalid_input,
     read_confirm_switch_maze,
 )
+from labyrinthes.application.defaults_settings import read_random_maze_defaults
 from labyrinthes.application.maze_repository import MazeRepository
 from labyrinthes.application.maze_size_bounds import read_maze_size_bounds
 from labyrinthes.application.settings_repository import SettingsRepository
@@ -402,10 +403,13 @@ class ClassicMazeGallery(tk.Frame):
         is worth surviving a navigate-away.
         """
         bounds = read_maze_size_bounds(self._settings_repository)
+        default_columns, default_rows = read_random_maze_defaults(self._settings_repository)
         GenerateRandomDialog(
             self,
             theme=self._theme,
             bounds=bounds,
+            default_columns=default_columns,
+            default_rows=default_rows,
             on_confirm=self._on_generation_confirmed,
         )
 
