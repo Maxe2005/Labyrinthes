@@ -83,6 +83,10 @@ development_status:
   4-8-shell-windowing: backlog
   4-9-top-bar-brand-logo: backlog
   4-10-screen-layout-blocks: backlog
+  4-11-classic-vs-creation-maze-kind: backlog
+  4-12-screen-shortcuts-never-leak-into-dialogs: backlog
+  4-13-breadcrumb-shows-maze-name: backlog
+  4-14-player-selection-grid-gallery: backlog
   5-1-migration-script-folder-file-renaming: backlog
   5-2-migration-script-settings-csv-header-renaming: backlog
   5-3-migration-script-mazeid-backfill: backlog
