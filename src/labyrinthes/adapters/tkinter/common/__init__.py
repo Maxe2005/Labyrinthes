@@ -20,6 +20,7 @@ from labyrinthes.adapters.tkinter.common.keybindings import (
     bind_shortcut,
     keybinding,
 )
+from labyrinthes.adapters.tkinter.common.logo_loader import load_logo_image
 from labyrinthes.adapters.tkinter.common.navigation import (
     BuilderTestLaunch,
     NavigateFn,
@@ -80,4 +81,5 @@ __all__ = [
     "bind_shortcut",
     "colors_for",
     "keybinding",
+    "load_logo_image",
 ]

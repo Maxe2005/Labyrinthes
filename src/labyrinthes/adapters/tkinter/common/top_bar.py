@@ -1,9 +1,10 @@
-"""`TopBar` -- brand mark + optional breadcrumb + Settings/theme-toggle icons (Story 1.8/1.9).
+"""`TopBar` -- brand mark + optional logo + optional breadcrumb
++ Settings/theme-toggle icons (Story 1.8/1.9/4.9).
 
 Composed by every screen's `mount()`. Per the epic's top-bar pattern: the
-brand mark/wordmark always sits left, an optional `Breadcrumb` sits next to
-it, and the `icon-btn`s (Settings, theme toggle) sit right, in that
-left-to-right order.
+optional logo sits leftmost, then the brand mark/wordmark, an optional
+`Breadcrumb` sits next to it, and the `icon-btn`s (Settings, theme toggle)
+sit right, in that left-to-right order.
 """
 
 from __future__ import annotations
@@ -36,6 +37,7 @@ class TopBar(tk.Frame):
         breadcrumb_segments: list[BreadcrumbSegment] | None = None,
         on_settings: Callable[[], None] | None = None,
         on_theme_toggle: Callable[[], None] | None = None,
+        logo: tk.PhotoImage | None = None,
     ) -> None:
         colors = colors_for(theme)
         super().__init__(
@@ -46,6 +48,14 @@ class TopBar(tk.Frame):
             highlightbackground=colors.border,
             highlightcolor=colors.border,
         )
+
+        self._logo = logo  # Keep reference to prevent garbage collection
+        if logo is not None:
+            tk.Label(
+                self,
+                image=logo,
+                background=colors.window,
+            ).pack(side="left", padx=(SPACING["lg"], SPACING["sm"]), pady=SPACING["sm"])
 
         tk.Label(
             self,

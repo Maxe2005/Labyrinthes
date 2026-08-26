@@ -45,6 +45,7 @@ from labyrinthes.adapters.tkinter.common import (
     Theme,
     ToggleThemeFn,
     TopBar,
+    load_logo_image,
 )
 from labyrinthes.adapters.tkinter.player.classic_gallery import ClassicMazeGallery
 from labyrinthes.adapters.tkinter.player.gameplay import GameplayScreen
@@ -53,6 +54,7 @@ from labyrinthes.application.settings_repository import SettingsRepository
 from labyrinthes.domain.maze import Maze, MazeKind
 
 __all__ = ["mount"]
+
 
 _KIND_LABELS: dict[MazeKind, str] = {
     MazeKind.CLASSIC: "Classic Maze",
@@ -96,6 +98,8 @@ def mount(
     """
     frame = tk.Frame(parent)
 
+    logo_image = load_logo_image(theme, settings_repository)
+
     def open_settings() -> None:
         # `parent` (not `frame`) as the `Toplevel`'s master (Story 1.11):
         # `parent` is the app's persistent container, never destroyed by
@@ -135,6 +139,7 @@ def mount(
         breadcrumb_segments=breadcrumb_segments,
         on_settings=open_settings,
         on_theme_toggle=toggle_theme,
+        logo=logo_image,
     )
     top_bar.pack(fill="x")
 

@@ -32,14 +32,15 @@ _LOGO_BY_KEY: dict[str, tuple[str, str]] = {
 def _logo_path(key: str) -> str:
     """Return the on-disk path for *key*.
 
-    The assets directory is co-located with the consumer code under
-    ``src/labyrinthes/adapters/tkinter/player/assets/logos/``.
     """
     import os
 
     filename = _LOGO_BY_KEY[key][0]
     _DIR = os.path.join(
         os.path.dirname(__file__),
+        "..",
+        "..",
+        "..",
         "assets",
         "logos",
     )

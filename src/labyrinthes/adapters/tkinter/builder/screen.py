@@ -37,6 +37,7 @@ from labyrinthes.adapters.tkinter.common import (
     Theme,
     ToggleThemeFn,
     TopBar,
+    load_logo_image,
 )
 from labyrinthes.application.defaults_settings import read_builder_default_tool
 from labyrinthes.application.maze_repository import MazeRepository
@@ -72,6 +73,8 @@ def mount(
     """
     frame = tk.Frame(parent)
 
+    logo_image = load_logo_image(theme, settings_repository)
+
     def open_settings() -> None:
         # `parent` (not `frame`) as the `Toplevel`'s master (Story 1.11):
         # `parent` is the app's persistent container, never destroyed by
@@ -90,6 +93,7 @@ def mount(
         breadcrumb_segments=breadcrumb_segments,
         on_settings=open_settings,
         on_theme_toggle=toggle_theme,
+        logo=logo_image,
     )
     top_bar.pack(fill="x")
 
