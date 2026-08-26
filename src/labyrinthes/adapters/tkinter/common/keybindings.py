@@ -107,6 +107,20 @@ KEYBINDINGS: tuple[Keybinding, ...] = (
     Keybinding("test_in_player", "Test in Player", "t", ScreenId.BUILDER),
     Keybinding("edit_in_builder", "Edit in Builder", "f", ScreenId.BUILDER),
     Keybinding("place_marker", "Place Marker", "Return", ScreenId.BUILDER),
+    # Story 4.8: F11 fullscreen is screen-agnostic (`scope=None`, bound once
+    # at the root -- see `composition_root.py`); zoom is scoped per-screen
+    # since Builder and Player each drive their own `_BuilderMazeCanvas`/
+    # `MazeCanvas` zoom (`edit_area.py`/`gameplay/screen.py`). `"plus"`/
+    # `"minus"` are the real Tk keysyms for `+`/`-` -- the literal `"+"`
+    # character isn't a valid Tk bind-sequence keysym (`bind_all()` raises
+    # `TclError: bad event type or keysym "+"`, confirmed against a live Tk
+    # instance), so `key` must name the keysym, exactly like `"space"` does
+    # for the spacebar above.
+    Keybinding("toggle_fullscreen", "Toggle Fullscreen", "F11", scope=None),
+    Keybinding("zoom_in_builder", "Zoom In", "plus", ScreenId.BUILDER),
+    Keybinding("zoom_out_builder", "Zoom Out", "minus", ScreenId.BUILDER),
+    Keybinding("zoom_in_player", "Zoom In", "plus", ScreenId.PLAYER),
+    Keybinding("zoom_out_player", "Zoom Out", "minus", ScreenId.PLAYER),
 )
 
 _BY_ACTION_ID: dict[str, Keybinding] = {kb.action_id: kb for kb in KEYBINDINGS}

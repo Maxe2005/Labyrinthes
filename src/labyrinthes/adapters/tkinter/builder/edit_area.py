@@ -121,6 +121,34 @@ _DIRECTION_ACTION_IDS: tuple[tuple[str, Direction], ...] = (
     ("move_right", Direction.RIGHT),
 )
 
+# Story 4.8: px per Ctrl+wheel notch or `+`/`-` keypress -- see the
+# `zoom_in_builder`/`zoom_out_builder` keybindings and
+# `_BuilderMazeCanvas.zoom()`'s own docstring.
+_ZOOM_STEP = 2
+
+
+def _wheel_zoom_delta(event: tk.Event) -> int:
+    """`+_ZOOM_STEP` for a scroll-up notch, `-_ZOOM_STEP` for scroll-down.
+
+    X11 (this project's Linux target) reports a wheel notch as `event.num`
+    (`4` up, `5` down) on a real `<Button-4>`/`<Button-5>` event; Windows/
+    macOS instead report it as `event.delta` (positive up, negative down)
+    on a real `<MouseWheel>` event -- both are bound to the same handler
+    (`_BuilderEditArea._on_wheel_zoom`) so either platform's convention
+    works. `event.num` is checked first since a synthesized `<MouseWheel>`
+    stand-in (e.g. a test's fake event) may carry an irrelevant default
+    `.num`, but a *real* X11 wheel event never carries a meaningful
+    `.delta`. `event.delta == 0` is a no-op rather than falling into the
+    `else` branch (which would otherwise misread it as scroll-down).
+    """
+    if getattr(event, "num", None) == 4:
+        return _ZOOM_STEP
+    if getattr(event, "num", None) == 5:
+        return -_ZOOM_STEP
+    if event.delta == 0:
+        return 0
+    return _ZOOM_STEP if event.delta > 0 else -_ZOOM_STEP
+
 
 class _BuilderEditArea(tk.Frame):
     """Tool side bar + HUD + maze canvas, wired to one `BuilderSession`."""
@@ -356,6 +384,33 @@ class _BuilderEditArea(tk.Frame):
         )
         self._canvas.pack(fill="both", expand=True)
         self._sync_markers()
+
+        # Story 4.8: fit-to-space on every resize, plus Ctrl+wheel/`+`/`-`
+        # zoom on top of it. `<Configure>` fires on the canvas itself (not
+        # its parent) since it's the widget the `fill="both", expand=True`
+        # pack actually resizes -- its own reported width/height *is* the
+        # available space. `<Control-Button-4>`/`<Control-Button-5>` cover
+        # X11's wheel-as-button convention; `<Control-MouseWheel>` covers
+        # Windows/macOS -- both routed through the same handler
+        # (`_wheel_zoom_delta` tells them apart).
+        self._canvas.bind("<Configure>", self._on_canvas_configure)
+        bind_shortcut(self, keybinding("zoom_in_builder"), self._zoom_in)
+        bind_shortcut(self, keybinding("zoom_out_builder"), self._zoom_out)
+        self._canvas.bind("<Control-MouseWheel>", self._on_wheel_zoom)
+        self._canvas.bind("<Control-Button-4>", self._on_wheel_zoom)
+        self._canvas.bind("<Control-Button-5>", self._on_wheel_zoom)
+
+    def _on_canvas_configure(self, event: tk.Event) -> None:
+        self._canvas.fit_to_space(event.width, event.height)
+
+    def _zoom_in(self) -> None:
+        self._canvas.zoom(_ZOOM_STEP)
+
+    def _zoom_out(self) -> None:
+        self._canvas.zoom(-_ZOOM_STEP)
+
+    def _on_wheel_zoom(self, event: tk.Event) -> None:
+        self._canvas.zoom(_wheel_zoom_delta(event))
 
     # -- tool switching --------------------------------------------------
 

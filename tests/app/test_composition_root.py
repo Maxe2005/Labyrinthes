@@ -1,3 +1,4 @@
+import re
 import tkinter as tk
 
 import pytest
@@ -248,6 +249,140 @@ def test_build_app_defaults_maze_repository_to_a_real_csv_maze_repository(tmp_pa
         app.router.navigate(ScreenId.PLAYER)
 
         assert app.router.current_screen_id == ScreenId.PLAYER
+    finally:
+        app.root.destroy()
+
+
+def test_root_window_is_centered_on_screen_at_startup(monkeypatch, tmp_path):
+    # Asserts on the exact `.geometry()` string `_center_on_screen()`
+    # requests, not on `winfo_x()`/`winfo_y()` after the fact -- whether
+    # that request is actually *honored* is up to the platform's window
+    # manager (some ignore an app's own placement requests entirely), which
+    # is outside this codebase's control and not what this story tests
+    # (mirrors `test_f11_is_bound_on_the_root_...`'s same rationale for
+    # `-fullscreen`).
+    calls = []
+    original_geometry = tk.Tk.geometry
+
+    def spying_geometry(self, spec=None):
+        if spec is not None:
+            calls.append(spec)
+        return original_geometry(self, spec)
+
+    monkeypatch.setattr(tk.Tk, "geometry", spying_geometry)
+    app = build_app(settings_repository=JsonSettingsRepository(root=tmp_path))
+    try:
+        assert len(calls) == 1
+        match = re.fullmatch(r"\+(\d+)\+(\d+)", calls[0])
+        assert match is not None
+        x, y = (int(group) for group in match.groups())
+        width = app.root.winfo_width()
+        height = app.root.winfo_height()
+        assert x == (app.root.winfo_screenwidth() - width) // 2
+        assert y == (app.root.winfo_screenheight() - height) // 2
+    finally:
+        app.root.destroy()
+
+
+def test_root_window_is_resizable_in_both_directions(tmp_path):
+    app = build_app(settings_repository=JsonSettingsRepository(root=tmp_path))
+    try:
+        assert app.root.resizable() == (1, 1)
+    finally:
+        app.root.destroy()
+
+
+def test_f11_is_bound_on_the_root_and_toggles_its_fullscreen_attribute(monkeypatch, tmp_path):
+    # `bind_shortcut` is monkeypatched here (rather than a real F11
+    # keypress) for the same reason `test_navigate_closure_bound_...`
+    # monkeypatches `mount_home` to capture `navigate`: it hands back the
+    # real closure `build_app()` wires up, so the toggle can be exercised
+    # and asserted on directly instead of relying on unreliable real X11
+    # key-event synthesis under a withdrawn root (see `keybindings.py`'s
+    # own test file for that convention).
+    captured = {}
+
+    def capturing_bind_shortcut(widget, kb, callback):
+        captured[kb.action_id] = (widget, callback)
+        return lambda event=None: None
+
+    monkeypatch.setattr(composition_root, "bind_shortcut", capturing_bind_shortcut)
+    app = build_app(settings_repository=JsonSettingsRepository(root=tmp_path))
+    try:
+        app.root.withdraw()
+        assert "toggle_fullscreen" in captured
+        widget, toggle = captured["toggle_fullscreen"]
+        # AD-10: F11 is bound on the root itself, not some other widget.
+        assert widget is app.root
+
+        # `.attributes("-fullscreen")` has no reliable getter under a
+        # headless/no-window-manager `Xvfb` (confirmed live: it reads back
+        # `0` even right after being set `True`) -- asserting on the calls
+        # `toggle_root_fullscreen()` makes is the only way this story's own
+        # Design Notes ("track fullscreen per-window as a bool flag, no Tk
+        # getter") lets the toggle be verified at all.
+        calls = []
+        monkeypatch.setattr(app.root, "attributes", lambda *args: calls.append(args))
+
+        toggle()
+        toggle()
+
+        assert calls == [("-fullscreen", True), ("-fullscreen", False)]
+    finally:
+        app.root.destroy()
+
+
+def test_resizing_the_root_while_a_screen_without_a_maze_canvas_is_mounted_raises_nothing(
+    tmp_path,
+):
+    # I/O matrix row (spec-4-8): `<Configure>` is bound directly on each
+    # maze canvas widget (`edit_area.py`/`gameplay/screen.py`), never on the
+    # root or a screen's frame -- so resizing while Home (no canvas) is
+    # mounted has no handler to reach at all, by construction.
+    app = build_app(settings_repository=JsonSettingsRepository(root=tmp_path))
+    try:
+        app.root.withdraw()
+        assert app.router.current_screen_id == ScreenId.HOME
+
+        app.root.event_generate("<Configure>", width=900, height=700)
+        app.root.update_idletasks()
+
+        assert app.router.current_screen_id == ScreenId.HOME
+    finally:
+        app.root.destroy()
+
+
+def test_f11_on_a_focused_settings_window_does_not_also_toggle_the_roots_fullscreen(
+    tmp_path,
+):
+    # Integration regression for the Design Notes' F11 cross-window
+    # scoping claim: with both the root's global F11 binding (`bind_all`,
+    # interpreter-wide) and `SettingsWindow`'s own local override live at
+    # once, a real F11 dispatched while the Settings `Toplevel` has focus
+    # must invoke only its own handler -- the local binding's `"break"`
+    # return must stop Tk's bindtag scan before it reaches the root's.
+    # Unlike `test_f11_is_bound_on_the_root_...` (which monkeypatches
+    # `bind_shortcut` to inspect the closure directly) and
+    # `test_f11_handler_returns_break_...` (which calls the Settings
+    # handler directly), this drives both real bindings through a real
+    # dispatched event to prove the cross-widget mechanism itself.
+    app = build_app(settings_repository=JsonSettingsRepository(root=tmp_path))
+    try:
+        app.root.withdraw()
+        top_bar = _find_all(app.root, TopBar)[0]
+        top_bar._settings_button._on_click()
+        settings_window = _find_all(app.root, SettingsWindow)[0]
+
+        root_calls = []
+        app.root.attributes = lambda *args: root_calls.append(args)
+
+        settings_window.update()
+        settings_window.focus_force()
+        settings_window.update()
+        settings_window.event_generate("<F11>")
+        app.root.update()
+
+        assert root_calls == []
     finally:
         app.root.destroy()
 

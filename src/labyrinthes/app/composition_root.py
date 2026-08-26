@@ -44,6 +44,7 @@ from functools import partial
 from labyrinthes.adapters.storage.csv_maze_repository import CsvMazeRepository
 from labyrinthes.adapters.storage.json_settings_repository import JsonSettingsRepository
 from labyrinthes.adapters.tkinter.builder.screen import mount as mount_builder
+from labyrinthes.adapters.tkinter.common.keybindings import bind_shortcut, keybinding
 from labyrinthes.adapters.tkinter.common.navigation import (
     BuilderTestLaunch,
     NavigateFn,
@@ -59,6 +60,25 @@ from labyrinthes.application.settings_repository import SettingsRepository
 from labyrinthes.domain.maze import Maze
 
 __all__ = ["App", "build_app", "main"]
+
+
+def _center_on_screen(root: tk.Tk) -> None:
+    """Center `root` on the primary screen at its current natural size (Story 4.8, FR-31).
+
+    `update_idletasks()` first forces Tk to run a real geometry pass over
+    the just-mounted Home screen -- a freshly created `Tk()` otherwise
+    reports a stale `1x1` from `winfo_width()`/`winfo_height()` before any
+    layout has happened. `.geometry()` is then given position only
+    (`+x+y`, no `WxH`) -- passing an explicit size there would pin the
+    window at Home's small natural size and stop it auto-growing when a
+    larger screen (Builder/Player) is later mounted into the same root.
+    """
+    root.update_idletasks()
+    width = root.winfo_width()
+    height = root.winfo_height()
+    x = max(0, (root.winfo_screenwidth() - width) // 2)
+    y = max(0, (root.winfo_screenheight() - height) // 2)
+    root.geometry(f"+{x}+{y}")
 
 
 @dataclass(frozen=True)
@@ -173,6 +193,28 @@ def build_app(
         # correctness here would otherwise depend on Home always being
         # stateless rather than being structurally guaranteed.
         navigate(ScreenId.HOME)
+
+        # Story 4.8 (FR-31): center + resizable + F11 fullscreen on the one
+        # `Tk()` root -- centering runs after Home is mounted so it centers
+        # the window at its real content-driven size, not a pre-layout
+        # guess. Tk's default is already resizable in both directions;
+        # `.resizable(True, True)` makes that explicit rather than assumed.
+        _center_on_screen(root)
+        root.resizable(True, True)
+
+        is_fullscreen = False
+
+        def toggle_root_fullscreen() -> None:
+            # Tracked as a plain bool, not read back from Tk (`.attributes
+            # ("-fullscreen")` has no reliable getter across window
+            # managers -- see the story's Design Notes) -- this closure is
+            # the single source of truth for whether the root is currently
+            # fullscreen.
+            nonlocal is_fullscreen
+            is_fullscreen = not is_fullscreen
+            root.attributes("-fullscreen", is_fullscreen)
+
+        bind_shortcut(root, keybinding("toggle_fullscreen"), toggle_root_fullscreen)
     except Exception:
         root.destroy()
         raise

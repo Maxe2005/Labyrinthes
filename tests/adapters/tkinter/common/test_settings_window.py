@@ -1,3 +1,4 @@
+import re
 import tkinter as tk
 
 from labyrinthes.adapters.tkinter.common.settings_window import SettingsWindow
@@ -45,6 +46,71 @@ def test_settings_window_is_a_toplevel(tk_root, fake_settings_repository):
     window = _window(tk_root, fake_settings_repository)
     try:
         assert isinstance(window, tk.Toplevel)
+    finally:
+        window.destroy()
+
+
+def test_center_on_screen_requests_a_geometry_string_centered_on_the_screen(
+    tk_root, fake_settings_repository
+):
+    # Asserts on the exact `.geometry()` string `_center_on_screen()`
+    # requests, not on `winfo_x()`/`winfo_y()` after the fact -- whether
+    # that request is actually *honored* is up to the platform's window
+    # manager (some ignore an app's own placement requests entirely), which
+    # is outside this codebase's control and not what this story tests.
+    window = _window(tk_root, fake_settings_repository)
+    try:
+        calls = []
+        window.geometry = calls.append
+
+        window._center_on_screen()
+
+        assert len(calls) == 1
+        match = re.fullmatch(r"\+(\d+)\+(\d+)", calls[0])
+        assert match is not None
+        x, y = (int(group) for group in match.groups())
+        width = window.winfo_width()
+        height = window.winfo_height()
+        assert x == (window.winfo_screenwidth() - width) // 2
+        assert y == (window.winfo_screenheight() - height) // 2
+    finally:
+        window.destroy()
+
+
+def test_settings_window_is_resizable_in_both_directions(tk_root, fake_settings_repository):
+    window = _window(tk_root, fake_settings_repository)
+    try:
+        assert window.resizable() == (1, 1)
+    finally:
+        window.destroy()
+
+
+def test_f11_toggles_this_windows_own_fullscreen_attribute(tk_root, fake_settings_repository):
+    window = _window(tk_root, fake_settings_repository)
+    try:
+        calls = []
+        window.attributes = lambda *args: calls.append(args)
+
+        window._toggle_fullscreen()
+        window._toggle_fullscreen()
+
+        assert calls == [("-fullscreen", True), ("-fullscreen", False)]
+    finally:
+        window.destroy()
+
+
+def test_f11_handler_returns_break_to_stop_the_roots_global_toggle(
+    tk_root, fake_settings_repository
+):
+    # Tk checks a focused widget's own toplevel bindtag (this local `<F11>`
+    # binding) before the shared `"all"` bindtag (the root's global
+    # toggle) -- returning `"break"` here is what stops that scan from
+    # ever reaching the root's binding while this window has focus.
+    window = _window(tk_root, fake_settings_repository)
+    try:
+        window.attributes = lambda *args: None
+
+        assert window._toggle_fullscreen() == "break"
     finally:
         window.destroy()
 

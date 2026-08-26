@@ -167,6 +167,48 @@ class SettingsWindow(tk.Toplevel):
         self._content.pack(side="left", fill="both", expand=True)
         self._select_category(_CATEGORIES[0])
 
+        # Story 4.8: centered, resizable, and its own F11 fullscreen --
+        # scoped to this `Toplevel` alone, never the root (see
+        # `_toggle_fullscreen`'s docstring).
+        self._fullscreen = False
+        self.bind("<F11>", self._toggle_fullscreen)
+        self._center_on_screen()
+        self.resizable(True, True)
+
+    def _center_on_screen(self) -> None:
+        """Center this window on the primary screen at its current natural size.
+
+        Mirrors `composition_root._center_on_screen`, applied to this
+        `Toplevel` instead of the app's single `Tk()` root -- duplicated
+        rather than shared since the two live in different layers (`app/`
+        vs. `adapters/tkinter/common/`) for a handful of lines. Position
+        only (`+x+y`, no `WxH`) -- an explicit size would pin this window
+        at its first category's natural size and stop it auto-growing when
+        a taller category is later selected.
+        """
+        self.update_idletasks()
+        width = self.winfo_width()
+        height = self.winfo_height()
+        x = max(0, (self.winfo_screenwidth() - width) // 2)
+        y = max(0, (self.winfo_screenheight() - height) // 2)
+        self.geometry(f"+{x}+{y}")
+
+    def _toggle_fullscreen(self, _event: tk.Event | None = None) -> str:
+        """Toggle fullscreen for *this* window only (Story 4.8's Design Notes).
+
+        `bind_all()`'s F11 toggle (bound once at the root, in
+        `composition_root.py`) is interpreter-wide, so it would also fire
+        while this `Toplevel` has focus. Binding locally here instead, and
+        returning `"break"`, relies on Tk checking a focused widget's own
+        toplevel bindtag before the shared `"all"` bindtag: the `"break"`
+        return stops that scan right there, so the root's global toggle
+        never also runs. Fullscreen state is tracked as a plain bool (no Tk
+        getter exists for it), local to this window alone.
+        """
+        self._fullscreen = not self._fullscreen
+        self.attributes("-fullscreen", self._fullscreen)
+        return "break"
+
     def _make_select_handler(self, category: str):
         def _select(_event: tk.Event | None = None) -> None:
             self._select_category(category)
