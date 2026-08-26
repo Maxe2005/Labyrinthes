@@ -1,4 +1,4 @@
-"""`_Sidebar` -- the Movement/Mode/Levels/Difficulty/Logo/Edit-in-Builder column.
+"""`_Sidebar` -- the Movement/Mode/Levels/Difficulty/Edit-in-Builder column.
 
 Every button's command is a callback supplied by `GameplayScreen`
 (`screen.py`), which owns the session and decides what each click actually
@@ -20,14 +20,13 @@ import tkinter as tk
 from collections.abc import Callable
 
 from labyrinthes.adapters.tkinter.common import SPACING, TYPOGRAPHY, Theme, ToolButton, keybinding
-from labyrinthes.adapters.tkinter.common.tokens import ColorTokens, colors_for
-from labyrinthes.application.logos import _logo_path
+from labyrinthes.adapters.tkinter.common.tokens import colors_for
 
 __all__ = ["_Sidebar"]
 
 
 class _Sidebar(tk.Frame):
-    """Movement/Mode/Levels/Difficulty/Logo/Edit-in-Builder button column."""
+    """Movement/Mode/Levels/Difficulty/Edit-in-Builder button column."""
 
     def __init__(
         self,
@@ -40,7 +39,6 @@ class _Sidebar(tk.Frame):
         level_label: str,
         difficulty_label: str,
         difficulty_enabled: bool,
-        logo_key: str,
         show_edit_in_builder: bool,
         on_toggle_mode: Callable[[], None],
         on_cycle_speed: Callable[[], None],
@@ -157,8 +155,6 @@ class _Sidebar(tk.Frame):
         )
         self._difficulty_plus_button.pack(side="left")
 
-        self._build_logo_section(colors, logo_key)
-
         if show_edit_in_builder:
             assert on_edit_in_builder is not None
             edit_kb = keybinding("edit_in_builder")
@@ -172,48 +168,6 @@ class _Sidebar(tk.Frame):
             self._edit_in_builder_button.pack(anchor="w", pady=(SPACING["lg"], SPACING["sm"]))
 
         self.set_difficulty(difficulty_label, enabled=difficulty_enabled)
-
-    def _build_logo_section(self, colors: ColorTokens, logo_key: str) -> None:
-        logo_frame = tk.Frame(self, background=colors.window)
-        logo_frame.pack(anchor="w", pady=(SPACING["lg"], SPACING["sm"]))
-
-        tk.Label(
-            logo_frame,
-            text="Logo",
-            font=TYPOGRAPHY.body.to_tk_font(),
-            background=colors.window,
-            foreground=colors.ink,
-        ).pack(anchor="w")
-
-        try:
-            from PIL import Image, ImageTk
-
-            img = Image.open(_logo_path(logo_key))
-            img = img.resize((64, 64), Image.Resampling.LANCZOS)
-            self._logo_photo = ImageTk.PhotoImage(img)
-            logo_label = tk.Label(
-                logo_frame,
-                image=self._logo_photo,
-                background=colors.window,
-            )
-            logo_label.image = self._logo_photo
-            logo_label.pack(anchor="w", pady=(SPACING["xs"], 0))
-        except Exception:
-            tk.Label(
-                logo_frame,
-                text="—",
-                font=TYPOGRAPHY.body.to_tk_font(),
-                background=colors.window,
-                foreground=colors.ink_soft,
-            ).pack(anchor="w")
-
-        tk.Label(
-            logo_frame,
-            text=logo_key,
-            font=TYPOGRAPHY.body.to_tk_font(),
-            background=colors.window,
-            foreground=colors.ink_soft,
-        ).pack(anchor="w")
 
     # -- sync setters, called by `screen.py` after a session change --------
 
