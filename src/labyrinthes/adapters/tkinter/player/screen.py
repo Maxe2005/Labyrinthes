@@ -110,7 +110,6 @@ def mount(
             parent,
             theme=theme,
             settings_repository=settings_repository,
-            show_logo_picker=True,
         )
 
     is_test_launch = isinstance(state, BuilderTestLaunch)

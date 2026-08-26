@@ -124,13 +124,11 @@ class SettingsWindow(tk.Toplevel):
         *,
         theme: Theme,
         settings_repository: SettingsRepository,
-        show_logo_picker: bool = False,
     ) -> None:
         super().__init__(parent)
         self.title("Settings")
         self._theme = theme
         self._settings_repository = settings_repository
-        self._show_logo_picker = show_logo_picker
         self._nav_focused: dict[str, bool] = {}
         self._default_dimension_errors: dict[tk.Entry, tk.Label] = {}
         colors = colors_for(theme)
@@ -258,19 +256,7 @@ class SettingsWindow(tk.Toplevel):
             self._build_defaults(self._content)
 
     def _build_appearance(self, container: tk.Frame) -> None:
-        colors = colors_for(self._theme)
-        if self._show_logo_picker:
-            self._build_logo_picker(container)
-        else:
-            tk.Label(
-                container,
-                text=_APPEARANCE_PLACEHOLDER,
-                font=TYPOGRAPHY.body_secondary.to_tk_font(),
-                background=colors.window,
-                foreground=colors.ink_soft,
-                wraplength=280,
-                justify="left",
-            ).pack(padx=SPACING["2xl"], pady=SPACING["2xl"])
+        self._build_logo_picker(container)
 
     def _build_logo_picker(self, container: tk.Frame) -> None:
         from labyrinthes.application.logos import _logo_path
@@ -557,9 +543,7 @@ class SettingsWindow(tk.Toplevel):
                 return
             # We don't know if this is columns or rows here, but the writers
             # will clamp on read. For UX, we can check against the max bounds.
-            max_bound = max(
-                DEFAULT_MAZE_SIZE_BOUNDS.max_columns, DEFAULT_MAZE_SIZE_BOUNDS.max_rows
-            )
+            max_bound = max(DEFAULT_MAZE_SIZE_BOUNDS.max_columns, DEFAULT_MAZE_SIZE_BOUNDS.max_rows)
             if value > max_bound:
                 error_label.configure(text=f"Maximum is {max_bound}.")
                 return
