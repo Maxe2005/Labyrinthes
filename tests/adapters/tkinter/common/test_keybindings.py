@@ -221,6 +221,78 @@ def test_bind_shortcut_for_a_multi_char_keysym_still_invokes_its_callback(tk_roo
     assert calls == [1]
 
 
+def test_toggle_fullscreen_is_registered_on_the_f11_keysym_with_no_scope():
+    kb = keybinding("toggle_fullscreen")
+
+    assert kb.label == "Toggle Fullscreen"
+    assert kb.key == "F11"
+    assert kb.display == "F11"
+    assert kb.event == "<KeyPress-F11>"
+    assert kb.scope is None
+
+
+def test_toggle_fullscreen_key_does_not_collide_with_any_other_scope_none_key():
+    keys = [kb.key for kb in KEYBINDINGS if kb.scope is None]
+    assert keys.count("F11") == 1
+
+
+def test_bind_shortcut_binds_the_multi_char_f11_keysym_without_raising(tk_root):
+    # Regression, mirroring `move_up`'s own multi-char-keysym coverage:
+    # `bind_all("<KeyPress-F11>")` must succeed, and no invalid uppercase
+    # variant (`"<KeyPress-F11>".upper()` would still be `"F11"`, so this
+    # mostly guards against a future `key` value that *does* have a
+    # meaningfully different case, e.g. a regression reintroducing the
+    # multi-char guard's bug).
+    kb = keybinding("toggle_fullscreen")
+
+    bind_shortcut(tk_root, kb, lambda: None)  # must not raise
+
+    assert tk_root.bind_all("<KeyPress-F11>") != ""
+
+
+def test_zoom_keybindings_use_the_plus_and_minus_keysyms():
+    # The literal `"+"` character isn't a valid Tk bind-sequence keysym
+    # (`bind_all("<KeyPress-+>")` raises `TclError: bad event type or
+    # keysym "+"`, confirmed against a live Tk instance) -- `key` must name
+    # the real keysym, `"plus"`/`"minus"`, exactly like `"space"` does for
+    # the spacebar.
+    assert keybinding("zoom_in_builder").key == "plus"
+    assert keybinding("zoom_out_builder").key == "minus"
+    assert keybinding("zoom_in_player").key == "plus"
+    assert keybinding("zoom_out_player").key == "minus"
+
+
+def test_zoom_keybindings_are_scoped_to_their_own_screen():
+    assert keybinding("zoom_in_builder").scope is ScreenId.BUILDER
+    assert keybinding("zoom_out_builder").scope is ScreenId.BUILDER
+    assert keybinding("zoom_in_player").scope is ScreenId.PLAYER
+    assert keybinding("zoom_out_player").scope is ScreenId.PLAYER
+
+
+def test_zoom_in_and_zoom_out_keys_are_unique_within_the_builder_scope():
+    builder_keys = [kb.key.lower() for kb in KEYBINDINGS if kb.scope is ScreenId.BUILDER]
+    assert "plus" in builder_keys
+    assert "minus" in builder_keys
+    assert len(builder_keys) == len(set(builder_keys))
+
+
+def test_zoom_in_and_zoom_out_keys_are_unique_within_the_player_scope():
+    player_keys = [kb.key.lower() for kb in KEYBINDINGS if kb.scope is ScreenId.PLAYER]
+    assert player_keys.count("plus") == 1
+    assert player_keys.count("minus") == 1
+    assert len(player_keys) == len(set(player_keys))
+
+
+def test_bind_shortcut_binds_the_plus_and_minus_keysyms_without_raising(tk_root):
+    # Regression for the literal-"+" `TclError` the module docstring calls
+    # out -- binding the real keysyms must succeed for both zoom actions.
+    bind_shortcut(tk_root, keybinding("zoom_in_builder"), lambda: None)  # must not raise
+    bind_shortcut(tk_root, keybinding("zoom_out_builder"), lambda: None)  # must not raise
+
+    assert tk_root.bind_all("<KeyPress-plus>") != ""
+    assert tk_root.bind_all("<KeyPress-minus>") != ""
+
+
 def test_destroying_the_newer_widget_still_unregisters_the_shortcut(tk_root):
     kb = keybinding("open_builder")
     old_widget = tk.Frame(tk_root)

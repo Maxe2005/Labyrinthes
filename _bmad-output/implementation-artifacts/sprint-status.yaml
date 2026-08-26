@@ -18,7 +18,7 @@ action_items:
   id: epic-2-retro-item-1-router-cascade
   owner: Amelia (dev)
   ref: _bmad-output/implementation-artifacts/epic-2/epic-2-retrospective-2026-08-17.md
-  status: open
+  status: done
 - action: 'Add a persistence-hardening story: atomic writes (temp-file-plus-rename)
     + typed LabyrinthesError for malformed content in MazeRepository/SettingsRepository'
   epic: 2
@@ -80,7 +80,7 @@ development_status:
   4-5-reachability-counter-and-highlight: done
   4-6-configurable-defaults: done
   4-7-player-continue-regenerates-random: done
-  4-8-shell-windowing: backlog
+  4-8-shell-windowing: review
   4-9-top-bar-brand-logo: backlog
   4-10-screen-layout-blocks: backlog
   4-11-classic-vs-creation-maze-kind: backlog
@@ -110,7 +110,7 @@ development_status:
   epic-7: backlog
   epic-7-retrospective: optional
 generated: 2026-08-05
-last_updated: 08-25-2026 00:00
+last_updated: 08-26-2026 01:00
 project: Labyrinthes
 project_key: NOKEY
 story_location: _bmad-output/implementation-artifacts

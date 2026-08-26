@@ -197,6 +197,33 @@ _DIRECTION_ACTION_IDS: tuple[tuple[str, Direction], ...] = (
 
 _SPEED_CYCLE: tuple[MovementSpeed, ...] = tuple(MovementSpeed)
 
+# Story 4.8: px per Ctrl+wheel notch or `+`/`-` keypress -- see the
+# `zoom_in_player`/`zoom_out_player` keybindings and `MazeCanvas.zoom()`'s
+# own docstring.
+_ZOOM_STEP = 2
+
+
+def _wheel_zoom_delta(event: tk.Event) -> int:
+    """`+_ZOOM_STEP` for a scroll-up notch, `-_ZOOM_STEP` for scroll-down.
+
+    X11 (this project's Linux target) reports a wheel notch as `event.num`
+    (`4` up, `5` down) on a real `<Button-4>`/`<Button-5>` event; Windows/
+    macOS instead report it as `event.delta` (positive up, negative down)
+    on a real `<MouseWheel>` event -- both are bound to the same handler
+    (`GameplayScreen._on_wheel_zoom`) so either platform's convention
+    works. `event.num` is checked first since a real X11 wheel event never
+    carries a meaningful `.delta`. `event.delta == 0` is a no-op rather
+    than falling into the `else` branch (which would otherwise misread it
+    as scroll-down).
+    """
+    if getattr(event, "num", None) == 4:
+        return _ZOOM_STEP
+    if getattr(event, "num", None) == 5:
+        return -_ZOOM_STEP
+    if event.delta == 0:
+        return 0
+    return _ZOOM_STEP if event.delta > 0 else -_ZOOM_STEP
+
 
 def _level_label(level: Level) -> str:
     """The Level chip/sidebar label: `1`/`2`/`3`/`4`/`Max`."""
@@ -342,12 +369,39 @@ class GameplayScreen(tk.Frame):
             highlightbackground=colors.border,
             highlightcolor=colors.border,
         )
-        self._maze_frame.pack(anchor="w", pady=(0, SPACING["lg"]))
+        # Story 4.8: `fill="both", expand=True` (previously non-expanding)
+        # so this frame -- and the canvas packed inside it the same way --
+        # actually grows/shrinks with the window, giving `MazeCanvas` real
+        # available space to fit-to on `<Configure>`.
+        self._maze_frame.pack(fill="both", expand=True, anchor="w", pady=(0, SPACING["lg"]))
 
         self._maze_canvas = MazeCanvas(
             self._maze_frame, self._maze, self._session.position, theme=theme
         )
-        self._maze_canvas.pack()
+        self._maze_canvas.pack(fill="both", expand=True)
+
+        # Fit-to-space on every resize, plus Ctrl+wheel/`+`/`-` zoom on top
+        # of it -- see `_BuilderEditArea._build_canvas`'s mirrored wiring
+        # for the binding rationale (`<Configure>` on the canvas itself,
+        # X11 vs. Windows/macOS wheel conventions).
+        self._maze_canvas.bind("<Configure>", self._on_canvas_configure)
+        bind_shortcut(self, keybinding("zoom_in_player"), self._zoom_in)
+        bind_shortcut(self, keybinding("zoom_out_player"), self._zoom_out)
+        self._maze_canvas.bind("<Control-MouseWheel>", self._on_wheel_zoom)
+        self._maze_canvas.bind("<Control-Button-4>", self._on_wheel_zoom)
+        self._maze_canvas.bind("<Control-Button-5>", self._on_wheel_zoom)
+
+    def _on_canvas_configure(self, event: tk.Event) -> None:
+        self._maze_canvas.fit_to_space(event.width, event.height)
+
+    def _zoom_in(self) -> None:
+        self._maze_canvas.zoom(_ZOOM_STEP)
+
+    def _zoom_out(self) -> None:
+        self._maze_canvas.zoom(-_ZOOM_STEP)
+
+    def _on_wheel_zoom(self, event: tk.Event) -> None:
+        self._maze_canvas.zoom(_wheel_zoom_delta(event))
 
     def _build_save_zone(self) -> None:
         for child in self._save_zone.winfo_children():
