@@ -81,7 +81,7 @@ development_status:
   4-6-configurable-defaults: done
   4-7-player-continue-regenerates-random: done
   4-8-shell-windowing: done
-  4-9-top-bar-brand-logo: review
+  4-9-top-bar-brand-logo: done
   4-10-screen-layout-blocks: backlog
   4-11-classic-vs-creation-maze-kind: backlog
   4-12-screen-shortcuts-never-leak-into-dialogs: backlog
