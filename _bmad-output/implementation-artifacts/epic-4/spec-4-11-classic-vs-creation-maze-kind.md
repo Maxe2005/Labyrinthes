@@ -5,6 +5,7 @@ created: '2026-08-27'
 status: 'done'
 review_loop_iteration: 0
 context: []
+baseline_commit: f6f2654dde2c231ceee1c2e22dbc2ee5acd4f9dc
 ---
 
 <frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
