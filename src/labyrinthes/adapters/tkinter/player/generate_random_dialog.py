@@ -65,8 +65,8 @@ class GenerateRandomDialog(tk.Toplevel):
         *,
         theme: Theme,
         bounds: MazeSizeBounds,
-        default_columns: int,
-        default_rows: int,
+        default_columns: int | None = None,
+        default_rows: int | None = None,
         on_confirm: OnConfirmFn,
     ) -> None:
         super().__init__(parent)
@@ -74,6 +74,11 @@ class GenerateRandomDialog(tk.Toplevel):
         self._theme = theme
         self._bounds = bounds
         self._on_confirm = on_confirm
+
+        if default_columns is None:
+            default_columns = bounds.min_columns
+        if default_rows is None:
+            default_rows = bounds.min_rows
 
         colors = colors_for(theme)
         self.configure(background=colors.window)

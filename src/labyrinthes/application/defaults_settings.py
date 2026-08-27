@@ -23,7 +23,7 @@ from labyrinthes.application.settings_keys import (
     RANDOM_MAZE_DEFAULT_ROWS,
 )
 from labyrinthes.application.settings_repository import SettingsRepository, SettingsScope
-from labyrinthes.domain.maze_size_bounds import DEFAULT_MAZE_SIZE_BOUNDS
+from labyrinthes.domain.maze_size_bounds import DEFAULT_MAZE_SIZE_BOUNDS, MazeSizeBounds
 
 __all__ = [
     "read_builder_default_tool",
@@ -86,27 +86,29 @@ def write_builder_default_tool(settings: SettingsRepository, tool: BuilderTool) 
     settings.set(SettingsScope.BUILDER, BUILDER_DEFAULT_TOOL, tool.value)
 
 
-def read_new_maze_defaults(settings: SettingsRepository) -> tuple[int, int]:
+def read_new_maze_defaults(
+    settings: SettingsRepository, bounds: MazeSizeBounds = DEFAULT_MAZE_SIZE_BOUNDS
+) -> tuple[int, int]:
     """The default new-maze columns and rows, clamped to FR-4 bounds.
 
-    Each field independently falls back to the bounds' minimum (3).
+    Each field independently falls back to the given bounds' minimum.
     Never raises.
     """
     columns = _read_int(
         settings,
         NEW_MAZE_DEFAULT_COLUMNS,
-        DEFAULT_MAZE_SIZE_BOUNDS.min_columns,
+        bounds.min_columns,
         SettingsScope.BUILDER,
-        DEFAULT_MAZE_SIZE_BOUNDS.min_columns,
-        DEFAULT_MAZE_SIZE_BOUNDS.max_columns,
+        bounds.min_columns,
+        bounds.max_columns,
     )
     rows = _read_int(
         settings,
         NEW_MAZE_DEFAULT_ROWS,
-        DEFAULT_MAZE_SIZE_BOUNDS.min_rows,
+        bounds.min_rows,
         SettingsScope.BUILDER,
-        DEFAULT_MAZE_SIZE_BOUNDS.min_rows,
-        DEFAULT_MAZE_SIZE_BOUNDS.max_rows,
+        bounds.min_rows,
+        bounds.max_rows,
     )
     return columns, rows
 

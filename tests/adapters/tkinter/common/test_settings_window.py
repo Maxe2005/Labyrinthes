@@ -20,12 +20,12 @@ _CONFIRMATION_ROW_TEXTS = {
 }
 
 
-def _all_label_texts(widget: tk.Widget) -> list[str]:
+def _all_widget_texts(widget: tk.Widget) -> list[str]:
     texts = []
     for child in widget.winfo_children():
-        if isinstance(child, tk.Label):
+        if isinstance(child, (tk.Label, tk.Button)):
             texts.append(child.cget("text"))
-        texts.extend(_all_label_texts(child))
+        texts.extend(_all_widget_texts(child))
     return texts
 
 
@@ -128,9 +128,12 @@ def test_settings_window_opens_on_the_appearance_category_with_placeholder_conte
 ):
     window = _window(tk_root, fake_settings_repository)
     try:
-        texts = _all_label_texts(window)
+        texts = _all_widget_texts(window)
         assert "Appearance" in texts
-        assert any("coming soon" in text.lower() for text in texts)
+        # Logo picker shows navigation buttons and current logo key
+        assert "◀" in texts
+        assert "▶" in texts
+        assert "default" in texts
     finally:
         window.destroy()
 
@@ -138,7 +141,7 @@ def test_settings_window_opens_on_the_appearance_category_with_placeholder_conte
 def test_confirmation_category_is_present_in_the_nav(tk_root, fake_settings_repository):
     window = _window(tk_root, fake_settings_repository)
     try:
-        assert "Confirmation" in _all_label_texts(window)
+        assert "Confirmation" in _all_widget_texts(window)
     finally:
         window.destroy()
 
@@ -155,7 +158,11 @@ def test_selecting_confirmation_swaps_the_content_pane_to_five_toggle_rows_and_b
 
         window._select_category("Appearance")
         assert window._confirmation_rows == {}
-        assert any("coming soon" in text.lower() for text in _all_label_texts(window))
+        # Logo picker shows navigation buttons and current logo key
+        texts = _all_widget_texts(window)
+        assert "◀" in texts
+        assert "▶" in texts
+        assert "default" in texts
     finally:
         window.destroy()
 

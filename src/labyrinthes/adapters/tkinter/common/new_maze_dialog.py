@@ -72,8 +72,8 @@ class NewMazeDialog(tk.Toplevel):
         self._on_confirm = on_confirm
         # Read-with-fallback, never written back to (see module docstring).
         self._bounds = read_maze_size_bounds(settings_repository)
-        # Read defaults at construction time (Story 4.6).
-        default_columns, default_rows = read_new_maze_defaults(settings_repository)
+        # Read defaults at construction time (Story 4.6), falling back to bounds' minimums.
+        default_columns, default_rows = read_new_maze_defaults(settings_repository, self._bounds)
 
         colors = colors_for(theme)
         self.configure(background=colors.window)
