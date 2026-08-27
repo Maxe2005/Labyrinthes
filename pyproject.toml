@@ -24,7 +24,7 @@ packages = ["src/labyrinthes"]
 line-length = 100
 target-version = "py312"
 # Legacy monoliths kept as reference during the progressive rewrite; not linted/formatted.
-extend-exclude = ["Creer_labyrinthes.py", "Labyrinthes_copy.py", "Autres/"]
+extend-exclude = ["Creer_labyrinthes.py", "Labyrinthes_copy.py", "Autres/", ".agents/skills/"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
