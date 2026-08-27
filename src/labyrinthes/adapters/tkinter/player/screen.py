@@ -98,7 +98,7 @@ def mount(
     """
     frame = tk.Frame(parent)
 
-    logo_image = load_logo_image(theme, settings_repository)
+    logo_image = load_logo_image(settings_repository)
 
     def open_settings() -> None:
         # `parent` (not `frame`) as the `Toplevel`'s master (Story 1.11):

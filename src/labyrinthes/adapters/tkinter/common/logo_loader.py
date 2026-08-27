@@ -9,7 +9,7 @@ from labyrinthes.application.settings_repository import SettingsRepository
 
 
 def load_logo_image(
-    theme: Theme, settings_repository: SettingsRepository
+    settings_repository: SettingsRepository
 ) -> tk.PhotoImage | None:
     """Load the configured logo image (24x24) for the given theme.
 
