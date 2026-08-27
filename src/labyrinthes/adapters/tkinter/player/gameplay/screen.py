@@ -10,7 +10,7 @@ This screen is the session-orchestrating controller: it owns `self._session`
 and every method that reads or mutates it, and pushes the results into two
 composed, session-agnostic widgets --
 `hud.py`'s `_HudRow` (the chip row + HARD status light) and `sidebar.py`'s
-`_Sidebar` (the Movement/Mode/Levels/Difficulty/Logo/Edit-in-Builder
+`_Sidebar` (the Movement/Mode/Levels/Difficulty/Edit-in-Builder
 column) -- through their small `set_*`/`sync_*` setters. Both widgets hold
 no session state of their own; every button's *command* is still a callback
 into this class, since deciding what a click does (including the
@@ -160,7 +160,6 @@ from labyrinthes.application.player_session import (
     tick as session_tick,
 )
 from labyrinthes.application.settings_repository import SettingsRepository
-from labyrinthes.application.theme_logo_settings import read_theme_logo
 from labyrinthes.application.time_limit_settings import read_time_limit
 from labyrinthes.domain.difficulty import Difficulty
 from labyrinthes.domain.duration import Duration
@@ -319,7 +318,6 @@ class GameplayScreen(tk.Frame):
             level_label=_level_label(self._session.level),
             difficulty_label=_difficulty_label(self._session.difficulty),
             difficulty_enabled=self._difficulty_enabled(),
-            logo_key=read_theme_logo(settings_repository),
             show_edit_in_builder=self._maze.kind in {MazeKind.CLASSIC, MazeKind.SAVED_RANDOM},
             on_toggle_mode=self._toggle_mode,
             on_cycle_speed=self._cycle_speed,
