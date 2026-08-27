@@ -23,9 +23,9 @@ Usage:
     skill-path:   Path to the skill directory (where SKILL.md, references/, assets/ live)
 """
 
-import sys
 import re
 import shutil
+import sys
 from datetime import date
 from pathlib import Path
 

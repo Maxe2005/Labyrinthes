@@ -117,7 +117,8 @@ def test_cli_stdin_output_schema():
 
 def test_cli_file_and_stdin_agree():
     """The CLI over a file and over stdin produce the same count for same text."""
-    import tempfile, os
+    import os
+    import tempfile
     fd, name = tempfile.mkstemp(suffix=".md")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as fh:

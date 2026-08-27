@@ -227,7 +227,7 @@ def _load_existing(path):
     if not Path(path).exists():
         return yaml, None
     try:
-        with io.open(path, "r", encoding="utf-8") as fh:
+        with open(path, encoding="utf-8") as fh:
             data = yaml.load(fh)
     except Exception as exc:
         _fail(f"existing status file is not valid YAML: {exc}", status_file=str(path))
@@ -448,7 +448,7 @@ def cmd_generate(args):
         payload = _dump_bytes(yaml, doc)
         _atomic_write(args.status_file, payload, original_mode)
         verify_yaml = _make_yaml()
-        with io.open(args.status_file, "r", encoding="utf-8") as fh:
+        with open(args.status_file, encoding="utf-8") as fh:
             reread = verify_yaml.load(fh)
         if dict(reread.get("development_status") or {}) != {k: v for k, v in dev.items()}:
             raise ValueError("development_status mismatch after write")
@@ -605,7 +605,7 @@ def cmd_validate(args):
         return
     yaml = _make_yaml()
     try:
-        with io.open(args.status_file, "r", encoding="utf-8") as fh:
+        with open(args.status_file, encoding="utf-8") as fh:
             data = yaml.load(fh)
     except Exception as exc:
         print(json.dumps({

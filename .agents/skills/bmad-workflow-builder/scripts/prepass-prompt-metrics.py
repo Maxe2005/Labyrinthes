@@ -29,7 +29,7 @@ import argparse
 import json
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 # Reuse the single length metric rather than reimplementing token counting.
@@ -200,7 +200,7 @@ def scan(skill_path: Path) -> dict:
         "script": "prepass-prompt-metrics.py",
         "version": "2.0.0",
         "skill_path": str(skill_path),
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "budgets": {
             "skill_md_tokens": [1500, 2500],
             "multi_branch_reference_tokens": 4500,

@@ -41,7 +41,6 @@ import math
 import sys
 from pathlib import Path
 
-
 NUMERIC = (int, float)
 
 
