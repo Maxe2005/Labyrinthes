@@ -259,7 +259,7 @@ class SettingsWindow(tk.Toplevel):
         self._build_logo_picker(container)
 
     def _build_logo_picker(self, container: tk.Frame) -> None:
-        from labyrinthes.application.logos import _logo_path
+        from labyrinthes.application.logos import logo_path
 
         colors = colors_for(self._theme)
         logo_frame = tk.Frame(container, background=colors.window)
@@ -269,7 +269,7 @@ class SettingsWindow(tk.Toplevel):
             from PIL import Image, ImageTk
 
             current_key = read_theme_logo(self._settings_repository)
-            img = Image.open(_logo_path(current_key))
+            img = Image.open(logo_path(current_key))
             img = img.resize((128, 128), Image.Resampling.LANCZOS)
             self._logo_photo = ImageTk.PhotoImage(img)
             logo_label = tk.Label(
@@ -325,7 +325,7 @@ class SettingsWindow(tk.Toplevel):
         next_btn.pack(side="left", padx=(SPACING["sm"], 0))
 
     def _on_prev_logo(self) -> None:
-        from labyrinthes.application.logos import _LOGO_OPTIONS, _logo_path
+        from labyrinthes.application.logos import _LOGO_OPTIONS, logo_path
 
         current = read_theme_logo(self._settings_repository)
         keys = [o[0] for o in _LOGO_OPTIONS]
@@ -339,7 +339,7 @@ class SettingsWindow(tk.Toplevel):
         try:
             from PIL import Image, ImageTk
 
-            img = Image.open(_logo_path(new_key))
+            img = Image.open(logo_path(new_key))
             img = img.resize((128, 128), Image.Resampling.LANCZOS)
             self._logo_photo = ImageTk.PhotoImage(img)
             logo_frame = self._logo_key_label.master
@@ -352,7 +352,7 @@ class SettingsWindow(tk.Toplevel):
             pass
 
     def _on_next_logo(self) -> None:
-        from labyrinthes.application.logos import _LOGO_OPTIONS, _logo_path
+        from labyrinthes.application.logos import _LOGO_OPTIONS, logo_path
 
         current = read_theme_logo(self._settings_repository)
         keys = [o[0] for o in _LOGO_OPTIONS]
@@ -366,7 +366,7 @@ class SettingsWindow(tk.Toplevel):
         try:
             from PIL import Image, ImageTk
 
-            img = Image.open(_logo_path(new_key))
+            img = Image.open(logo_path(new_key))
             img = img.resize((128, 128), Image.Resampling.LANCZOS)
             self._logo_photo = ImageTk.PhotoImage(img)
             logo_frame = self._logo_key_label.master

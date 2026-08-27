@@ -3,14 +3,12 @@
 from __future__ import annotations
 
 import tkinter as tk
+from typing import cast
 
-from labyrinthes.adapters.tkinter.common.tokens import Theme
 from labyrinthes.application.settings_repository import SettingsRepository
 
 
-def load_logo_image(
-    settings_repository: SettingsRepository
-) -> tk.PhotoImage | None:
+def load_logo_image(settings_repository: SettingsRepository) -> tk.PhotoImage | None:
     """Load the configured logo image (24x24) for the given theme.
 
     Returns None if the image cannot be loaded (missing file, PIL unavailable,
@@ -19,7 +17,7 @@ def load_logo_image(
     try:
         from PIL import Image, ImageTk
 
-        from labyrinthes.application.logos import _logo_path
+        from labyrinthes.application.logos import logo_path
     except Exception:
         return None
 
@@ -27,9 +25,9 @@ def load_logo_image(
 
     logo_key = read_theme_logo(settings_repository)
     try:
-        path = _logo_path(logo_key)
+        path = logo_path(logo_key)
         img = Image.open(path)
         img = img.resize((24, 24), Image.Resampling.LANCZOS)
-        return ImageTk.PhotoImage(img)
+        return cast(tk.PhotoImage, ImageTk.PhotoImage(img))
     except Exception:
         return None

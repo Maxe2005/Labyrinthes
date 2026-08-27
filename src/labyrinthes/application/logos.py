@@ -29,7 +29,7 @@ _LOGO_BY_KEY: dict[str, tuple[str, str]] = {
 }
 
 
-def _logo_path(key: str) -> str:
+def logo_path(key: str) -> str:
     """Return the on-disk path for *key*.
 
     """
