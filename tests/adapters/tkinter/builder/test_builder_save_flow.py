@@ -1,6 +1,7 @@
 """Builder save flow: Sketch vs. Maze, Test in Player, and
 _SaveNameDialog naming/arming (Stories 3.6/3.8)."""
 
+import dataclasses
 import tkinter as tk
 
 from labyrinthes.adapters.tkinter.builder.edit_area import _BuilderEditArea
@@ -428,7 +429,7 @@ def test_confirming_the_exit_not_set_dialog_saves_as_a_sketch_and_navigates_back
     assert navigated_maze == saved
 
 
-def test_saving_with_exit_set_promotes_sketch_to_classic_and_mints_a_maze_id(
+def test_saving_with_exit_set_promotes_sketch_to_creation_and_mints_a_maze_id(
     tk_root,
     navigate_stub,
     toggle_theme_stub,
@@ -458,10 +459,10 @@ def test_saving_with_exit_set_promotes_sketch_to_classic_and_mints_a_maze_id(
     dialog = find_all(frame, _SaveNameDialog)[0]
     dialog._on_save_clicked()
 
-    assert fake_maze_repository.list_names(MazeKind.CLASSIC) == ["4x3"]
-    saved = fake_maze_repository.load("4x3", MazeKind.CLASSIC)
-    assert saved.kind is MazeKind.CLASSIC
-    assert saved.id is not None  # CLASSIC is id-eligible: minted on first save (AD-3/AD-6)
+    assert fake_maze_repository.list_names(MazeKind.CREATION) == ["4x3"]
+    saved = fake_maze_repository.load("4x3", MazeKind.CREATION)
+    assert saved.kind is MazeKind.CREATION
+    assert saved.id is not None  # CREATION is id-eligible: minted on first save (AD-3/AD-6)
     assert len(calls) == 1
     assert calls[0] == (ScreenId.BUILDER, saved)
 
@@ -475,12 +476,12 @@ def test_saving_a_maze_that_already_has_an_id_keeps_it_unchanged(
     fake_maze_repository,
 ):
     # A future Edit-in-Builder resave (Story 3.9): the maze is already
-    # CLASSIC/SAVED_RANDOM with an id -- re-saving must carry it forward
+    # CREATION with an id -- re-saving must carry it forward
     # unchanged, never re-mint (AD-3/AD-6, `MazeRepository.save()`'s own
     # contract).
     navigate, calls = navigate_stub
     toggle_theme, _ = toggle_theme_stub
-    existing = fake_maze_repository.save(_classic_maze(4, 3), "existing")
+    existing = fake_maze_repository.save(dataclasses.replace(_sketch_maze(4, 3), kind=MazeKind.CREATION), "existing")
     assert existing.id is not None
 
     frame = mount(
@@ -507,7 +508,7 @@ def test_saving_a_maze_that_already_has_an_id_keeps_it_unchanged(
     assert dialog._save_button._label.cget("text") == "Overwrite"
     dialog._on_save_clicked()
 
-    resaved = fake_maze_repository.load("existing", MazeKind.CLASSIC)
+    resaved = fake_maze_repository.load("existing", MazeKind.CREATION)
     assert resaved.id == existing.id
     assert calls[-1] == (ScreenId.BUILDER, resaved)
 
@@ -522,7 +523,7 @@ def test_duplicate_name_arms_the_save_button_and_requires_a_second_click_to_over
 ):
     navigate, calls = navigate_stub
     toggle_theme, _ = toggle_theme_stub
-    fake_maze_repository.save(_classic_maze(4, 3), "4x3")  # pre-existing collision
+    fake_maze_repository.save(dataclasses.replace(_sketch_maze(4, 3), kind=MazeKind.CREATION), "4x3")  # pre-existing collision
 
     frame = mount(
         tk_root,
@@ -549,7 +550,7 @@ def test_duplicate_name_arms_the_save_button_and_requires_a_second_click_to_over
 
     assert not dialog.winfo_exists()
     assert len(calls) == 1
-    saved = fake_maze_repository.load("4x3", MazeKind.CLASSIC)
+    saved = fake_maze_repository.load("4x3", MazeKind.CREATION)
     assert calls[0] == (ScreenId.BUILDER, saved)
 
 
@@ -563,7 +564,7 @@ def test_editing_the_name_after_arming_resets_the_save_button(
 ):
     navigate, calls = navigate_stub
     toggle_theme, _ = toggle_theme_stub
-    fake_maze_repository.save(_classic_maze(4, 3), "4x3")
+    fake_maze_repository.save(dataclasses.replace(_sketch_maze(4, 3), kind=MazeKind.CREATION), "4x3")
 
     frame = mount(
         tk_root,
