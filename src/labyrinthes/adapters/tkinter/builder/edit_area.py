@@ -100,19 +100,10 @@ from labyrinthes.application.maze_repository import MazeRepository
 from labyrinthes.application.settings_repository import SettingsRepository
 from labyrinthes.domain.errors import DomainValidationError
 from labyrinthes.domain.level_visibility import Wall
-from labyrinthes.domain.maze import Maze, MazeKind
+from labyrinthes.domain.maze import ID_ELIGIBLE_KINDS, Maze, MazeKind
 from labyrinthes.domain.movement import Direction
 from labyrinthes.domain.position import Position
 from labyrinthes.domain.reachability import inaccessible_cells
-
-__all__ = ["_BuilderEditArea"]
-
-# Kinds `MazeRepository.save()` mints a `MazeId` for (AD-3/AD-6) -- a maze
-# save promotes any other kind (in practice, only `SKETCH`: the Builder
-# never opens a `GENERATED` maze) to `CLASSIC`; an already-eligible kind
-# (a future Edit-in-Builder resave, Story 3.9) is left as-is so its
-# existing id is carried forward, not re-minted.
-_ID_ELIGIBLE_KINDS = frozenset({MazeKind.CLASSIC, MazeKind.SAVED_RANDOM})
 
 _DIRECTION_ACTION_IDS: tuple[tuple[str, Direction], ...] = (
     ("move_up", Direction.UP),
@@ -739,15 +730,15 @@ class _BuilderEditArea(tk.Frame):
         self._open_save_dialog(MazeKind.SKETCH, self._do_save_sketch)
 
     def _open_save_dialog_for_maze(self) -> None:
-        # Promote to CLASSIC unless the maze already carries an
+        # Promote to CREATION unless the maze already carries an
         # id-eligible kind (a future Edit-in-Builder resave, Story 3.9) --
         # `MazeRepository.save()` never infers/rewrites `kind` itself, so
         # the caller must set the target kind before calling it (its own
         # docstring), and never re-mints an id an already-eligible maze
         # already carries (AD-3/AD-6).
         target_kind = self._session.maze.kind
-        if target_kind not in _ID_ELIGIBLE_KINDS:
-            target_kind = MazeKind.CLASSIC
+        if target_kind not in ID_ELIGIBLE_KINDS:
+            target_kind = MazeKind.CREATION
         self._open_save_dialog(target_kind, functools.partial(self._do_save_maze, target_kind))
 
     def _open_save_dialog(self, kind: MazeKind, on_confirm: Callable[[str], None]) -> None:

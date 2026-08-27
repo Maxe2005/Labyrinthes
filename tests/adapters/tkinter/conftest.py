@@ -24,11 +24,9 @@ from labyrinthes.application.errors import MazeNotFoundError, SettingNotFoundErr
 from labyrinthes.application.maze_repository import MazeRepository
 from labyrinthes.application.settings_repository import SettingsRepository, SettingsScope
 from labyrinthes.domain.grid import Grid
-from labyrinthes.domain.maze import Maze, MazeKind
+from labyrinthes.domain.maze import ID_ELIGIBLE_KINDS, Maze, MazeKind
 from labyrinthes.domain.maze_id import MazeId
 from labyrinthes.domain.position import Position
-
-_ID_ELIGIBLE_KINDS = frozenset({MazeKind.CLASSIC, MazeKind.SAVED_RANDOM})
 
 
 class FakeSettingsRepository(SettingsRepository):
@@ -62,7 +60,7 @@ class FakeMazeRepository(MazeRepository):
     def save(self, maze: Maze, name: str) -> Maze:
         # Mirrors `CsvMazeRepository.save()`'s own id-minting contract (Story
         # 1.4) so tests can assert on a freshly minted id, not just on kind.
-        if maze.kind in _ID_ELIGIBLE_KINDS and maze.id is None:
+        if maze.kind in ID_ELIGIBLE_KINDS and maze.id is None:
             maze = dataclasses.replace(maze, id=MazeId(value=uuid.uuid4().hex))
         self._store[(maze.kind, name)] = maze
         return maze
