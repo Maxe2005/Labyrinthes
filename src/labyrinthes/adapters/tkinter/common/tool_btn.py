@@ -67,7 +67,7 @@ class ToolButton(tk.Frame):
             self._kbd.pack(side="right", padx=(SPACING["xs"], SPACING["md"]))
 
         for widget in self._clickable_widgets():
-            widget.configure(cursor="hand2")
+            widget.configure(cursor="hand2")  # type: ignore[call-arg]
             widget.bind("<Button-1>", self._on_click)
 
         self.bind("<Return>", self._on_click)
@@ -119,7 +119,7 @@ class ToolButton(tk.Frame):
             self._active = False
         self.configure(takefocus=self._default_takefocus if enabled else False)
         for widget in self._clickable_widgets():
-            widget.configure(cursor="hand2" if enabled else "")
+            widget.configure(cursor="hand2" if enabled else "")  # type: ignore[call-arg]
         self._apply_style()
 
     def set_active(self, active: bool) -> None:

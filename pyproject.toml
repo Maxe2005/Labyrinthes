@@ -35,3 +35,18 @@ testpaths = ["tests"]
 # `tests.test_architecture_boundaries` under plain `pytest`, not only `python -m pytest`
 # (which prepends cwd to sys.path on its own).
 pythonpath = ["."]
+
+[tool.pyright]
+exclude = [
+    "tests",
+    "Creer_labyrinthes.py",
+    "Labyrinthes_copy.py",
+    "Autres/",
+    ".agents/skills/",
+    ".venv/",
+    "__pycache__/",
+    ".mypy_cache/",
+    ".pytest_cache/",
+    ".bmad-loop/",
+    ".claude/",
+]

@@ -42,6 +42,8 @@ __all__ = ["read_maze_size_bounds"]
 def _read_bound(settings: SettingsRepository, key: str, default: int) -> int:
     try:
         value = settings.get(SettingsScope.SHARED, key)
+        if isinstance(value, tuple):
+            raise TypeError
         value = int(value)
     except (SettingNotFoundError, SettingCorruptError, ValueError, TypeError):
         return default

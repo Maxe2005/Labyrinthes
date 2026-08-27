@@ -39,6 +39,7 @@ import tkinter as tk
 
 from labyrinthes.adapters.tkinter.common import (
     SPACING,
+    BuilderTestLaunch,
     NavigateFn,
     NewMazeDialog,
     PillButton,
@@ -59,7 +60,7 @@ __all__ = ["mount"]
 
 def mount(
     parent: tk.Widget,
-    state: Maze | None,
+    state: Maze | None | BuilderTestLaunch,
     navigate: NavigateFn,
     theme: Theme,
     toggle_theme: ToggleThemeFn,

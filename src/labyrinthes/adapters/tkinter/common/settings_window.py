@@ -54,6 +54,7 @@ see the story's Design Notes on AC-3 being structural.
 from __future__ import annotations
 
 import tkinter as tk
+from collections.abc import Callable
 
 from labyrinthes.adapters.tkinter.common.tokens import (
     FOCUS_RING_THICKNESS,
@@ -277,7 +278,6 @@ class SettingsWindow(tk.Toplevel):
                 image=self._logo_photo,
                 background=colors.window,
             )
-            logo_label.image = self._logo_photo
             logo_label.pack(anchor="w", pady=(0, SPACING["sm"]))
         except Exception:
             tk.Label(
@@ -346,7 +346,6 @@ class SettingsWindow(tk.Toplevel):
             for child in logo_frame.winfo_children():
                 if isinstance(child, tk.Label) and child.cget("image") == str(self._logo_photo):
                     child.configure(image=self._logo_photo)
-                    child.image = self._logo_photo
                     break
         except Exception:
             pass
@@ -373,7 +372,6 @@ class SettingsWindow(tk.Toplevel):
             for child in logo_frame.winfo_children():
                 if isinstance(child, tk.Label) and child.cget("image") == str(self._logo_photo):
                     child.configure(image=self._logo_photo)
-                    child.image = self._logo_photo
                     break
         except Exception:
             pass
@@ -493,7 +491,7 @@ class SettingsWindow(tk.Toplevel):
         parent: tk.Frame,
         label: str,
         initial_value: str,
-        writer: callable,
+        writer: Callable,
     ) -> None:
         colors = colors_for(self._theme)
 
@@ -528,7 +526,7 @@ class SettingsWindow(tk.Toplevel):
 
         self._default_dimension_errors[entry] = error_label
 
-    def _validate_default_dimension(self, entry: tk.Entry, writer: callable) -> None:
+    def _validate_default_dimension(self, entry: tk.Entry, writer: Callable) -> None:
         from labyrinthes.domain.maze_size_bounds import DEFAULT_MAZE_SIZE_BOUNDS
 
         text = entry.get()

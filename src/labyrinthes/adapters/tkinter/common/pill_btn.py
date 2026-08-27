@@ -55,7 +55,7 @@ class PillButton(tk.Frame):
             self._label.pack_configure(padx=(SPACING["lg"], SPACING["lg"]))
 
         for widget in self._clickable_widgets():
-            widget.configure(cursor="hand2")
+            widget.configure(cursor="hand2")  # type: ignore[call-arg]
             widget.bind("<Button-1>", self._on_click)
 
         self.bind("<Return>", self._on_click)

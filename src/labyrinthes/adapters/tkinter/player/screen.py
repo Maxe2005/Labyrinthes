@@ -121,6 +121,7 @@ def mount(
             BreadcrumbSegment("Player"),
         ]
     elif is_test_launch:
+        assert test_launch is not None
         breadcrumb_segments = [
             BreadcrumbSegment("Home", on_click=lambda: navigate(ScreenId.HOME, None)),
             BreadcrumbSegment("Builder", on_click=lambda: navigate(ScreenId.BUILDER, test_launch)),
@@ -157,7 +158,12 @@ def mount(
             pady=SPACING["section-gap"],
         )
     else:
-        maze = test_launch.maze if is_test_launch else state
+        assert state is not None
+        if is_test_launch:
+            assert test_launch is not None
+            maze = test_launch.maze
+        else:
+            maze = state
         gameplay = GameplayScreen(
             frame,
             maze,
