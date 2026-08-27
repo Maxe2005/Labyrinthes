@@ -30,9 +30,7 @@ _LOGO_BY_KEY: dict[str, tuple[str, str]] = {
 
 
 def logo_path(key: str) -> str:
-    """Return the on-disk path for *key*.
-
-    """
+    """Return the on-disk path for *key*."""
     import os
 
     filename = _LOGO_BY_KEY[key][0]

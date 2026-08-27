@@ -27,9 +27,19 @@ from pathlib import Path
 
 REQUIRED_YAML_FIELDS = {"code", "name", "description"}
 CSV_HEADER = [
-    "module", "skill", "display-name", "menu-code", "description",
-    "action", "args", "phase", "preceded-by", "followed-by", "required",
-    "output-location", "outputs",
+    "module",
+    "skill",
+    "display-name",
+    "menu-code",
+    "description",
+    "action",
+    "args",
+    "phase",
+    "preceded-by",
+    "followed-by",
+    "required",
+    "output-location",
+    "outputs",
 ]
 
 
@@ -61,10 +71,7 @@ def detect_standalone_module(module_dir: Path) -> Path | None:
     if (module_dir / "SKILL.md").is_file() and (module_dir / "assets" / "module.yaml").is_file():
         return module_dir
     # Given the parent folder containing exactly one skill.
-    skill_dirs = [
-        d for d in module_dir.iterdir()
-        if d.is_dir() and (d / "SKILL.md").is_file()
-    ]
+    skill_dirs = [d for d in module_dir.iterdir() if d.is_dir() and (d / "SKILL.md").is_file()]
     if len(skill_dirs) == 1:
         candidate = skill_dirs[0]
         if (candidate / "assets" / "module.yaml").is_file():
@@ -110,12 +117,14 @@ def validate(module_dir: Path, verbose: bool = False) -> dict:
     info: dict = {}
 
     def finding(severity: str, category: str, message: str, detail: str = ""):
-        findings.append({
-            "severity": severity,
-            "category": category,
-            "message": message,
-            "detail": detail,
-        })
+        findings.append(
+            {
+                "severity": severity,
+                "category": category,
+                "message": message,
+                "detail": detail,
+            }
+        )
 
     # 1. Find setup skill or detect standalone module
     setup_dir = find_setup_skill(module_dir)
@@ -124,8 +133,11 @@ def validate(module_dir: Path, verbose: bool = False) -> dict:
     if not setup_dir:
         standalone_dir = detect_standalone_module(module_dir)
         if not standalone_dir:
-            finding("critical", "structure",
-                    "No setup skill found (*-setup directory) and no standalone module detected")
+            finding(
+                "critical",
+                "structure",
+                "No setup skill found (*-setup directory) and no standalone module detected",
+            )
             return {"status": "fail", "findings": findings, "info": info}
 
     # Branch: standalone vs multi-skill
@@ -224,8 +236,12 @@ def validate(module_dir: Path, verbose: bool = False) -> dict:
     expected_cols = len(CSV_HEADER)
     for i, (row, n_cols) in enumerate(zip(rows, col_counts)):
         if n_cols != expected_cols:
-            finding("medium", "csv-columns", f"Row {i + 2} has {n_cols} columns, expected {expected_cols}",
-                    f"skill={row.get('skill', '?')}")
+            finding(
+                "medium",
+                "csv-columns",
+                f"Row {i + 2} has {n_cols} columns, expected {expected_cols}",
+                f"skill={row.get('skill', '?')}",
+            )
 
     # 6. Collect skills from CSV and filesystem
     csv_skills = {row.get("skill", "") for row in rows}
@@ -241,7 +257,9 @@ def validate(module_dir: Path, verbose: bool = False) -> dict:
     # 7. Skills without CSV entries
     for skill in skill_folders:
         if skill not in csv_skills:
-            finding("high", "missing-entry", f"Skill '{skill}' has no capability entries in the CSV")
+            finding(
+                "high", "missing-entry", f"Skill '{skill}' has no capability entries in the CSV"
+            )
 
     # 8. Orphan CSV entries
     setup_name = setup_dir.name if setup_dir else ""
@@ -254,7 +272,11 @@ def validate(module_dir: Path, verbose: bool = False) -> dict:
         # dir directly). For a multi-skill module, re-check the filesystem: the
         # setup skill lives alongside the others and is excluded from skill_folders.
         if standalone_dir or not (module_dir / skill / "SKILL.md").is_file():
-            finding("high", "orphan-entry", f"CSV references skill '{skill}' which does not exist in the module folder")
+            finding(
+                "high",
+                "orphan-entry",
+                f"CSV references skill '{skill}' which does not exist in the module folder",
+            )
 
     # 9. Unique menu codes
     menu_codes: dict[str, list[str]] = {}
@@ -265,7 +287,11 @@ def validate(module_dir: Path, verbose: bool = False) -> dict:
 
     for code, names in menu_codes.items():
         if len(names) > 1:
-            finding("high", "duplicate-menu-code", f"Menu code '{code}' used by multiple entries: {', '.join(names)}")
+            finding(
+                "high",
+                "duplicate-menu-code",
+                f"Menu code '{code}' used by multiple entries: {', '.join(names)}",
+            )
 
     # 10. preceded-by/followed-by reference validation
     # Build set of valid capability references (skill:action)
@@ -294,16 +320,21 @@ def validate(module_dir: Path, verbose: bool = False) -> dict:
                 if ":" not in ref:
                     continue
                 if ref not in valid_refs:
-                    finding("medium", "invalid-ref",
-                            f"'{display}' {field} references '{ref}' which is not a valid capability",
-                            "Expected format: skill-name:action-name")
+                    finding(
+                        "medium",
+                        "invalid-ref",
+                        f"'{display}' {field} references '{ref}' which is not a valid capability",
+                        "Expected format: skill-name:action-name",
+                    )
 
     # 11. Required fields in each row
     for row in rows:
         display = row.get("display-name", "?")
         for field in ("skill", "display-name", "menu-code", "description"):
             if not row.get(field, "").strip():
-                finding("high", "missing-field", f"Entry '{display}' is missing required field: {field}")
+                finding(
+                    "high", "missing-field", f"Entry '{display}' is missing required field: {field}"
+                )
 
     # Summary
     severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}

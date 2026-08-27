@@ -23,6 +23,7 @@ multi-branch reference ~4500, single-purpose reference ~9000.
 Usage:
   prepass-prompt-metrics.py <skill-dir> [--output FILE]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -37,6 +38,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 try:
     from count_tokens import count_tokens
 except Exception:  # pragma: no cover - count_tokens ships alongside this script
+
     def count_tokens(text: str) -> tuple[int, str]:
         return len(text) // 4, "fallback"
 
@@ -51,15 +53,26 @@ WASTE_PATTERNS = [
     (r"\b[Yy]ou are an AI\b", "meta-explanation", 'Meta: "you are an AI"'),
     (r"\b[Aa]s a language model\b", "meta-explanation", 'Meta: "as a language model"'),
     (r"\b[Aa]s an AI assistant\b", "meta-explanation", 'Meta: "as an AI assistant"'),
-    (r"\b[Tt]his (?:workflow|skill|process) is designed to\b", "meta-explanation", 'Meta: "this is designed to"'),
-    (r"\b[Tt]he purpose of this (?:section|step) is\b", "meta-explanation", 'Meta: "the purpose of this is"'),
+    (
+        r"\b[Tt]his (?:workflow|skill|process) is designed to\b",
+        "meta-explanation",
+        'Meta: "this is designed to"',
+    ),
+    (
+        r"\b[Tt]he purpose of this (?:section|step) is\b",
+        "meta-explanation",
+        'Meta: "the purpose of this is"',
+    ),
 ]
 
 BACKREF_PATTERNS = [
     (r"\bas described above\b", 'Back-reference: "as described above"'),
     (r"\bas mentioned (?:above|in|earlier)\b", 'Back-reference: "as mentioned above/earlier"'),
     (r"\bsee (?:above|the overview)\b", 'Back-reference: "see above/the overview"'),
-    (r"\brefer to (?:the )?(?:above|overview|SKILL)\b", 'Back-reference: "refer to above/overview"'),
+    (
+        r"\brefer to (?:the )?(?:above|overview|SKILL)\b",
+        'Back-reference: "refer to above/overview"',
+    ),
 ]
 
 ALLCAPS_PATTERN = re.compile(r"\b(?:ALWAYS|NEVER|MUST|DO NOT|CRITICAL|REQUIRED)\b")
@@ -79,7 +92,7 @@ def split_frontmatter(content: str) -> tuple[dict, str]:
         if ":" in line:
             k, v = line.split(":", 1)
             meta[k.strip()] = v.strip()
-    return meta, "\n".join(lines[end + 1:])
+    return meta, "\n".join(lines[end + 1 :])
 
 
 def count_tables(content: str) -> tuple[int, int]:
@@ -219,7 +232,8 @@ def scan(skill_path: Path) -> dict:
             "total_back_references": sum(len(f["back_references"]) for f in files_data),
             "files_with_numbered_prefix": sum(
                 1 for f in files_data if f["numbered_prefix_filename"]
-            ) + sum(1 for r in references.values() if r["numbered_prefix_filename"]),
+            )
+            + sum(1 for r in references.values() if r["numbered_prefix_filename"]),
         },
         "reference_sizes": references,
         "files": files_data,

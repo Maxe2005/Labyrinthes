@@ -115,9 +115,7 @@ def _run(args):
     cmd = ["uv", "run", str(SCRIPT), *args]
     # LC_ALL=C keeps os.strerror text stable so error-string assertions do not
     # depend on the developer's locale.
-    return subprocess.run(
-        cmd, capture_output=True, text=True, env={**os.environ, "LC_ALL": "C"}
-    )
+    return subprocess.run(cmd, capture_output=True, text=True, env={**os.environ, "LC_ALL": "C"})
 
 
 def _module():
@@ -171,11 +169,7 @@ def test_detect_epic(tmp_path):
 
 
 def test_detect_epic_rejects_typed_retrospective_status_as_json(tmp_path):
-    fixture = (
-        "development_status:\n"
-        "  1-1-a: done\n"
-        "  epic-1-retrospective: 2026-01-01\n"
-    )
+    fixture = "development_status:\n  1-1-a: done\n  epic-1-retrospective: 2026-01-01\n"
     target = tmp_path / "sprint-status.yaml"
     target.write_text(fixture, encoding="utf-8")
 
@@ -216,10 +210,7 @@ def test_pending_stories_lists_the_selected_epics_unfinished_keys(tmp_path):
 
 def test_pending_stories_is_empty_for_a_complete_epic(tmp_path):
     fixture = (
-        "development_status:\n"
-        "  2-1-a: done\n"
-        "  2-2-b: done\n"
-        "  epic-2-retrospective: optional\n"
+        "development_status:\n  2-1-a: done\n  2-2-b: done\n  epic-2-retrospective: optional\n"
     )
     target = tmp_path / "sprint-status.yaml"
     target.write_text(fixture, encoding="utf-8")
@@ -250,11 +241,7 @@ def test_pending_stories_ignores_other_epics(tmp_path):
 def test_pending_stories_present_when_no_epic_is_detected(tmp_path):
     # No done story anywhere: the shape stays uniform so a caller can read
     # pending_stories without first branching on epic.
-    fixture = (
-        "development_status:\n"
-        "  1-1-a: backlog\n"
-        "  2-1-b: ready-for-dev\n"
-    )
+    fixture = "development_status:\n  1-1-a: backlog\n  2-1-b: ready-for-dev\n"
     target = tmp_path / "sprint-status.yaml"
     target.write_text(fixture, encoding="utf-8")
     proc = _run(["detect-epic", "--file", str(target)])
@@ -295,11 +282,7 @@ def test_detect_epic_flag_lists_pending_when_no_story_is_done(tmp_path):
     # Without --epic, no done story means epic is null. With --epic, an
     # unfinished epic that never landed a done story is still addressable —
     # every story key of that epic is pending.
-    fixture = (
-        "development_status:\n"
-        "  3-1-a: backlog\n"
-        "  3-2-b: ready-for-dev\n"
-    )
+    fixture = "development_status:\n  3-1-a: backlog\n  3-2-b: ready-for-dev\n"
     target = tmp_path / "sprint-status.yaml"
     target.write_text(fixture, encoding="utf-8")
     proc = _run(["detect-epic", "--file", str(target), "--epic", "3"])
@@ -312,12 +295,7 @@ def test_detect_epic_flag_lists_pending_when_no_story_is_done(tmp_path):
 
 
 def test_detect_epic_flag_empty_pending_for_a_complete_supplied_epic(tmp_path):
-    fixture = (
-        "development_status:\n"
-        "  1-1-a: done\n"
-        "  1-2-b: done\n"
-        "  2-1-a: backlog\n"
-    )
+    fixture = "development_status:\n  1-1-a: done\n  1-2-b: done\n  2-1-a: backlog\n"
     target = tmp_path / "sprint-status.yaml"
     target.write_text(fixture, encoding="utf-8")
     proc = _run(["detect-epic", "--file", str(target), "--epic", "1"])
@@ -332,11 +310,7 @@ def test_detect_epic_flag_zero_story_count_marks_a_nonexistent_epic(tmp_path):
     # empty exactly as it is for a finished epic, so story_count is the only
     # signal separating "complete" from "typo'd". The gate reads 0 as suspect,
     # never as done.
-    fixture = (
-        "development_status:\n"
-        "  1-1-a: done\n"
-        "  1-2-b: done\n"
-    )
+    fixture = "development_status:\n  1-1-a: done\n  1-2-b: done\n"
     target = tmp_path / "sprint-status.yaml"
     target.write_text(fixture, encoding="utf-8")
     proc = _run(["detect-epic", "--file", str(target), "--epic", "9"])
@@ -518,8 +492,15 @@ def test_update_rejects_non_list_action_items(tmp_path):
     target = tmp_path / "sprint-status.yaml"
     target.write_text(fixture, encoding="utf-8")
     proc = _run(
-        ["update", "--file", str(target), "--epic", "1",
-         "--add-action", '[{"action":"x","owner":"y"}]']
+        [
+            "update",
+            "--file",
+            str(target),
+            "--epic",
+            "1",
+            "--add-action",
+            '[{"action":"x","owner":"y"}]',
+        ]
     )
     assert proc.returncode == 1
     out = json.loads(proc.stdout)  # must be JSON, not a traceback
@@ -531,9 +512,20 @@ def test_appended_items_carry_id_and_ref(tmp_path):
     target = _write_fixture(tmp_path)
     ref = "docs/stories/epic-1-retro-2026-07-21.md"
     proc = _run(
-        ["update", "--file", str(target), "--epic", "1", "--set-retro-done",
-         "--add-action", '[{"action":"Fix the seam","owner":"Amelia"}]',
-         "--ref", ref, "--verdict", "accepted-with-open-items"]
+        [
+            "update",
+            "--file",
+            str(target),
+            "--epic",
+            "1",
+            "--set-retro-done",
+            "--add-action",
+            '[{"action":"Fix the seam","owner":"Amelia"}]',
+            "--ref",
+            ref,
+            "--verdict",
+            "accepted-with-open-items",
+        ]
     )
     assert proc.returncode == 0, proc.stderr
     out = json.loads(proc.stdout)
@@ -554,8 +546,7 @@ def test_free_spelled_verdict_is_rejected_before_the_file_is_touched(tmp_path):
     target = _write_fixture(tmp_path)
     for bad in ("accepted with open items", "ship it", "ACCEPTED"):
         proc = _run(
-            ["update", "--file", str(target), "--epic", "1", "--set-retro-done",
-             "--verdict", bad]
+            ["update", "--file", str(target), "--epic", "1", "--set-retro-done", "--verdict", bad]
         )
         assert proc.returncode == 1, f"accepted {bad!r}"
         out = _json(proc)
@@ -567,8 +558,15 @@ def test_free_spelled_verdict_is_rejected_before_the_file_is_touched(tmp_path):
 def test_explicit_item_id_is_preserved(tmp_path):
     target = _write_fixture(tmp_path)
     proc = _run(
-        ["update", "--file", str(target), "--epic", "1",
-         "--add-action", '[{"action":"a","owner":"o","id":"custom-id-7"}]']
+        [
+            "update",
+            "--file",
+            str(target),
+            "--epic",
+            "1",
+            "--add-action",
+            '[{"action":"a","owner":"o","id":"custom-id-7"}]',
+        ]
     )
     assert proc.returncode == 0, proc.stderr
     assert _load(target)["action_items"][0]["id"] == "custom-id-7"
@@ -592,9 +590,7 @@ def test_write_failure_reports_restore_status(tmp_path):
     target = _write_fixture(holder)
     os.chmod(holder, 0o555)
     try:
-        proc = _run(
-            ["update", "--file", str(target), "--epic", "1", "--set-retro-done"]
-        )
+        proc = _run(["update", "--file", str(target), "--epic", "1", "--set-retro-done"])
     finally:
         os.chmod(holder, 0o755)
     assert proc.returncode == 1
@@ -641,9 +637,7 @@ def test_template_round_trip_changes_only_last_updated(tmp_path):
     target = tmp_path / "sprint-status.yaml"
     target.write_text(source, encoding="utf-8")
 
-    proc = _run(
-        ["update", "--file", str(target), "--epic", "1", "--date", "01-01-2026 09:00"]
-    )
+    proc = _run(["update", "--file", str(target), "--epic", "1", "--date", "01-01-2026 09:00"])
     assert proc.returncode == 0, proc.stderr
     assert _json(proc)["ok"] is True
 
@@ -674,8 +668,16 @@ def test_mid_file_comment_survives_update(tmp_path):
     target = tmp_path / "sprint-status.yaml"
     target.write_text(fixture, encoding="utf-8")
     proc = _run(
-        ["update", "--file", str(target), "--epic", "1", "--set-retro-done",
-         "--add-action", '[{"action":"New item","owner":"Amelia"}]']
+        [
+            "update",
+            "--file",
+            str(target),
+            "--epic",
+            "1",
+            "--set-retro-done",
+            "--add-action",
+            '[{"action":"New item","owner":"Amelia"}]',
+        ]
     )
     assert proc.returncode == 0, proc.stderr
     raw = target.read_text(encoding="utf-8")
@@ -727,9 +729,7 @@ def test_lost_comment_fails_with_restore(tmp_path):
     )
     target = tmp_path / "sprint-status.yaml"
     target.write_text(fixture, encoding="utf-8")
-    proc = _run(
-        ["update", "--file", str(target), "--epic", "1", "--set-retro-done"]
-    )
+    proc = _run(["update", "--file", str(target), "--epic", "1", "--set-retro-done"])
     assert proc.returncode == 1
     out = _json(proc)
     assert out["ok"] is False
@@ -950,9 +950,7 @@ def test_pre_write_failure_reports_restored(tmp_path):
     # retro-document.md teaches callers that ok:false carries restored:true;
     # a failure before the write must not read as "the file may be incomplete".
     target = _write_fixture(tmp_path)
-    proc = _run(
-        ["update", "--file", str(target), "--epic", "1", "--add-action", "{not json"]
-    )
+    proc = _run(["update", "--file", str(target), "--epic", "1", "--add-action", "{not json"])
     assert proc.returncode == 1
     out = _json(proc)
     assert out["ok"] is False
@@ -988,8 +986,15 @@ def test_unsluggable_action_falls_back_to_a_hash(tmp_path):
 def test_empty_action_is_rejected(tmp_path):
     target = _write_fixture(tmp_path)
     proc = _run(
-        ["update", "--file", str(target), "--epic", "1",
-         "--add-action", '[{"action":"   ","owner":"x"}]']
+        [
+            "update",
+            "--file",
+            str(target),
+            "--epic",
+            "1",
+            "--add-action",
+            '[{"action":"   ","owner":"x"}]',
+        ]
     )
     assert proc.returncode == 1
     out = _json(proc)
@@ -1004,8 +1009,15 @@ def test_non_string_action_is_rejected(tmp_path):
     # as a real action item, which the new emptiness check alone lets through.
     target = _write_fixture(tmp_path)
     proc = _run(
-        ["update", "--file", str(target), "--epic", "1",
-         "--add-action", '[{"action":null,"owner":"x"}]']
+        [
+            "update",
+            "--file",
+            str(target),
+            "--epic",
+            "1",
+            "--add-action",
+            '[{"action":null,"owner":"x"}]',
+        ]
     )
     assert proc.returncode == 1
     out = _json(proc)
@@ -1018,9 +1030,7 @@ def test_date_is_normalized_to_the_canonical_format(tmp_path):
     # strptime accepts unpadded spellings; writing those through would defeat
     # the point of validating the format.
     target = _write_fixture(tmp_path)
-    proc = _run(
-        ["update", "--file", str(target), "--epic", "1", "--date", "1-2-2026 9:05"]
-    )
+    proc = _run(["update", "--file", str(target), "--epic", "1", "--date", "1-2-2026 9:05"])
     assert proc.returncode == 0, proc.stderr
     assert _json(proc)["last_updated"] == "01-02-2026 09:05"
     assert _load(target)["last_updated"] == "01-02-2026 09:05"
@@ -1028,9 +1038,7 @@ def test_date_is_normalized_to_the_canonical_format(tmp_path):
 
 def test_malformed_date_is_rejected(tmp_path):
     target = _write_fixture(tmp_path)
-    proc = _run(
-        ["update", "--file", str(target), "--epic", "1", "--date", "not-a-date"]
-    )
+    proc = _run(["update", "--file", str(target), "--epic", "1", "--date", "not-a-date"])
     assert proc.returncode == 1
     out = _json(proc)
     assert out["ok"] is False
@@ -1053,9 +1061,7 @@ def test_set_action_status_applies_both_selector_forms(tmp_path):
             {"epic": 1, "action": "Pre-existing item", "status": "in-progress"},
         ]
     )
-    proc = _run(
-        ["update", "--file", str(target), "--epic", "1", "--set-action-status", payload]
-    )
+    proc = _run(["update", "--file", str(target), "--epic", "1", "--set-action-status", payload])
     assert proc.returncode == 0, proc.stderr
     out = _json(proc)
     assert out["ok"] is True
@@ -1088,8 +1094,17 @@ def test_set_action_status_changes_exactly_one_line(tmp_path):
     # with the same text it already held, so the whole file differs by one line.
     target = _write_action_fixture(tmp_path)
     proc = _run(
-        ["update", "--file", str(target), "--epic", "1", "--date", "01-01-2026 09:00",
-         "--set-action-status", '[{"id":"epic-1-retro-item-1-x","status":"done"}]']
+        [
+            "update",
+            "--file",
+            str(target),
+            "--epic",
+            "1",
+            "--date",
+            "01-01-2026 09:00",
+            "--set-action-status",
+            '[{"id":"epic-1-retro-item-1-x","status":"done"}]',
+        ]
     )
     assert proc.returncode == 0, proc.stderr
 
@@ -1103,10 +1118,18 @@ def test_set_action_status_changes_exactly_one_line(tmp_path):
 def test_set_action_status_composes_with_retro_done_and_add_action(tmp_path):
     target = _write_action_fixture(tmp_path)
     proc = _run(
-        ["update", "--file", str(target), "--epic", "1", "--set-retro-done",
-         "--add-action", '[{"action":"Brand new item","owner":"Amelia"}]',
-         "--set-action-status",
-         '[{"epic":1,"action":"Pre-existing item","status":"done"}]']
+        [
+            "update",
+            "--file",
+            str(target),
+            "--epic",
+            "1",
+            "--set-retro-done",
+            "--add-action",
+            '[{"action":"Brand new item","owner":"Amelia"}]',
+            "--set-action-status",
+            '[{"epic":1,"action":"Pre-existing item","status":"done"}]',
+        ]
     )
     assert proc.returncode == 0, proc.stderr
     out = _json(proc)
@@ -1130,9 +1153,17 @@ def test_set_action_status_cannot_target_an_item_added_in_the_same_run(tmp_path)
     # flag a back door for writing a non-open status onto a brand-new item.
     target = _write_action_fixture(tmp_path)
     proc = _run(
-        ["update", "--file", str(target), "--epic", "1",
-         "--add-action", '[{"action":"Brand new","owner":"A","id":"brand-new"}]',
-         "--set-action-status", '[{"id":"brand-new","status":"done"}]']
+        [
+            "update",
+            "--file",
+            str(target),
+            "--epic",
+            "1",
+            "--add-action",
+            '[{"action":"Brand new","owner":"A","id":"brand-new"}]',
+            "--set-action-status",
+            '[{"id":"brand-new","status":"done"}]',
+        ]
     )
     assert proc.returncode == 1
     out = _json(proc)
@@ -1145,8 +1176,15 @@ def test_set_action_status_cannot_target_an_item_added_in_the_same_run(tmp_path)
 def test_set_action_status_rejects_unknown_id(tmp_path):
     target = _write_action_fixture(tmp_path)
     proc = _run(
-        ["update", "--file", str(target), "--epic", "1",
-         "--set-action-status", '[{"id":"not-in-the-file","status":"done"}]']
+        [
+            "update",
+            "--file",
+            str(target),
+            "--epic",
+            "1",
+            "--set-action-status",
+            '[{"id":"not-in-the-file","status":"done"}]',
+        ]
     )
     assert proc.returncode == 1
     out = _json(proc)
@@ -1160,8 +1198,15 @@ def test_set_action_status_rejects_selector_when_action_items_is_absent(tmp_path
     # No action_items key at all must read as "no match", not as a crash.
     target = _write_fixture(tmp_path)
     proc = _run(
-        ["update", "--file", str(target), "--epic", "1",
-         "--set-action-status", '[{"id":"anything","status":"done"}]']
+        [
+            "update",
+            "--file",
+            str(target),
+            "--epic",
+            "1",
+            "--set-action-status",
+            '[{"id":"anything","status":"done"}]',
+        ]
     )
     assert proc.returncode == 1
     out = _json(proc)
@@ -1191,8 +1236,15 @@ def test_set_action_status_rejects_ambiguous_selector(tmp_path):
     target = tmp_path / "sprint-status.yaml"
     target.write_text(fixture, encoding="utf-8")
     proc = _run(
-        ["update", "--file", str(target), "--epic", "1",
-         "--set-action-status", '[{"epic":1,"action":"Same text","status":"done"}]']
+        [
+            "update",
+            "--file",
+            str(target),
+            "--epic",
+            "1",
+            "--set-action-status",
+            '[{"epic":1,"action":"Same text","status":"done"}]',
+        ]
     )
     assert proc.returncode == 1
     out = _json(proc)
@@ -1214,9 +1266,7 @@ def test_set_action_status_rejects_two_entries_hitting_the_same_item(tmp_path):
             {"epic": 1, "action": "Scripted item", "status": "in-progress"},
         ]
     )
-    proc = _run(
-        ["update", "--file", str(target), "--epic", "1", "--set-action-status", payload]
-    )
+    proc = _run(["update", "--file", str(target), "--epic", "1", "--set-action-status", payload])
     assert proc.returncode == 1
     out = _json(proc)
     assert out["ok"] is False
@@ -1242,9 +1292,7 @@ def test_entry_with_both_selector_forms_uses_the_id(tmp_path):
             }
         ]
     )
-    proc = _run(
-        ["update", "--file", str(target), "--epic", "1", "--set-action-status", payload]
-    )
+    proc = _run(["update", "--file", str(target), "--epic", "1", "--set-action-status", payload])
     assert proc.returncode == 0, proc.stderr
     assert _json(proc)["action_items_updated"] == 1
     items = _load(target)["action_items"]
@@ -1255,8 +1303,15 @@ def test_entry_with_both_selector_forms_uses_the_id(tmp_path):
 def test_set_action_status_rejects_invalid_status(tmp_path):
     target = _write_action_fixture(tmp_path)
     proc = _run(
-        ["update", "--file", str(target), "--epic", "1",
-         "--set-action-status", '[{"id":"epic-1-retro-item-1-x","status":"closed"}]']
+        [
+            "update",
+            "--file",
+            str(target),
+            "--epic",
+            "1",
+            "--set-action-status",
+            '[{"id":"epic-1-retro-item-1-x","status":"closed"}]',
+        ]
     )
     assert proc.returncode == 1
     out = _json(proc)
@@ -1271,8 +1326,7 @@ def test_set_action_status_rejects_invalid_status(tmp_path):
 def test_set_action_status_rejects_malformed_json(tmp_path):
     target = _write_action_fixture(tmp_path)
     proc = _run(
-        ["update", "--file", str(target), "--epic", "1",
-         "--set-action-status", "{not json"]
+        ["update", "--file", str(target), "--epic", "1", "--set-action-status", "{not json"]
     )
     assert proc.returncode == 1
     out = _json(proc)
@@ -1345,10 +1399,7 @@ def test_set_action_status_rejects_bad_shapes(tmp_path, payload, expected_error)
     # Each case pins its own message: collapsing the branches into one generic
     # error would leave a caller unable to tell which part of the array is wrong.
     target = _write_action_fixture(tmp_path)
-    proc = _run(
-        ["update", "--file", str(target), "--epic", "1",
-         "--set-action-status", payload]
-    )
+    proc = _run(["update", "--file", str(target), "--epic", "1", "--set-action-status", payload])
     assert proc.returncode == 1
     out = _json(proc)
     assert out["ok"] is False
@@ -1370,8 +1421,16 @@ def test_selectors_are_not_scoped_to_the_epic_flag(tmp_path):
         ]
     )
     proc = _run(
-        ["update", "--file", str(target), "--epic", "2", "--set-retro-done",
-         "--set-action-status", payload]
+        [
+            "update",
+            "--file",
+            str(target),
+            "--epic",
+            "2",
+            "--set-retro-done",
+            "--set-action-status",
+            payload,
+        ]
     )
     assert proc.returncode == 0, proc.stderr
     assert _json(proc)["action_items_updated"] == 2
@@ -1390,8 +1449,15 @@ def test_legacy_selector_discriminates_on_the_epic(tmp_path):
     # an epic-blind text match would be ambiguous -- or worse, silently pick one.
     target = _write_action_fixture(tmp_path)
     proc = _run(
-        ["update", "--file", str(target), "--epic", "1", "--set-action-status",
-         '[{"epic":2,"action":"Scripted item","status":"done"}]']
+        [
+            "update",
+            "--file",
+            str(target),
+            "--epic",
+            "1",
+            "--set-action-status",
+            '[{"epic":2,"action":"Scripted item","status":"done"}]',
+        ]
     )
     assert proc.returncode == 0, proc.stderr
     assert _json(proc)["action_items_updated"] == 1
@@ -1417,8 +1483,15 @@ def test_non_mapping_action_item_does_not_crash_the_selector(tmp_path):
     target = tmp_path / "sprint-status.yaml"
     target.write_text(fixture, encoding="utf-8")
     proc = _run(
-        ["update", "--file", str(target), "--epic", "1",
-         "--set-action-status", '[{"id":"real","status":"done"}]']
+        [
+            "update",
+            "--file",
+            str(target),
+            "--epic",
+            "1",
+            "--set-action-status",
+            '[{"id":"real","status":"done"}]',
+        ]
     )
     assert proc.returncode == 0, proc.stderr
     assert _json(proc)["action_items_updated"] == 1
@@ -1430,17 +1503,19 @@ def test_non_mapping_action_item_does_not_crash_the_selector(tmp_path):
 def test_non_mapping_action_item_stays_on_the_json_contract_when_unmatched(tmp_path):
     # Same guard, reject path: the scalar must not be dereferenced while looking
     # for a selector that is not there.
-    fixture = (
-        "development_status:\n"
-        "  1-1-a: done\n"
-        "action_items:\n"
-        "  - 42\n"
-    )
+    fixture = "development_status:\n  1-1-a: done\naction_items:\n  - 42\n"
     target = tmp_path / "sprint-status.yaml"
     target.write_text(fixture, encoding="utf-8")
     proc = _run(
-        ["update", "--file", str(target), "--epic", "1",
-         "--set-action-status", '[{"epic":1,"action":"Nothing","status":"done"}]']
+        [
+            "update",
+            "--file",
+            str(target),
+            "--epic",
+            "1",
+            "--set-action-status",
+            '[{"epic":1,"action":"Nothing","status":"done"}]',
+        ]
     )
     assert proc.returncode == 1
     out = _json(proc)  # asserts stdout is JSON and stderr carries no traceback
@@ -1464,8 +1539,15 @@ def test_boolean_epic_in_the_file_does_not_match_epic_one(tmp_path):
     target = tmp_path / "sprint-status.yaml"
     target.write_text(fixture, encoding="utf-8")
     proc = _run(
-        ["update", "--file", str(target), "--epic", "1", "--set-action-status",
-         '[{"epic":1,"action":"Boolean epic","status":"done"}]']
+        [
+            "update",
+            "--file",
+            str(target),
+            "--epic",
+            "1",
+            "--set-action-status",
+            '[{"epic":1,"action":"Boolean epic","status":"done"}]',
+        ]
     )
     assert proc.returncode == 1
     out = _json(proc)
@@ -1488,8 +1570,17 @@ def test_status_write_preserves_every_scalar_style(tmp_path):
         ]
     )
     proc = _run(
-        ["update", "--file", str(target), "--epic", "1", "--date",
-         "01-01-2026 09:00", "--set-action-status", payload]
+        [
+            "update",
+            "--file",
+            str(target),
+            "--epic",
+            "1",
+            "--date",
+            "01-01-2026 09:00",
+            "--set-action-status",
+            payload,
+        ]
     )
     assert proc.returncode == 0, proc.stderr
     assert _json(proc)["action_items_updated"] == 3
@@ -1514,8 +1605,17 @@ def test_action_status_vocabulary_is_exactly_the_three():
 def test_empty_status_array_is_a_no_op(tmp_path):
     target = _write_action_fixture(tmp_path)
     proc = _run(
-        ["update", "--file", str(target), "--epic", "1", "--date",
-         "01-01-2026 09:00", "--set-action-status", "[]"]
+        [
+            "update",
+            "--file",
+            str(target),
+            "--epic",
+            "1",
+            "--date",
+            "01-01-2026 09:00",
+            "--set-action-status",
+            "[]",
+        ]
     )
     assert proc.returncode == 0, proc.stderr
     assert _json(proc)["action_items_updated"] == 0
@@ -1527,8 +1627,15 @@ def test_in_progress_item_transitions_to_done(tmp_path):
     # has to work too.
     target = _write_action_fixture(tmp_path)
     proc = _run(
-        ["update", "--file", str(target), "--epic", "2", "--set-action-status",
-         '[{"id":"epic-2-retro-item-1-y","status":"done"}]']
+        [
+            "update",
+            "--file",
+            str(target),
+            "--epic",
+            "2",
+            "--set-action-status",
+            '[{"id":"epic-2-retro-item-1-y","status":"done"}]',
+        ]
     )
     assert proc.returncode == 0, proc.stderr
     assert _json(proc)["action_items_updated"] == 1
@@ -1562,8 +1669,17 @@ def test_post_write_status_mismatch_restores(tmp_path, monkeypatch, capsys):
 
     monkeypatch.setattr(mod, "_load_yaml", flaky)
     args = mod.build_parser().parse_args(
-        ["update", "--file", str(target), "--epic", "1", "--date", "01-01-2026 09:00",
-         "--set-action-status", '[{"id":"epic-1-retro-item-1-x","status":"done"}]']
+        [
+            "update",
+            "--file",
+            str(target),
+            "--epic",
+            "1",
+            "--date",
+            "01-01-2026 09:00",
+            "--set-action-status",
+            '[{"id":"epic-1-retro-item-1-x","status":"done"}]',
+        ]
     )
     with pytest.raises(SystemExit) as excinfo:
         mod.cmd_update(args)

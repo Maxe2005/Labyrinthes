@@ -21,6 +21,7 @@ Usage:
 On success prints one JSON line: output paths, grade, and severity
 counts derived from the findings array.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -34,9 +35,7 @@ from pathlib import Path
 SEVERITIES = ("critical", "high", "medium", "low")
 GRADES = ("excellent", "good", "fair", "poor")
 PLACEHOLDER_SUBJECT = "__PLACEHOLDER__"
-ISLAND_RE = re.compile(
-    r'(<script[^>]*\bid="report-data"[^>]*>)(.*?)(</script>)', re.DOTALL
-)
+ISLAND_RE = re.compile(r'(<script[^>]*\bid="report-data"[^>]*>)(.*?)(</script>)', re.DOTALL)
 
 
 def fail(message: str) -> None:
@@ -74,15 +73,13 @@ def validate(data: object) -> list[str]:
     for key in ("themes", "recommendations"):
         value = data.get(key)
         if value is not None and (
-            not isinstance(value, list)
-            or any(not isinstance(item, dict) for item in value)
+            not isinstance(value, list) or any(not isinstance(item, dict) for item in value)
         ):
             errors.append(f'"{key}" must be an array of objects')
 
     strengths = data.get("strengths")
     if strengths is not None and (
-        not isinstance(strengths, list)
-        or any(not isinstance(item, str) for item in strengths)
+        not isinstance(strengths, list) or any(not isinstance(item, str) for item in strengths)
     ):
         errors.append('"strengths" must be an array of strings')
 
@@ -114,9 +111,7 @@ def inject(shell_html: str, data: dict) -> str:
 
 def atomic_write(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(
-        dir=path.parent, prefix=path.name + ".", suffix=".tmp"
-    )
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=path.name + ".", suffix=".tmp")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
             handle.write(text)
@@ -204,9 +199,7 @@ def render_md(data: dict) -> str:
                     if finding:
                         loc = finding.get("location")
                         suffix = f" — `{loc}`" if loc else ""
-                        lines.append(
-                            f"  - `{fid}` {finding.get('title', '')}{suffix}"
-                        )
+                        lines.append(f"  - `{fid}` {finding.get('title', '')}{suffix}")
                     else:
                         lines.append(f"  - `{fid}`")
             lines.append("")
@@ -290,9 +283,7 @@ def render_md(data: dict) -> str:
 
     experience = data.get("experience")
     if isinstance(experience, dict):
-        journeys = [
-            j for j in experience.get("journeys") or [] if isinstance(j, dict)
-        ]
+        journeys = [j for j in experience.get("journeys") or [] if isinstance(j, dict)]
         headless = experience.get("headless")
         if journeys or headless:
             lines.append("## Experience")
@@ -314,8 +305,7 @@ def render_md(data: dict) -> str:
             group = [
                 f
                 for f in findings
-                if (f.get("severity") if f.get("severity") in SEVERITIES else "low")
-                == sev
+                if (f.get("severity") if f.get("severity") in SEVERITIES else "low") == sev
             ]
             if not group:
                 continue
@@ -332,15 +322,9 @@ def main() -> int:
         description="Inject findings JSON into the report shell and render HTML (+ optional markdown)."
     )
     parser.add_argument("findings", type=Path, help="path to findings.json")
-    parser.add_argument(
-        "--shell", type=Path, required=True, help="path to report-shell.html"
-    )
-    parser.add_argument(
-        "-o", "--output", type=Path, required=True, help="output HTML path"
-    )
-    parser.add_argument(
-        "--md", type=Path, help="also write a markdown rendering to this path"
-    )
+    parser.add_argument("--shell", type=Path, required=True, help="path to report-shell.html")
+    parser.add_argument("-o", "--output", type=Path, required=True, help="output HTML path")
+    parser.add_argument("--md", type=Path, help="also write a markdown rendering to this path")
     args = parser.parse_args()
 
     try:
@@ -354,10 +338,7 @@ def main() -> int:
 
     errors = validate(data)
     if errors:
-        fail(
-            f"{args.findings} failed shape validation:\n  - "
-            + "\n  - ".join(errors)
-        )
+        fail(f"{args.findings} failed shape validation:\n  - " + "\n  - ".join(errors))
 
     try:
         shell_html = args.shell.read_text(encoding="utf-8")

@@ -70,6 +70,7 @@ def _load_logo_image(theme: Theme, logo_key: str) -> tk.PhotoImage | None:
     try:
         from PIL import Image, ImageTk
         from labyrinthes.application.logos import _logo_path
+
         path = _logo_path(logo_key)
         img = Image.open(path)
         img = img.resize((24, 24), Image.Resampling.LANCZOS)

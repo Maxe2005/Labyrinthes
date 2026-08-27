@@ -88,7 +88,7 @@ def write_builder_default_tool(settings: SettingsRepository, tool: BuilderTool) 
 
 def read_new_maze_defaults(settings: SettingsRepository) -> tuple[int, int]:
     """The default new-maze columns and rows, clamped to FR-4 bounds.
-    
+
     Each field independently falls back to the bounds' minimum (3).
     Never raises.
     """
@@ -123,7 +123,7 @@ def write_new_maze_default_rows(settings: SettingsRepository, rows: int) -> None
 
 def read_random_maze_defaults(settings: SettingsRepository) -> tuple[int, int]:
     """The default random-maze columns and rows, clamped to FR-4 bounds.
-    
+
     Each field independently falls back to the bounds' minimum (3).
     Never raises.
     """

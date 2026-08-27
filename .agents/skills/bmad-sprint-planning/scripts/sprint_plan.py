@@ -42,9 +42,7 @@ from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 
 EPIC_RE = re.compile(r"^#{1,3}\s*Epic\s+(\d+)\s*:?\s*(.*?)\s*#*\s*$", re.IGNORECASE)
-STORY_RE = re.compile(
-    r"^#{2,4}\s*Story\s+(\d+)\.(\d+[a-z]?)\s*:?\s*(.*?)\s*#*\s*$", re.IGNORECASE
-)
+STORY_RE = re.compile(r"^#{2,4}\s*Story\s+(\d+)\.(\d+[a-z]?)\s*:?\s*(.*?)\s*#*\s*$", re.IGNORECASE)
 # Heading lines that mention Epic/Story but failed the strict patterns above.
 SUSPECT_RE = re.compile(r"^#{1,4}\s.*\b(?:epic|story)\b", re.IGNORECASE)
 FENCE_RE = re.compile(r"^\s{0,3}(?:```|~~~)")
@@ -201,7 +199,9 @@ def parse_epics(paths):
                     stories.append(key)
                 continue
             if SUSPECT_RE.match(line):
-                warnings.append(f"unparsed Epic/Story-like heading at {path}:{lineno}: {line.strip()}")
+                warnings.append(
+                    f"unparsed Epic/Story-like heading at {path}:{lineno}: {line.strip()}"
+                )
     entries = []
     for epic_num in sorted(epics):
         entries.append((f"epic-{epic_num}", "epic", epic_num))
@@ -286,7 +286,11 @@ def build_status(entries, existing_data, stories_dir, warnings):
             report["preserved"] += 1
         else:
             report["changed"] += 1
-        if kind == "story" and computed == "ready-for-dev" and existing_status.get(key) in (None, "backlog"):
+        if (
+            kind == "story"
+            and computed == "ready-for-dev"
+            and existing_status.get(key) in (None, "backlog")
+        ):
             report["upgraded_from_disk"].append(key)
         dev[key] = merged
         if kind == "epic" and not first_epic:
@@ -297,9 +301,7 @@ def build_status(entries, existing_data, stories_dir, warnings):
     # Old statuses ride along so the LLM can transplant them after a rename —
     # the values would otherwise be destroyed by the write.
     report["dropped_orphans"] = [
-        {"key": k, "status": existing_status[k]}
-        for k in existing_status
-        if k not in computed_keys
+        {"key": k, "status": existing_status[k]} for k in existing_status if k not in computed_keys
     ]
     report["in_sync"] = (
         not report["new_entries"]
@@ -418,7 +420,11 @@ def cmd_generate(args):
     doc["tracking_system"] = _meta("tracking_system", args.tracking_system, "file-system")
     doc["story_location"] = _meta("story_location", args.story_location, args.stories_dir)
     doc["development_status"] = dev
-    if "action_items" not in doc and existing is not None and existing.get("action_items") is not None:
+    if (
+        "action_items" not in doc
+        and existing is not None
+        and existing.get("action_items") is not None
+    ):
         doc["action_items"] = existing["action_items"]
         doc.yaml_set_comment_before_after_key(
             "action_items",
@@ -465,8 +471,10 @@ def cmd_generate(args):
         else:
             Path(args.status_file).unlink(missing_ok=True)
             restored = True
-        _fail(f"write or validation failed, original {'restored' if restored else 'NOT restored'}: {exc}",
-              restored=restored)
+        _fail(
+            f"write or validation failed, original {'restored' if restored else 'NOT restored'}: {exc}",
+            restored=restored,
+        )
     print(json.dumps(result, default=str))
 
 
@@ -486,12 +494,16 @@ def cmd_status(args):
 
     _, data = _load_existing(args.status_file)
     if data is None:
-        _fail("status file does not exist — run sprint planning to generate it",
-              status_file=str(args.status_file))
+        _fail(
+            "status file does not exist — run sprint planning to generate it",
+            status_file=str(args.status_file),
+        )
     dev = dict(data.get("development_status") or {})
     if not dev:
-        _fail("development_status missing or empty — re-run sprint planning",
-              status_file=str(args.status_file))
+        _fail(
+            "development_status missing or empty — re-run sprint planning",
+            status_file=str(args.status_file),
+        )
 
     warnings = []
     counts = {"story": {}, "epic": {}, "retro": {}}
@@ -559,38 +571,72 @@ def cmd_status(args):
     if by_status.get("review"):
         risks.append(f"{len(by_status['review'])} story(ies) in review — run bmad-code-review")
     if unrecognized:
-        risks.append(f"{len(unrecognized)} unrecognized key(s) in development_status — run validate")
+        risks.append(
+            f"{len(unrecognized)} unrecognized key(s) in development_status — run validate"
+        )
 
     recommendation = None
     if by_status.get("in-progress"):
-        recommendation = {"skill": "bmad-build", "story_key": by_status["in-progress"][0],
-                          "reason": "resume the in-progress story"}
+        recommendation = {
+            "skill": "bmad-build",
+            "story_key": by_status["in-progress"][0],
+            "reason": "resume the in-progress story",
+        }
     elif by_status.get("review"):
-        recommendation = {"skill": "bmad-code-review", "story_key": by_status["review"][0],
-                          "reason": "review the completed implementation"}
+        recommendation = {
+            "skill": "bmad-code-review",
+            "story_key": by_status["review"][0],
+            "reason": "review the completed implementation",
+        }
     elif by_status.get("ready-for-dev"):
-        recommendation = {"skill": "bmad-build", "story_key": by_status["ready-for-dev"][0],
-                          "reason": "start the next ready story"}
+        recommendation = {
+            "skill": "bmad-build",
+            "story_key": by_status["ready-for-dev"][0],
+            "reason": "start the next ready story",
+        }
     elif by_status.get("backlog"):
-        recommendation = {"skill": "bmad-build", "story_key": by_status["backlog"][0],
-                          "reason": "start the first backlog story"}
+        recommendation = {
+            "skill": "bmad-build",
+            "story_key": by_status["backlog"][0],
+            "reason": "start the first backlog story",
+        }
     else:
-        optional_retros = sorted(num for num, status in retro_status.items() if status == "optional")
+        optional_retros = sorted(
+            num for num, status in retro_status.items() if status == "optional"
+        )
         if optional_retros:
-            recommendation = {"skill": "bmad-retrospective", "story_key": None,
-                              "reason": f"all stories done — epic-{optional_retros[0]}-retrospective is still open"}
+            recommendation = {
+                "skill": "bmad-retrospective",
+                "story_key": None,
+                "reason": f"all stories done — epic-{optional_retros[0]}-retrospective is still open",
+            }
 
-    print(json.dumps({
-        "ok": True, "action": "status", "status_file": str(args.status_file),
-        "project": data.get("project"), "project_key": data.get("project_key"),
-        "tracking_system": data.get("tracking_system"),
-        "generated": data.get("generated"), "last_updated": data.get("last_updated"),
-        "stories": counts["story"], "epics": counts["epic"], "retrospectives": counts["retro"],
-        "legacy_mapped": legacy_mapped, "illegal": illegal, "unrecognized": unrecognized,
-        "open_action_items": open_items, "risks": risks, "warnings": warnings,
-        "recommendation": recommendation,
-        "all_done": recommendation is None,
-    }, default=str))
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "action": "status",
+                "status_file": str(args.status_file),
+                "project": data.get("project"),
+                "project_key": data.get("project_key"),
+                "tracking_system": data.get("tracking_system"),
+                "generated": data.get("generated"),
+                "last_updated": data.get("last_updated"),
+                "stories": counts["story"],
+                "epics": counts["epic"],
+                "retrospectives": counts["retro"],
+                "legacy_mapped": legacy_mapped,
+                "illegal": illegal,
+                "unrecognized": unrecognized,
+                "open_action_items": open_items,
+                "risks": risks,
+                "warnings": warnings,
+                "recommendation": recommendation,
+                "all_done": recommendation is None,
+            },
+            default=str,
+        )
+    )
 
 
 def cmd_validate(args):
@@ -598,20 +644,37 @@ def cmd_validate(args):
     legacy_mapped = []
     path = Path(args.status_file)
     if not path.exists():
-        print(json.dumps({
-            "ok": True, "action": "validate", "status_file": str(args.status_file),
-            "valid": False, "problems": ["status file does not exist"], "legacy_mapped": [],
-        }))
+        print(
+            json.dumps(
+                {
+                    "ok": True,
+                    "action": "validate",
+                    "status_file": str(args.status_file),
+                    "valid": False,
+                    "problems": ["status file does not exist"],
+                    "legacy_mapped": [],
+                }
+            )
+        )
         return
     yaml = _make_yaml()
     try:
         with open(args.status_file, encoding="utf-8") as fh:
             data = yaml.load(fh)
     except Exception as exc:
-        print(json.dumps({
-            "ok": True, "action": "validate", "status_file": str(args.status_file),
-            "valid": False, "problems": [f"not valid YAML: {exc}"], "legacy_mapped": [],
-        }, default=str))
+        print(
+            json.dumps(
+                {
+                    "ok": True,
+                    "action": "validate",
+                    "status_file": str(args.status_file),
+                    "valid": False,
+                    "problems": [f"not valid YAML: {exc}"],
+                    "legacy_mapped": [],
+                },
+                default=str,
+            )
+        )
         return
     if not isinstance(data, dict):
         problems.append(f"top level is not a mapping (got {type(data).__name__})")
@@ -622,7 +685,9 @@ def cmd_validate(args):
         for field in ("generated", "last_updated"):
             value = data.get(field)
             if value is not None and _parse_stamp(value) is None:
-                problems.append(f"'{field}' timestamp {str(value)!r} does not match '{DATE_FORMAT}'")
+                problems.append(
+                    f"'{field}' timestamp {str(value)!r} does not match '{DATE_FORMAT}'"
+                )
         dev = data.get("development_status")
         if dev is not None and not isinstance(dev, dict):
             problems.append("development_status is not a mapping")
@@ -630,7 +695,9 @@ def cmd_validate(args):
             for key, raw in dev.items():
                 parsed = classify_key(str(key))
                 if parsed is None:
-                    problems.append(f"unrecognized key '{key}' (expected epic-N, N-M-slug, or epic-N-retrospective)")
+                    problems.append(
+                        f"unrecognized key '{key}' (expected epic-N, N-M-slug, or epic-N-retrospective)"
+                    )
                     continue
                 kind, _ = parsed
                 status, was_legacy = _normalize(raw)
@@ -652,10 +719,19 @@ def cmd_validate(args):
                         problems.append(
                             f"action_items[{i}] has a missing or unknown status ({item.get('status')!r})"
                         )
-    print(json.dumps({
-        "ok": True, "action": "validate", "status_file": str(args.status_file),
-        "valid": not problems, "problems": problems, "legacy_mapped": legacy_mapped,
-    }, default=str))
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "action": "validate",
+                "status_file": str(args.status_file),
+                "valid": not problems,
+                "problems": problems,
+                "legacy_mapped": legacy_mapped,
+            },
+            default=str,
+        )
+    )
 
 
 def build_parser():
