@@ -1,8 +1,7 @@
 """Builder wall editing: HUD chips, Break/Pass-through tools (Story 3.2)."""
 
-import tkinter as tk
-
 from labyrinthes.adapters.tkinter.builder.edit_area import _BuilderEditArea
+from labyrinthes.adapters.tkinter.builder.maze_canvas import _BuilderMazeCanvas
 from labyrinthes.adapters.tkinter.builder.screen import mount
 from labyrinthes.adapters.tkinter.common import (
     HudChip,
@@ -68,7 +67,7 @@ def test_break_mode_click_on_an_interior_wall_breaks_it_and_updates_the_hud(
         maze_repository=fake_maze_repository,
     )
 
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     reach_chip = next(
         c for c in find_all(frame, HudChip) if c._caption.cget("text") == "UNREACHABLE"
     )
@@ -107,7 +106,7 @@ def test_break_mode_click_on_a_border_wall_is_a_no_op(
         maze_repository=fake_maze_repository,
     )
 
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     reach_chip = next(
         c for c in find_all(frame, HudChip) if c._caption.cget("text") == "UNREACHABLE"
     )
@@ -280,7 +279,7 @@ def test_pass_through_mode_click_on_a_wall_is_a_no_op(
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
     edit_area._activate_pass_through()
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     reach_chip = next(
         c for c in find_all(frame, HudChip) if c._caption.cget("text") == "UNREACHABLE"
     )
@@ -314,7 +313,7 @@ def test_wall_bar_canvas_color_reflects_present_vs_broken_state(
         maze_repository=fake_maze_repository,
     )
 
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     item = canvas._wall_items[Wall(1, 1, "top")]
     assert canvas.itemcget(item, "fill") == colors.wall
 

@@ -449,7 +449,7 @@ def test_saving_with_exit_set_promotes_sketch_to_creation_and_mints_a_maze_id(
         maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     _place_exit(edit_area, canvas, Position(2, 3))
 
     edit_area.save_maze()
@@ -494,7 +494,7 @@ def test_saving_a_maze_that_already_has_an_id_keeps_it_unchanged(
         maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     _place_exit(edit_area, canvas, Position(2, 3))
 
     edit_area.save_maze()
@@ -535,7 +535,7 @@ def test_duplicate_name_arms_the_save_button_and_requires_a_second_click_to_over
         maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     _place_exit(edit_area, canvas, Position(2, 3))
     edit_area.save_maze()
     dialog = find_all(frame, _SaveNameDialog)[0]
@@ -576,7 +576,7 @@ def test_editing_the_name_after_arming_resets_the_save_button(
         maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     _place_exit(edit_area, canvas, Position(2, 3))
     edit_area.save_maze()
     dialog = find_all(frame, _SaveNameDialog)[0]

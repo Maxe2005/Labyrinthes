@@ -1,9 +1,8 @@
 """Builder entry/exit marking: Set Entry/Set Exit tools, the ghost preview,
 and redefinition confirmation (Story 3.4)."""
 
-import tkinter as tk
-
 from labyrinthes.adapters.tkinter.builder.edit_area import _BuilderEditArea
+from labyrinthes.adapters.tkinter.builder.maze_canvas import _BuilderMazeCanvas
 from labyrinthes.adapters.tkinter.builder.screen import mount
 from labyrinthes.adapters.tkinter.common import (
     ConfirmDialog,
@@ -115,7 +114,7 @@ def test_clicking_a_cell_with_set_entry_places_the_entry_marker(
         maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     edit_area._activate_set_entry()
 
     _drag_zone(canvas, Position(1, 1), Position(1, 1))
@@ -151,7 +150,7 @@ def test_clicking_a_border_cell_with_set_exit_places_the_exit_marker(
         maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     edit_area._activate_set_exit()
 
     _drag_zone(canvas, Position(2, 0), Position(2, 0))
@@ -184,7 +183,7 @@ def test_clicking_an_interior_cell_with_set_exit_places_the_exit_marker(
         maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     edit_area._activate_set_exit()
 
     _drag_zone(canvas, Position(1, 1), Position(1, 1))
@@ -221,7 +220,7 @@ def test_set_exit_ghost_preview_follows_the_cursor_along_the_border(
         maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     edit_area._activate_set_exit()
 
     assert canvas.find_withtag("ghost-marker") == ()  # entry cell: no ghost
@@ -264,7 +263,7 @@ def test_set_exit_ghost_preview_follows_the_cursor_on_interior_cells(
         maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     edit_area._activate_set_exit()
     edit_area._on_move(Direction.RIGHT)  # cursor (0,1): border, ghost shows
 
@@ -304,7 +303,7 @@ def test_set_exit_ghost_is_never_drawn_over_an_existing_marker(
         maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     edit_area._activate_set_exit()
     edit_area._on_move(Direction.RIGHT)  # cursor (0,1), border, unmarked
 
@@ -340,7 +339,7 @@ def test_ghost_is_never_rendered_for_non_marker_tools(
         maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
 
     edit_area._activate_break()
     assert canvas.find_withtag("ghost-marker") == ()
@@ -376,7 +375,7 @@ def test_redefining_the_entry_at_a_different_cell_requires_confirmation(
         maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     edit_area._activate_set_entry()
 
     _drag_zone(canvas, Position(1, 1), Position(1, 1))
@@ -411,7 +410,7 @@ def test_cancelling_the_redefinition_dialog_leaves_the_marker_in_place(
         maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     edit_area._activate_set_entry()
 
     _drag_zone(canvas, Position(1, 1), Position(1, 1))
@@ -444,7 +443,7 @@ def test_clicking_the_markers_own_cell_is_a_no_op_without_a_prompt(
         maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     edit_area._activate_set_entry()
 
     _drag_zone(canvas, Position(0, 0), Position(0, 0))  # entry already here
@@ -474,7 +473,7 @@ def test_redefine_confirmation_can_be_disabled_via_settings(
         maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     edit_area._activate_set_entry()
 
     _drag_zone(canvas, Position(1, 1), Position(1, 1))
@@ -503,7 +502,7 @@ def test_first_exit_placement_never_prompts(
         maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     edit_area._activate_set_exit()
 
     _drag_zone(canvas, Position(2, 0), Position(2, 0))
@@ -534,7 +533,7 @@ def test_placing_the_exit_on_the_entry_cell_is_a_no_op(
         maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     edit_area._activate_set_exit()
 
     _drag_zone(canvas, Position(0, 0), Position(0, 0))  # the entry's cell
@@ -567,7 +566,7 @@ def test_placing_the_entry_on_the_exit_cell_is_a_no_op(
         maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     edit_area._activate_set_exit()
     _drag_zone(canvas, Position(2, 0), Position(2, 0))  # place the exit
 
@@ -603,7 +602,7 @@ def test_a_drag_under_a_marker_tool_never_places_a_marker(
         maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     edit_area._activate_set_exit()
 
     _drag_zone(canvas, Position(0, 0), Position(2, 0))  # press ≠ release
@@ -637,7 +636,7 @@ def test_redefining_the_exit_at_a_different_cell_requires_confirmation(
         maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     edit_area._activate_set_exit()
     _drag_zone(canvas, Position(2, 0), Position(2, 0))  # first placement
 
@@ -677,7 +676,7 @@ def test_cancelling_the_exit_redefinition_dialog_leaves_the_marker_in_place(
         maze_repository=fake_maze_repository,
     )
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     edit_area._activate_set_exit()
     _drag_zone(canvas, Position(2, 0), Position(2, 0))  # first placement
 
