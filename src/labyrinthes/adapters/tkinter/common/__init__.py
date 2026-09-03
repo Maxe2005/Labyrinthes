@@ -11,6 +11,7 @@ three screen packages (AD-1, AD-9, enforced by
 
 from labyrinthes.adapters.tkinter.common.breadcrumb import Breadcrumb, BreadcrumbSegment
 from labyrinthes.adapters.tkinter.common.confirm_dialog import ConfirmDialog
+from labyrinthes.adapters.tkinter.common.group_heading import build_group_heading
 from labyrinthes.adapters.tkinter.common.hud_chip import HudChip
 from labyrinthes.adapters.tkinter.common.icon_btn import IconButton
 from labyrinthes.adapters.tkinter.common.kbd_tag import KbdTag
@@ -21,6 +22,7 @@ from labyrinthes.adapters.tkinter.common.keybindings import (
     keybinding,
 )
 from labyrinthes.adapters.tkinter.common.logo_loader import load_logo_image
+from labyrinthes.adapters.tkinter.common.maze_frame import build_maze_frame
 from labyrinthes.adapters.tkinter.common.navigation import (
     BuilderTestLaunch,
     NavigateFn,
@@ -31,6 +33,7 @@ from labyrinthes.adapters.tkinter.common.navigation import (
 from labyrinthes.adapters.tkinter.common.new_maze_dialog import NewMazeDialog, OnConfirmFn
 from labyrinthes.adapters.tkinter.common.pill_btn import PillButton
 from labyrinthes.adapters.tkinter.common.settings_window import SettingsWindow
+from labyrinthes.adapters.tkinter.common.stage import Stage
 from labyrinthes.adapters.tkinter.common.tokens import (
     FOCUS_RING_THICKNESS,
     RADII,
@@ -71,6 +74,7 @@ __all__ = [
     "ScreenId",
     "ScreenMountFn",
     "SettingsWindow",
+    "Stage",
     "Theme",
     "ToggleThemeFn",
     "ToolButton",
@@ -79,6 +83,8 @@ __all__ = [
     "TopBar",
     "TypographyTokens",
     "bind_shortcut",
+    "build_group_heading",
+    "build_maze_frame",
     "colors_for",
     "keybinding",
     "load_logo_image",
