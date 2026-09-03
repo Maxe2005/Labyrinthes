@@ -552,6 +552,12 @@ class _BuilderMazeCanvas(tk.Canvas):
         factor = new_size / self._cell_size
         self.scale("all", 0, 0, factor, factor)
         self._cell_size = new_size
+        # Story 4.10 follow-up: the canvas's own requested size must match
+        # its drawn content exactly, so `maze-frame`'s `pack(expand=True)`
+        # (no `fill`) claims exactly the drawn maze's footprint -- never the
+        # canvas's earlier, now-stale `width=`/`height=` from construction
+        # or the previous rescale.
+        self.configure(width=self._grid_width * new_size, height=self._grid_height * new_size)
         # Future markers (`_draw_entry_marker`/`_draw_exit_marker`/ghosts)
         # read this cached radius rather than recomputing it from
         # `self._cell_size` on every draw -- must move in lockstep with the

@@ -145,6 +145,37 @@ def test_zoom_rescales_every_drawn_item_by_the_size_ratio(tk_root):
     assert after == pytest.approx([c * factor for c in before])
 
 
+def test_zoom_updates_the_canvas_own_reported_width_and_height_to_match_the_new_cell_size(
+    tk_root,
+):
+    # Story 4.10 follow-up: the canvas's own requested size (its `width=`/
+    # `height=` options) must track its drawn content exactly, so a
+    # `maze-frame` packed with `expand=True` (no `fill`) around it claims
+    # exactly the drawn maze's footprint -- not the stale construction-time
+    # size -- and centers correctly.
+    maze = _classic_maze(columns=20, rows=20)
+    canvas = _canvas(tk_root, maze)
+    assert int(canvas.cget("width")) == 20 * 24
+    assert int(canvas.cget("height")) == 20 * 24
+
+    canvas.zoom(4)  # 24 -> 28
+
+    assert canvas._cell_size == 28
+    assert int(canvas.cget("width")) == 20 * 28
+    assert int(canvas.cget("height")) == 20 * 28
+
+
+def test_fit_to_space_updates_the_canvas_own_reported_width_and_height(tk_root):
+    maze = _classic_maze(columns=20, rows=20)
+    canvas = _canvas(tk_root, maze)
+
+    canvas.fit_to_space(400, 400)  # min(400 // 20, 400 // 20) == 20
+
+    assert canvas._cell_size == 20
+    assert int(canvas.cget("width")) == 20 * 20
+    assert int(canvas.cget("height")) == 20 * 20
+
+
 def test_a_marker_drawn_after_zoom_uses_the_rescaled_marker_radius(tk_root):
     # Regression: `_marker_radius` is cached at construction and must move
     # in lockstep with `self._cell_size`, or a marker drawn *after* a

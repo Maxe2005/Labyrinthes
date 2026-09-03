@@ -378,13 +378,20 @@ class GameplayScreen(tk.Frame):
 
     def _build_maze_frame(self, colors: ColorTokens, theme: Theme) -> None:
         # Bordered `maze-frame` (Story 4.10) -- shared recipe with
-        # Builder's own (`builder/edit_area.py`'s `_build_canvas`).
+        # Builder's own (`builder/edit_area.py`'s `_build_canvas`). Story
+        # 4.10's follow-up packs it with `expand=True` and no `fill`/
+        # `anchor="w"`/`pady`: the canvas inside now reports its own true
+        # pixel size (`_apply_effective_cell_size`'s `.configure(width=,
+        # height=)`), so this frame claims the leftover space in
+        # `Stage.content` without stretching to it -- Tk's standard "claim
+        # space, don't stretch, center" idiom -- centering the snug
+        # maze-frame instead of hugging the left edge. The old stretch
+        # layout's bottom-only `pady` is dropped too -- invisible while the
+        # frame filled all available space, it would otherwise bias the
+        # now-snug frame upward instead of truly centering it (mirrors
+        # Builder's own `_build_canvas`, which packs with no `pady` here).
         self._maze_frame = build_maze_frame(self._stage.content, colors)
-        # Story 4.8: `fill="both", expand=True` (previously non-expanding)
-        # so this frame -- and the canvas packed inside it the same way --
-        # actually grows/shrinks with the window, giving `MazeCanvas` real
-        # available space to fit-to on `<Configure>`.
-        self._maze_frame.pack(fill="both", expand=True, anchor="w", pady=(0, SPACING["lg"]))
+        self._maze_frame.pack(expand=True)
 
         self._maze_canvas = MazeCanvas(
             self._maze_frame, self._maze, self._session.position, theme=theme
@@ -393,9 +400,10 @@ class GameplayScreen(tk.Frame):
 
         # Fit-to-space on every resize, plus Ctrl+wheel/`+`/`-` zoom on top
         # of it -- see `_BuilderEditArea._build_canvas`'s mirrored wiring
-        # for the binding rationale (`<Configure>` on the canvas itself,
-        # X11 vs. Windows/macOS wheel conventions).
-        self._maze_canvas.bind("<Configure>", self._on_canvas_configure)
+        # for the binding rationale (`<Configure>` on `self._stage.content`
+        # rather than the canvas itself, X11 vs. Windows/macOS wheel
+        # conventions).
+        self._stage.content.bind("<Configure>", self._on_canvas_configure)
         bind_shortcut(self, keybinding("zoom_in_player"), self._zoom_in)
         bind_shortcut(self, keybinding("zoom_out_player"), self._zoom_out)
         self._maze_canvas.bind("<Control-MouseWheel>", self._on_wheel_zoom)
@@ -403,7 +411,28 @@ class GameplayScreen(tk.Frame):
         self._maze_canvas.bind("<Control-Button-5>", self._on_wheel_zoom)
 
     def _on_canvas_configure(self, event: tk.Event) -> None:
-        self._maze_canvas.fit_to_space(event.width, event.height)
+        # `event.height` is `self._stage.content`'s own height, which also
+        # hosts the HUD row above the maze-frame in the same column --
+        # subtract its rendered height (plus the gap below it, per its own
+        # `pady`) so the canvas fits to its own actual available room, not
+        # the HUD's too. `update_idletasks()` first forces Tk to resolve
+        # the HUD row's real size before reading it -- see
+        # `_BuilderEditArea._on_canvas_configure`'s mirrored rationale.
+        #
+        # Guarded: this handler is bound on `self._stage.content` -- a
+        # *container*, not the leaf widget it reads geometry from -- so a
+        # `<Configure>` queued during teardown could still fire after
+        # `self._hud`/`self._maze_canvas` are already destroyed (a Tk
+        # geometry-reflow-during-destroy race). `update_idletasks()` itself
+        # can also process that queued destroy before the read below runs.
+        if not self._hud.winfo_exists() or not self._maze_canvas.winfo_exists():
+            return
+        self.update_idletasks()
+        if not self._hud.winfo_exists() or not self._maze_canvas.winfo_exists():
+            return
+        hud_height = self._hud.winfo_reqheight() + SPACING["lg"]
+        available_height = max(0, event.height - hud_height)
+        self._maze_canvas.fit_to_space(event.width, available_height)
 
     def _zoom_in(self) -> None:
         self._maze_canvas.zoom(_ZOOM_STEP)

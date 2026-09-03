@@ -11,6 +11,7 @@ from labyrinthes.adapters.tkinter.player.classic_gallery import ClassicMazeGalle
 from labyrinthes.app import composition_root
 from labyrinthes.app.composition_root import App, build_app
 from labyrinthes.app.router import Router, ScreenId
+from labyrinthes.application.settings_repository import SettingsScope
 from labyrinthes.domain.grid import Grid
 from labyrinthes.domain.maze import Maze, MazeKind
 from labyrinthes.domain.position import Position
@@ -42,6 +43,15 @@ def test_build_app_destroys_the_root_if_wiring_fails_partway_through(monkeypatch
     class FakeRoot:
         def destroy(self) -> None:
             destroy_calls.append(True)
+
+        def winfo_screenwidth(self) -> int:
+            return 1920
+
+        def winfo_screenheight(self) -> int:
+            return 1080
+
+        def geometry(self, spec: str | None = None) -> str:
+            return ""
 
     class FakeFrame:
         def pack(self, **kwargs) -> None:
@@ -253,13 +263,16 @@ def test_build_app_defaults_maze_repository_to_a_real_csv_maze_repository(tmp_pa
         app.root.destroy()
 
 
-def test_root_window_is_centered_on_screen_at_startup(monkeypatch, tmp_path):
-    # Asserts on the exact `.geometry()` string `_center_on_screen()`
-    # requests, not on `winfo_x()`/`winfo_y()` after the fact -- whether
-    # that request is actually *honored* is up to the platform's window
-    # manager (some ignore an app's own placement requests entirely), which
-    # is outside this codebase's control and not what this story tests
-    # (mirrors `test_f11_is_bound_on_the_root_...`'s same rationale for
+def test_root_window_is_given_a_fixed_size_and_centered_on_screen_at_startup_exactly_once(
+    monkeypatch, tmp_path
+):
+    # Story 4.10 follow-up: unlike Story 4.8's natural-post-mount-size
+    # `_center_on_screen()`, the window's size *and* position are now set
+    # together, once, before Home is ever mounted -- asserts on the exact
+    # `.geometry()` string requested, not on `winfo_x()`/`winfo_y()` after
+    # the fact (whether that request is actually *honored* is up to the
+    # platform's window manager, outside this codebase's control -- mirrors
+    # `test_f11_is_bound_on_the_root_...`'s same rationale for
     # `-fullscreen`).
     calls = []
     original_geometry = tk.Tk.geometry
@@ -272,14 +285,60 @@ def test_root_window_is_centered_on_screen_at_startup(monkeypatch, tmp_path):
     monkeypatch.setattr(tk.Tk, "geometry", spying_geometry)
     app = build_app(settings_repository=JsonSettingsRepository(root=tmp_path))
     try:
+        # Exactly one `.geometry(...)` call for the entire build -- the
+        # window never auto-resizes across navigation.
         assert len(calls) == 1
-        match = re.fullmatch(r"\+(\d+)\+(\d+)", calls[0])
+        match = re.fullmatch(r"(\d+)x(\d+)\+(\d+)\+(\d+)", calls[0])
         assert match is not None
-        x, y = (int(group) for group in match.groups())
-        width = app.root.winfo_width()
-        height = app.root.winfo_height()
-        assert x == (app.root.winfo_screenwidth() - width) // 2
-        assert y == (app.root.winfo_screenheight() - height) // 2
+        width, height, x, y = (int(group) for group in match.groups())
+        # No stored setting: defaults to 1280x800 (clamped to the screen).
+        screen_width = app.root.winfo_screenwidth()
+        screen_height = app.root.winfo_screenheight()
+        assert width == min(1280, max(800, screen_width))
+        assert height == min(800, max(600, screen_height))
+        assert x == (screen_width - width) // 2
+        assert y == (screen_height - height) // 2
+    finally:
+        app.root.destroy()
+
+
+def test_root_window_size_reads_the_stored_shared_scope_setting(monkeypatch, tmp_path):
+    calls = []
+    original_geometry = tk.Tk.geometry
+
+    def spying_geometry(self, spec=None):
+        if spec is not None:
+            calls.append(spec)
+        return original_geometry(self, spec)
+
+    monkeypatch.setattr(tk.Tk, "geometry", spying_geometry)
+    repository = JsonSettingsRepository(root=tmp_path)
+    repository.set(SettingsScope.SHARED, "window_width", 900)
+    repository.set(SettingsScope.SHARED, "window_height", 700)
+
+    app = build_app(settings_repository=repository)
+    try:
+        assert len(calls) == 1
+        match = re.fullmatch(r"(\d+)x(\d+)\+(\d+)\+(\d+)", calls[0])
+        assert match is not None
+        width, height, _x, _y = (int(group) for group in match.groups())
+        assert width == 900
+        assert height == 700
+    finally:
+        app.root.destroy()
+
+
+def test_root_window_never_resizes_across_navigation(tmp_path):
+    app = build_app(settings_repository=JsonSettingsRepository(root=tmp_path))
+    try:
+        app.root.withdraw()
+        initial_geometry = app.root.geometry()
+
+        app.router.navigate(ScreenId.BUILDER)
+        app.router.navigate(ScreenId.PLAYER)
+        app.router.navigate(ScreenId.HOME)
+
+        assert app.root.geometry() == initial_geometry
     finally:
         app.root.destroy()
 

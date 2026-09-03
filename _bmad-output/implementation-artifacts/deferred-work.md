@@ -351,3 +351,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/epic-4/spec-4-10-screen-layout-blocks.md`
   summary: Add Player gameplay session controls seen in the locked mockup (`key-player-gameplay.html`): a persistent Pause button, a Sound toggle, a Legend button, and an in-gameplay Classic/Random mode toggle.
   evidence: confirmed by direct inspection -- no Pause, Sound, or Legend feature exists anywhere in `src/labyrinthes/`, and the sidebar's `Mode` group today only controls HARD mode, not a Classic/Random maze-source toggle during an active run. All four are net-new functionality shown in the mockup's `Session`/`Shortcuts`/`Mode` panels, split out of the pure-layout Story 4.10 scope at the human's request during spec planning.
+
+## Deferred from: code review of spec-4-10-followup-layout-and-window-fixes (2026-09-03)
+
+- source_spec: `_bmad-output/implementation-artifacts/epic-4/spec-4-10-followup-layout-and-window-fixes.md`
+  summary: `ClassicMazeGallery`'s own `gallery.pack()` (`player/screen.py`) still uses the large `SPACING["page-margin"]`/`SPACING["section-gap"]` outer margin this follow-up removed from the Builder edit screen and Player gameplay screen, so navigating from the maze-selection gallery into gameplay still produces a visible layout-margin jump -- the same category of defect (item 4, window-size jump) this follow-up otherwise fixes.
+  evidence: confirmed by direct inspection -- `player/screen.py`'s `gallery.pack(..., padx=SPACING["page-margin"], pady=SPACING["section-gap"])` was left untouched, explicitly out of scope per this spec's own Never clause ("Change `ClassicMazeGallery`'s layout — unaffected by this correction"). Surfaced by the Blind Hunter review layer; worth revisiting once/if the gallery's own layout (story 4.14, grid gallery) is touched.

@@ -392,9 +392,15 @@ class _BuilderEditArea(tk.Frame):
 
     def _build_canvas(self, parent: tk.Widget, colors: ColorTokens) -> None:
         # Bordered `maze-frame` (Story 4.10) -- shared recipe with Player's
-        # own (`player/gameplay/screen.py`'s `_build_maze_frame`).
+        # own (`player/gameplay/screen.py`'s `_build_maze_frame`). Story
+        # 4.10's follow-up packs it with `expand=True` and no `fill`: the
+        # canvas inside now reports its own true pixel size
+        # (`_apply_effective_cell_size`'s `.configure(width=, height=)`), so
+        # this frame claims the leftover space in `Stage.content` without
+        # stretching to it -- Tk's standard "claim space, don't stretch,
+        # center" idiom -- centering the snug maze-frame in that space.
         self._maze_frame = build_maze_frame(parent, colors)
-        self._maze_frame.pack(fill="both", expand=True)
+        self._maze_frame.pack(expand=True)
 
         self._canvas = _BuilderMazeCanvas(
             self._maze_frame,
@@ -410,14 +416,19 @@ class _BuilderEditArea(tk.Frame):
         self._sync_markers()
 
         # Story 4.8: fit-to-space on every resize, plus Ctrl+wheel/`+`/`-`
-        # zoom on top of it. `<Configure>` fires on the canvas itself (not
-        # its parent) since it's the widget the `fill="both", expand=True`
-        # pack actually resizes -- its own reported width/height *is* the
-        # available space. `<Control-Button-4>`/`<Control-Button-5>` cover
-        # X11's wheel-as-button convention; `<Control-MouseWheel>` covers
-        # Windows/macOS -- both routed through the same handler
-        # (`_wheel_zoom_delta` tells them apart).
-        self._canvas.bind("<Configure>", self._on_canvas_configure)
+        # zoom on top of it. Story 4.10's follow-up moves the `<Configure>`
+        # binding from the canvas itself to `self._stage.content`: the
+        # canvas no longer resizes with its parent (it now reports its own
+        # size), so its own `<Configure>` would otherwise only ever reflect
+        # *our own* `.configure()` calls from `_apply_effective_cell_size`,
+        # not the actual available room -- a feedback loop, not a resize
+        # signal. `self._stage.content` is the widget that actually grows/
+        # shrinks with the window. `<Control-Button-4>`/`<Control-Button-5>`
+        # cover X11's wheel-as-button convention; `<Control-MouseWheel>`
+        # covers Windows/macOS -- both routed through the same handler
+        # (`_wheel_zoom_delta` tells them apart) and stay bound on the
+        # canvas itself.
+        self._stage.content.bind("<Configure>", self._on_canvas_configure)
         bind_shortcut(self, keybinding("zoom_in_builder"), self._zoom_in)
         bind_shortcut(self, keybinding("zoom_out_builder"), self._zoom_out)
         self._canvas.bind("<Control-MouseWheel>", self._on_wheel_zoom)
@@ -425,7 +436,29 @@ class _BuilderEditArea(tk.Frame):
         self._canvas.bind("<Control-Button-5>", self._on_wheel_zoom)
 
     def _on_canvas_configure(self, event: tk.Event) -> None:
-        self._canvas.fit_to_space(event.width, event.height)
+        # `event.height` is `self._stage.content`'s own height, which also
+        # hosts the HUD row above the maze-frame in the same column --
+        # subtract its rendered height (plus the gap below it, per
+        # `_build_hud`'s own `pady`) so the canvas fits to its own actual
+        # available room, not the HUD's too. `update_idletasks()` first
+        # forces Tk to resolve the HUD row's real size before reading it --
+        # otherwise a `<Configure>` handled before the HUD's own geometry
+        # pass would read a stale `winfo_reqheight()`.
+        #
+        # Guarded: this handler is bound on `self._stage.content` -- a
+        # *container*, not the leaf widget it reads geometry from -- so a
+        # `<Configure>` queued during teardown could still fire after
+        # `self._hud_row`/`self._canvas` are already destroyed (a Tk
+        # geometry-reflow-during-destroy race). `update_idletasks()` itself
+        # can also process that queued destroy before the read below runs.
+        if not self._hud_row.winfo_exists() or not self._canvas.winfo_exists():
+            return
+        self.update_idletasks()
+        if not self._hud_row.winfo_exists() or not self._canvas.winfo_exists():
+            return
+        hud_height = self._hud_row.winfo_reqheight() + SPACING["lg"]
+        available_height = max(0, event.height - hud_height)
+        self._canvas.fit_to_space(event.width, available_height)
 
     def _zoom_in(self) -> None:
         self._canvas.zoom(_ZOOM_STEP)

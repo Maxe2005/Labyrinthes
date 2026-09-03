@@ -89,6 +89,13 @@ from labyrinthes.application.defaults_settings import (
 )
 from labyrinthes.application.settings_repository import SettingsRepository
 from labyrinthes.application.theme_logo_settings import read_theme_logo, write_theme_logo
+from labyrinthes.application.window_settings import (
+    MIN_WINDOW_HEIGHT,
+    MIN_WINDOW_WIDTH,
+    read_window_size,
+    write_window_height,
+    write_window_width,
+)
 
 __all__ = ["SettingsWindow"]
 
@@ -177,13 +184,14 @@ class SettingsWindow(tk.Toplevel):
     def _center_on_screen(self) -> None:
         """Center this window on the primary screen at its current natural size.
 
-        Mirrors `composition_root._center_on_screen`, applied to this
-        `Toplevel` instead of the app's single `Tk()` root -- duplicated
-        rather than shared since the two live in different layers (`app/`
-        vs. `adapters/tkinter/common/`) for a handful of lines. Position
-        only (`+x+y`, no `WxH`) -- an explicit size would pin this window
-        at its first category's natural size and stop it auto-growing when
-        a taller category is later selected.
+        This `Toplevel`'s own natural-post-mount-size centering (unlike
+        `app/composition_root.py::build_app()`'s root-window centering,
+        which Story 4.10's follow-up changed to a fixed, `shared`-scope-
+        setting-driven size read once at startup instead -- see that
+        module's docstring). Position only (`+x+y`, no `WxH`) -- an
+        explicit size would pin this window at its first category's
+        natural size and stop it auto-growing when a taller category is
+        later selected.
         """
         self.update_idletasks()
         width = self.winfo_width()
@@ -486,13 +494,75 @@ class SettingsWindow(tk.Toplevel):
             lambda v: write_random_maze_default_rows(self._settings_repository, v),
         )
 
+        # Window size (Story 4.10 follow-up) -- applies on next launch, not
+        # live, same precedent as Story 4.9's logo-change timing.
+        window_frame = tk.Frame(container, background=colors.window)
+        window_frame.pack(fill="x", padx=SPACING["2xl"], pady=(SPACING["lg"], SPACING["md"]))
+
+        tk.Label(
+            window_frame,
+            text="Window size (applies on next launch)",
+            font=TYPOGRAPHY.body.to_tk_font(),
+            background=colors.window,
+            foreground=colors.ink,
+            anchor="w",
+        ).pack(anchor="w", pady=(0, SPACING["xs"]))
+
+        # Captured once here, not re-queried inside the writer lambdas below:
+        # if the window moved to a different-resolution monitor between
+        # opening Settings and editing the field, a fresh
+        # `winfo_screenwidth()`/`winfo_screenheight()` read at write time
+        # could disagree with the `max_value` bound the field was just
+        # validated against, so the inline "Clamped to X" note and the
+        # actually-persisted value could diverge.
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        window_width, window_height = read_window_size(
+            self._settings_repository, screen_width, screen_height
+        )
+        self._add_default_dimension_field(
+            window_frame,
+            "Width",
+            str(window_width),
+            lambda v: write_window_width(self._settings_repository, v, screen_width),
+            min_value=MIN_WINDOW_WIDTH,
+            max_value=screen_width,
+            clamp=True,
+        )
+        self._add_default_dimension_field(
+            window_frame,
+            "Height",
+            str(window_height),
+            lambda v: write_window_height(self._settings_repository, v, screen_height),
+            min_value=MIN_WINDOW_HEIGHT,
+            max_value=screen_height,
+            clamp=True,
+        )
+
     def _add_default_dimension_field(
         self,
         parent: tk.Frame,
         label: str,
         initial_value: str,
         writer: Callable,
+        *,
+        min_value: int = 1,
+        max_value: int | None = None,
+        clamp: bool = False,
     ) -> None:
+        """A `label` + `tk.Entry` + inline-error-label row, validated live.
+
+        `min_value`/`max_value` bound the field (`max_value=None` falls back
+        to the maze-size bound below, the original New Maze/Random Maze
+        columns/rows behavior). `clamp=False` (the default, matching that
+        original behavior) rejects an out-of-bounds entry -- an inline error
+        shows and `writer` is never called, so the previously stored value
+        is left untouched. `clamp=True` (the Window size fields, Story 4.10
+        follow-up) instead *clamps* an out-of-bounds entry into range,
+        writes the clamped value, and shows an informational inline note --
+        matching the setting's own `write_window_width`/`write_window_height`
+        clamping contract (a value is always persisted, never just refused).
+        """
         colors = colors_for(self._theme)
 
         row = tk.Frame(parent, background=colors.window)
@@ -511,7 +581,12 @@ class SettingsWindow(tk.Toplevel):
         entry = tk.Entry(row, width=6)
         entry.insert(0, initial_value)
         entry.pack(side="left")
-        entry.bind("<KeyRelease>", lambda _e: self._validate_default_dimension(entry, writer))
+        entry.bind(
+            "<KeyRelease>",
+            lambda _e: self._validate_default_dimension(
+                entry, writer, min_value=min_value, max_value=max_value, clamp=clamp
+            ),
+        )
 
         error_label = tk.Label(
             parent,
@@ -526,26 +601,62 @@ class SettingsWindow(tk.Toplevel):
 
         self._default_dimension_errors[entry] = error_label
 
-    def _validate_default_dimension(self, entry: tk.Entry, writer: Callable) -> None:
+    def _validate_default_dimension(
+        self,
+        entry: tk.Entry,
+        writer: Callable,
+        *,
+        min_value: int = 1,
+        max_value: int | None = None,
+        clamp: bool = False,
+    ) -> None:
         from labyrinthes.domain.maze_size_bounds import DEFAULT_MAZE_SIZE_BOUNDS
 
         text = entry.get()
         error_label = self._default_dimension_errors.get(entry)
         if error_label is None:
             return
+        colors = colors_for(self._theme)
+
+        bound = max_value
+        if bound is None:
+            # We don't know if this is columns or rows here, but the
+            # writers clamp on read too. For UX, check against the max
+            # bounds (the original New Maze/Random Maze fields' own
+            # behavior, unaffected by `clamp`/explicit bounds).
+            bound = max(DEFAULT_MAZE_SIZE_BOUNDS.max_columns, DEFAULT_MAZE_SIZE_BOUNDS.max_rows)
 
         try:
             value = int(text)
-            if value < 1:
-                error_label.configure(text="Must be a positive number.")
-                return
-            # We don't know if this is columns or rows here, but the writers
-            # will clamp on read. For UX, we can check against the max bounds.
-            max_bound = max(DEFAULT_MAZE_SIZE_BOUNDS.max_columns, DEFAULT_MAZE_SIZE_BOUNDS.max_rows)
-            if value > max_bound:
-                error_label.configure(text=f"Maximum is {max_bound}.")
-                return
-            error_label.configure(text="")
-            writer(value)
         except ValueError:
-            error_label.configure(text="Enter a whole number.")
+            error_label.configure(text="Enter a whole number.", foreground=colors.exit)
+            return
+
+        if value < min_value or value > bound:
+            if clamp:
+                # The value *was* accepted and persisted (clamped), not
+                # rejected -- `colors.ink_soft`, not the error red, so this
+                # doesn't read as "something went wrong" the way "Enter a
+                # whole number."/"Maximum is N." do below. The entry's own
+                # displayed text is also rewritten to the clamped value, so
+                # the field never visibly disagrees with what was actually
+                # persisted (e.g. a stray "99999" left showing above a
+                # "Clamped to 1920." note) until Settings is closed and
+                # reopened.
+                clamped = max(min_value, min(value, bound))
+                entry.delete(0, "end")
+                entry.insert(0, str(clamped))
+                error_label.configure(text=f"Clamped to {clamped}.", foreground=colors.ink_soft)
+                writer(clamped)
+                return
+            if value < min_value:
+                message = (
+                    "Must be a positive number." if min_value <= 1 else f"Minimum is {min_value}."
+                )
+            else:
+                message = f"Maximum is {bound}."
+            error_label.configure(text=message, foreground=colors.exit)
+            return
+
+        error_label.configure(text="")
+        writer(value)
