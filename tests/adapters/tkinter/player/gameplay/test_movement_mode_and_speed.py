@@ -34,18 +34,18 @@ def test_mode_toggle_flips_the_session_mode_and_persists(
         settings_repository=fake_settings_repository,
     )
     assert screen._session.mode is MovementMode.SMOOTH
-    assert screen._sidebar._mode_button.active is True
+    assert screen._right_panel._mode_button.active is True
 
     screen._toggle_mode()
 
     assert screen._session.mode is MovementMode.DISCRETE
-    assert screen._sidebar._mode_button.active is False
+    assert screen._right_panel._mode_button.active is False
     assert fake_settings_repository.get(SettingsScope.GAME, MOVEMENT_MODE) == "discrete"
 
     screen._toggle_mode()
 
     assert screen._session.mode is MovementMode.SMOOTH
-    assert screen._sidebar._mode_button.active is True
+    assert screen._right_panel._mode_button.active is True
     assert fake_settings_repository.get(SettingsScope.GAME, MOVEMENT_MODE) == "smooth"
 
 
@@ -73,23 +73,23 @@ def test_speed_button_cycles_through_the_tiers_and_relabels(
         settings_repository=fake_settings_repository,
     )
     assert screen._session.speed is MovementSpeed.NORMAL
-    assert screen._sidebar._speed_button._label.cget("text") == "Normal"
+    assert screen._right_panel._speed_button._label.cget("text") == "Normal"
 
     screen._cycle_speed()
 
     assert screen._session.speed is MovementSpeed.FAST
-    assert screen._sidebar._speed_button._label.cget("text") == "Fast"
+    assert screen._right_panel._speed_button._label.cget("text") == "Fast"
     assert fake_settings_repository.get(SettingsScope.GAME, MOVEMENT_SPEED) == "fast"
 
     screen._cycle_speed()
 
     assert screen._session.speed is MovementSpeed.SLOW
-    assert screen._sidebar._speed_button._label.cget("text") == "Slow"
+    assert screen._right_panel._speed_button._label.cget("text") == "Slow"
 
     screen._cycle_speed()
 
     assert screen._session.speed is MovementSpeed.NORMAL
-    assert screen._sidebar._speed_button._label.cget("text") == "Normal"
+    assert screen._right_panel._speed_button._label.cget("text") == "Normal"
 
 
 def test_animation_per_step_delay_reflects_the_current_speed_and_recomputes_on_a_live_change(

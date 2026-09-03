@@ -37,7 +37,7 @@ def test_level_chip_and_sidebar_label_show_the_initial_level_one(
 
     assert screen._session.level is Level.ONE
     assert screen._hud._level_chip._value_label.cget("text") == "1"
-    assert screen._sidebar._level_value_label.cget("text") == "1"
+    assert screen._left_panel._level_value_label.cget("text") == "1"
 
 
 def test_cycling_the_level_updates_the_chip_and_sidebar_label_and_wraps(
@@ -54,7 +54,7 @@ def test_cycling_the_level_updates_the_chip_and_sidebar_label_and_wraps(
     screen._cycle_level(1)  # ONE -> TWO
     assert screen._session.level is Level.TWO
     assert screen._hud._level_chip._value_label.cget("text") == "2"
-    assert screen._sidebar._level_value_label.cget("text") == "2"
+    assert screen._left_panel._level_value_label.cget("text") == "2"
 
     screen._cycle_level(1)  # TWO -> THREE
     assert screen._session.level is Level.THREE
@@ -67,7 +67,7 @@ def test_cycling_the_level_updates_the_chip_and_sidebar_label_and_wraps(
     screen._cycle_level(1)  # FOUR -> MAX
     assert screen._session.level is Level.MAX
     assert screen._hud._level_chip._value_label.cget("text") == "Max"
-    assert screen._sidebar._level_value_label.cget("text") == "Max"
+    assert screen._left_panel._level_value_label.cget("text") == "Max"
 
     screen._cycle_level(1)  # MAX -> ONE (wrapped)
     assert screen._session.level is Level.ONE
@@ -314,9 +314,9 @@ def test_difficulty_group_renders_disabled_at_level_one(
     )
     assert screen._session.difficulty is Difficulty.ONE
     assert screen._hud._difficulty_chip._value_label.cget("text") == "1"
-    assert screen._sidebar._difficulty_value_label.cget("text") == "1"
-    assert screen._sidebar._difficulty_minus_button._enabled is False
-    assert screen._sidebar._difficulty_plus_button._enabled is False
+    assert screen._left_panel._difficulty_value_label.cget("text") == "1"
+    assert screen._left_panel._difficulty_minus_button._enabled is False
+    assert screen._left_panel._difficulty_plus_button._enabled is False
 
 
 def test_cycling_difficulty_updates_session_chip_and_sidebar_and_wraps_both_directions(
@@ -334,7 +334,7 @@ def test_cycling_difficulty_updates_session_chip_and_sidebar_and_wraps_both_dire
     screen._cycle_difficulty(1)  # ONE -> TWO
     assert screen._session.difficulty is Difficulty.TWO
     assert screen._hud._difficulty_chip._value_label.cget("text") == "2"
-    assert screen._sidebar._difficulty_value_label.cget("text") == "2"
+    assert screen._left_panel._difficulty_value_label.cget("text") == "2"
 
     screen._cycle_difficulty(1)  # TWO -> THREE
     assert screen._session.difficulty is Difficulty.THREE
@@ -392,27 +392,27 @@ def test_difficulty_controls_disable_at_level_max_and_at_level_one(
         settings_repository=fake_settings_repository,
     )
     colors = colors_for(Theme.LIGHT)
-    assert screen._sidebar._difficulty_plus_button._enabled is False
-    assert screen._sidebar._difficulty_value_label.cget("foreground") == colors.ghost
+    assert screen._left_panel._difficulty_plus_button._enabled is False
+    assert screen._left_panel._difficulty_value_label.cget("foreground") == colors.ghost
 
     screen._cycle_level(1)  # ONE -> TWO
-    assert screen._sidebar._difficulty_plus_button._enabled is True
-    assert screen._sidebar._difficulty_minus_button._enabled is True
-    assert screen._sidebar._difficulty_value_label.cget("foreground") == colors.ink
+    assert screen._left_panel._difficulty_plus_button._enabled is True
+    assert screen._left_panel._difficulty_minus_button._enabled is True
+    assert screen._left_panel._difficulty_value_label.cget("foreground") == colors.ink
 
     screen._cycle_level(1)  # TWO -> THREE
-    assert screen._sidebar._difficulty_plus_button._enabled is True
+    assert screen._left_panel._difficulty_plus_button._enabled is True
 
     screen._cycle_level(1)  # THREE -> FOUR
-    assert screen._sidebar._difficulty_plus_button._enabled is True
+    assert screen._left_panel._difficulty_plus_button._enabled is True
 
     screen._cycle_level(1)  # FOUR -> MAX
-    assert screen._sidebar._difficulty_plus_button._enabled is False
-    assert screen._sidebar._difficulty_value_label.cget("foreground") == colors.ghost
+    assert screen._left_panel._difficulty_plus_button._enabled is False
+    assert screen._left_panel._difficulty_value_label.cget("foreground") == colors.ghost
     assert screen._hud._difficulty_chip._value_label.cget("text") == "1"
 
     screen._cycle_level(1)  # MAX -> ONE (wrapped)
-    assert screen._sidebar._difficulty_plus_button._enabled is False
+    assert screen._left_panel._difficulty_plus_button._enabled is False
 
 
 def test_difficulty_cycle_is_a_no_op_while_the_control_is_disabled(
