@@ -1,7 +1,5 @@
 """Builder zone selection: the colored live outline and click-click gesture (Story 4.3)."""
 
-import tkinter as tk
-
 from labyrinthes.adapters.tkinter.builder.edit_area import _BuilderEditArea
 from labyrinthes.adapters.tkinter.builder.maze_canvas import _BuilderMazeCanvas
 from labyrinthes.adapters.tkinter.builder.screen import mount
@@ -53,7 +51,7 @@ def test_zone_selection_colored_outline_visible_during_drag(
     )
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     edit_area._activate_destroy_zone()
 
     # Press at (0,0) and drag to (1,1) -- outline should exist during drag
@@ -98,7 +96,7 @@ def test_zone_selection_click_click_gesture_arms_and_commits(
     )
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     reach_chip = next(
         c for c in find_all(frame, HudChip) if c._caption.cget("text") == "UNREACHABLE"
     )
@@ -144,7 +142,7 @@ def test_zone_selection_outline_follows_mouse_during_click_click_gesture(
     )
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     edit_area._activate_destroy_zone()
 
     # First click at (0,0) -- arms the anchor
@@ -192,7 +190,7 @@ def test_zone_selection_escape_cancels_armed_anchor(
     )
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     reach_chip = next(
         c for c in find_all(frame, HudChip) if c._caption.cget("text") == "UNREACHABLE"
     )
@@ -235,7 +233,7 @@ def test_zone_selection_escape_during_drag_cancels_drag(
     )
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     reach_chip = next(
         c for c in find_all(frame, HudChip) if c._caption.cget("text") == "UNREACHABLE"
     )
@@ -284,7 +282,7 @@ def test_zone_selection_restore_zone_click_click_gesture(
     )
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     edit_area._activate_destroy_zone()
     _drag_zone(canvas, Position(0, 0), Position(1, 1))  # Destroy first
 
@@ -321,7 +319,7 @@ def test_zone_selection_same_cell_click_is_no_op(
     )
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     reach_chip = next(
         c for c in find_all(frame, HudChip) if c._caption.cget("text") == "UNREACHABLE"
     )
@@ -359,7 +357,7 @@ def test_zone_selection_tool_switch_mid_gesture_uses_press_time_tool(
     )
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     edit_area._activate_destroy_zone()
 
     # First click with Destroy Zone -- arms anchor
@@ -401,7 +399,7 @@ def test_zone_selection_break_tool_does_not_arm_anchor(
         maze_repository=fake_maze_repository,
     )
 
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     # Break tool is active by default
 
     # Click should not arm anchor

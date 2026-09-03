@@ -300,9 +300,9 @@ def test_restart_resets_level_difficulty_chips_and_reapplies_persisted_mode_spee
     assert screen._session.mode is MovementMode.DISCRETE  # persisted mode re-applied
     assert screen._session.speed is speed_before_timeout  # persisted speed re-applied
     assert screen._hud._level_chip._value_label.cget("text") == "1"
-    assert screen._sidebar._level_value_label.cget("text") == "1"
+    assert screen._left_panel._level_value_label.cget("text") == "1"
     assert screen._hud._difficulty_chip._value_label.cget("text") == "1"
-    assert screen._sidebar._mode_button.active is False  # mirrors the re-applied DISCRETE mode
+    assert screen._right_panel._mode_button.active is False  # mirrors the re-applied DISCRETE mode
 
 
 def test_restart_with_a_solved_win_banner_destroys_it_and_resets_the_run(
@@ -428,7 +428,10 @@ def test_timeout_banner_mirrors_the_win_banner_styling_and_placement(
     assert screen._timeout_banner.cget("highlightbackground") == colors.accent
     assert screen._timeout_banner.cget("highlightcolor") == colors.accent
     assert screen._timeout_banner.pack_info()["fill"] == "x"
-    pack_order = screen.pack_slaves()
+    # Both are packed inside `self._stage.content` (Story 4.10) -- see
+    # `_show_timeout_banner`'s `before=self._maze_frame` requiring a shared
+    # master.
+    pack_order = screen._stage.content.pack_slaves()
     assert pack_order.index(screen._timeout_banner) < pack_order.index(screen._maze_frame)
 
 
@@ -460,7 +463,7 @@ def test_restart_resets_the_hard_mode_visual_state(
     ball = screen._maze_canvas.find_withtag("ball")[0]
     assert screen._maze_canvas.itemcget(ball, "state") == "normal"
     assert screen._hud._status_light_frame.winfo_manager() == ""
-    assert screen._sidebar._mode_hard_button.active is False
+    assert screen._left_panel._mode_hard_button.active is False
 
 
 def test_restart_opens_a_confirm_dialog_when_confirm_restart_is_on(

@@ -7,14 +7,16 @@ arrow keys drive a pure `domain.movement.attempt_move` +
 shows an inline win banner (`banners.py`'s `_OutcomeBanner`).
 
 This screen is the session-orchestrating controller: it owns `self._session`
-and every method that reads or mutates it, and pushes the results into two
-composed, session-agnostic widgets --
-`hud.py`'s `_HudRow` (the chip row + HARD status light) and `sidebar.py`'s
-`_Sidebar` (the Movement/Mode/Levels/Difficulty/Edit-in-Builder
-column) -- through their small `set_*`/`sync_*` setters. Both widgets hold
-no session state of their own; every button's *command* is still a callback
-into this class, since deciding what a click does (including the
-`_toplevel_has_focus()` guard) is this controller's job, not theirs.
+and every method that reads or mutates it, and pushes the results into three
+composed, session-agnostic widgets -- `hud.py`'s `_HudRow` (the chip row +
+HARD status light, hosted inside the centered `Stage`, `common/stage.py`)
+and `sidebar.py`'s `_LeftPanel` (Mode/Levels/Difficulty/Edit-in-Builder) and
+`_RightPanel` (Movement + the conditional Save button's zone), flanking the
+`Stage` (Story 4.10) -- through their small `set_*`/`sync_*` setters. None
+of the three hold session state of their own; every button's *command* is
+still a callback into this class, since deciding what a click does
+(including the `_toplevel_has_focus()` guard) is this controller's job, not
+theirs.
 
 Story 2.5 adds configurable movement modes and speed. The screen reads the
 `game`-scoped `MOVEMENT_MODE`/`MOVEMENT_SPEED` settings at mount, applies
@@ -45,7 +47,7 @@ wrapped) directly under the "Levels" group. Difficulty changes reroute
 through `set_difficulty` (a no-op once solved), which re-initializes
 `visibility` from the current position; the same `_sync_visibility()` redraw
 fires on the resulting identity change. The Difficulty controls are disabled
-(`_Sidebar.set_difficulty(..., enabled=False)`) whenever the level is ONE or
+(`_LeftPanel.set_difficulty(..., enabled=False)`) whenever the level is ONE or
 MAX -- unlockable from Level 2 onward, and inert at MAX (no partitions/walls
 to threshold), matching the legacy `Niveau_max` gate. Both controls share
 the toplevel focus guard and have no global shortcut.
@@ -105,12 +107,14 @@ from collections.abc import Callable
 
 from labyrinthes.adapters.tkinter.common.confirm_dialog import ConfirmDialog
 from labyrinthes.adapters.tkinter.common.keybindings import bind_shortcut, keybinding
+from labyrinthes.adapters.tkinter.common.maze_frame import build_maze_frame
 from labyrinthes.adapters.tkinter.common.navigation import BuilderTestLaunch, ScreenId
 from labyrinthes.adapters.tkinter.common.pill_btn import PillButton
+from labyrinthes.adapters.tkinter.common.stage import Stage
 from labyrinthes.adapters.tkinter.common.tokens import SPACING, ColorTokens, Theme, colors_for
 from labyrinthes.adapters.tkinter.player.gameplay.banners import _OutcomeBanner
 from labyrinthes.adapters.tkinter.player.gameplay.hud import _HudRow
-from labyrinthes.adapters.tkinter.player.gameplay.sidebar import _Sidebar
+from labyrinthes.adapters.tkinter.player.gameplay.sidebar import _LeftPanel, _RightPanel
 from labyrinthes.adapters.tkinter.player.maze_canvas import MazeCanvas
 from labyrinthes.adapters.tkinter.player.save_maze_dialog import SaveMazeDialog
 from labyrinthes.application.confirmation_settings import (
@@ -299,8 +303,44 @@ class GameplayScreen(tk.Frame):
         # toggles / repository color reads when nothing changed (Story 2.8).
         self._last_hard_sync_state: tuple[bool, bool] | None = None
 
-        self._hud = _HudRow(
+        self._left_panel = _LeftPanel(
             self,
+            theme=theme,
+            hard_active=self._session.hard_mode,
+            level_label=_level_label(self._session.level),
+            difficulty_label=_difficulty_label(self._session.difficulty),
+            difficulty_enabled=self._difficulty_enabled(),
+            show_edit_in_builder=self._maze.kind in {MazeKind.CLASSIC, MazeKind.SAVED_RANDOM},
+            on_toggle_hard_mode=self._toggle_hard_mode,
+            on_level_minus=functools.partial(self._cycle_level, -1),
+            on_level_plus=functools.partial(self._cycle_level, +1),
+            on_difficulty_minus=functools.partial(self._cycle_difficulty, -1),
+            on_difficulty_plus=functools.partial(self._cycle_difficulty, +1),
+            on_edit_in_builder=self._on_edit_in_builder_clicked,
+        )
+        self._left_panel.pack(side="left", fill="y", padx=(0, SPACING["lg"]))
+
+        self._right_panel = _RightPanel(
+            self,
+            theme=theme,
+            mode_active=self._session.mode is MovementMode.SMOOTH,
+            speed_label=_speed_label(self._session.speed),
+            on_toggle_mode=self._toggle_mode,
+            on_cycle_speed=self._cycle_speed,
+        )
+        self._right_panel.pack(side="right", fill="y", padx=(SPACING["lg"], 0))
+        # `_build_save_zone()` builds/rebuilds the conditional Save button
+        # into this frame (GENERATED mazes only) -- kept as its own
+        # attribute (rather than reaching through `self._right_panel`
+        # everywhere) since it predates the panel split and several
+        # methods below already address it directly.
+        self._save_zone = self._right_panel.save_zone
+
+        self._stage = Stage(self, colors=colors)
+        self._stage.pack(side="left", fill="both", expand=True)
+
+        self._hud = _HudRow(
+            self._stage.content,
             theme=theme,
             level=_level_label(self._session.level),
             difficulty=_difficulty_label(self._session.difficulty),
@@ -309,31 +349,8 @@ class GameplayScreen(tk.Frame):
         )
         self._hud.pack(fill="x", pady=(0, SPACING["lg"]))
 
-        self._sidebar = _Sidebar(
-            self,
-            theme=theme,
-            mode_active=self._session.mode is MovementMode.SMOOTH,
-            speed_label=_speed_label(self._session.speed),
-            hard_active=self._session.hard_mode,
-            level_label=_level_label(self._session.level),
-            difficulty_label=_difficulty_label(self._session.difficulty),
-            difficulty_enabled=self._difficulty_enabled(),
-            show_edit_in_builder=self._maze.kind in {MazeKind.CLASSIC, MazeKind.SAVED_RANDOM},
-            on_toggle_mode=self._toggle_mode,
-            on_cycle_speed=self._cycle_speed,
-            on_toggle_hard_mode=self._toggle_hard_mode,
-            on_level_minus=functools.partial(self._cycle_level, -1),
-            on_level_plus=functools.partial(self._cycle_level, +1),
-            on_difficulty_minus=functools.partial(self._cycle_difficulty, -1),
-            on_difficulty_plus=functools.partial(self._cycle_difficulty, +1),
-            on_edit_in_builder=self._on_edit_in_builder_clicked,
-        )
-        self._sidebar.pack(side="left", fill="y", padx=(0, SPACING["lg"]))
-
         self._build_maze_frame(colors, theme)
         self._rendered_visibility = self._session.visibility
-        self._save_zone = tk.Frame(self, background=colors.window)
-        self._save_zone.pack(anchor="w", pady=(SPACING["lg"], 0))
         self._build_save_zone()
 
         for action_id, direction in _DIRECTION_ACTION_IDS:
@@ -360,13 +377,9 @@ class GameplayScreen(tk.Frame):
             self._navigate(ScreenId.BUILDER, self._maze)
 
     def _build_maze_frame(self, colors: ColorTokens, theme: Theme) -> None:
-        self._maze_frame = tk.Frame(
-            self,
-            background=colors.window,
-            highlightthickness=1,
-            highlightbackground=colors.border,
-            highlightcolor=colors.border,
-        )
+        # Bordered `maze-frame` (Story 4.10) -- shared recipe with
+        # Builder's own (`builder/edit_area.py`'s `_build_canvas`).
+        self._maze_frame = build_maze_frame(self._stage.content, colors)
         # Story 4.8: `fill="both", expand=True` (previously non-expanding)
         # so this frame -- and the canvas packed inside it the same way --
         # actually grows/shrinks with the window, giving `MazeCanvas` real
@@ -587,7 +600,7 @@ class GameplayScreen(tk.Frame):
     def _sync_level_widgets(self) -> None:
         label = _level_label(self._session.level)
         self._hud.set_level(label)
-        self._sidebar.set_level(label)
+        self._left_panel.set_level(label)
 
     def _cycle_difficulty(self, delta: int) -> None:
         if not self._toplevel_has_focus():
@@ -604,7 +617,7 @@ class GameplayScreen(tk.Frame):
     def _sync_difficulty_widgets(self) -> None:
         enabled = self._difficulty_enabled()
         label = _difficulty_label(self._session.difficulty)
-        self._sidebar.set_difficulty(label, enabled=enabled)
+        self._left_panel.set_difficulty(label, enabled=enabled)
         self._hud.set_difficulty(label)
 
     def _difficulty_enabled(self) -> bool:
@@ -623,7 +636,7 @@ class GameplayScreen(tk.Frame):
         self._sync_mode_button()
 
     def _sync_mode_button(self) -> None:
-        self._sidebar.sync_mode_button(self._session.mode is MovementMode.SMOOTH)
+        self._right_panel.sync_mode_button(self._session.mode is MovementMode.SMOOTH)
 
     def _cycle_speed(self) -> None:
         if not self._toplevel_has_focus():
@@ -631,7 +644,7 @@ class GameplayScreen(tk.Frame):
         new_speed = _SPEED_CYCLE[(_SPEED_CYCLE.index(self._session.speed) + 1) % len(_SPEED_CYCLE)]
         self._session = session_set_speed(self._session, new_speed)
         write_movement_speed(self._settings_repository, new_speed)
-        self._sidebar.set_speed_label(_speed_label(new_speed))
+        self._right_panel.set_speed_label(_speed_label(new_speed))
 
     # -- HARD mode (Story 2.8) ------------------------------------------
 
@@ -663,7 +676,7 @@ class GameplayScreen(tk.Frame):
         # "active" while `session.hard_mode` is still `False` (the
         # `_toggle_mode`/`_sync_mode_button` convention -- the button always
         # mirrors the session).
-        self._sidebar.sync_hard_button(self._session.hard_mode)
+        self._left_panel.sync_hard_button(self._session.hard_mode)
         self._sync_hard_mode_visuals()
 
     def _sync_hard_mode_visuals(self) -> None:
@@ -742,9 +755,11 @@ class GameplayScreen(tk.Frame):
     def _show_timeout_banner(self) -> None:
         # Mirrors `_show_win_banner` (UX-DR9): the same `_OutcomeBanner`
         # shape, the same `before=self._maze_frame` placement, non-modal
-        # inline -- never a `messagebox`.
+        # inline -- never a `messagebox`. Parented to `self._stage.content`
+        # (Story 4.10), the same master `self._maze_frame` now packs into,
+        # since `pack(before=...)` requires both widgets to share a master.
         self._timeout_banner = _OutcomeBanner(
-            self,
+            self._stage.content,
             theme=self._theme,
             message="Time's up — the exit wasn't reached.",
             buttons=[
@@ -807,7 +822,7 @@ class GameplayScreen(tk.Frame):
         # ball shows again; resetting `_last_hard_sync_state` forces the sync
         # to actually run (Story 2.8). The HARD button mirrors the session
         # too, so a restart from a HARD-on timeout de-activates it.
-        self._sidebar.sync_hard_button(False)
+        self._left_panel.sync_hard_button(False)
         self._last_hard_sync_state = None
         self._sync_hard_mode_visuals()
         self._tick_job = self.after(_TICK_INTERVAL_MS, self._on_tick)
@@ -844,8 +859,10 @@ class GameplayScreen(tk.Frame):
             is_generated = self._maze.kind is MazeKind.GENERATED
             continue_label = "New random maze" if is_generated else "Continue"
             buttons = [(continue_label, self._on_continue_clicked)]
+        # Parented to `self._stage.content`, same rationale as
+        # `_show_timeout_banner`.
         self._win_banner = _OutcomeBanner(
-            self,
+            self._stage.content,
             theme=self._theme,
             message=f"Solved in {self._session.elapsed.to_clock_string()}.",
             buttons=buttons,

@@ -82,7 +82,7 @@ development_status:
   4-7-player-continue-regenerates-random: done
   4-8-shell-windowing: done
   4-9-top-bar-brand-logo: done
-  4-10-screen-layout-blocks: backlog
+  4-10-screen-layout-blocks: review
   4-11-classic-vs-creation-maze-kind: done
   4-12-screen-shortcuts-never-leak-into-dialogs: backlog
   4-13-breadcrumb-shows-maze-name: backlog
@@ -110,7 +110,7 @@ development_status:
   epic-7: backlog
   epic-7-retrospective: optional
 generated: 2026-08-05
-last_updated: 08-27-2026 14:52
+last_updated: 09-03-2026
 project: Labyrinthes
 project_key: NOKEY
 story_location: _bmad-output/implementation-artifacts

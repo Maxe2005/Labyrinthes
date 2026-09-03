@@ -1,8 +1,7 @@
 """Builder zone editing: Destroy/Restore Zone click-and-drag (Story 3.3)."""
 
-import tkinter as tk
-
 from labyrinthes.adapters.tkinter.builder.edit_area import _BuilderEditArea
+from labyrinthes.adapters.tkinter.builder.maze_canvas import _BuilderMazeCanvas
 from labyrinthes.adapters.tkinter.builder.screen import mount
 from labyrinthes.adapters.tkinter.common import (
     HudChip,
@@ -51,7 +50,7 @@ def test_destroy_zone_drag_destroys_the_rectangle_in_one_operation(
     destroy_button._on_click()
     assert destroy_button.active is True
 
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     reach_chip = next(
         c for c in find_all(frame, HudChip) if c._caption.cget("text") == "UNREACHABLE"
     )
@@ -97,7 +96,7 @@ def test_restore_zone_drag_over_a_just_destroyed_zone_returns_it_to_its_initial_
     )
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     reach_chip = next(
         c for c in find_all(frame, HudChip) if c._caption.cget("text") == "UNREACHABLE"
     )
@@ -138,7 +137,7 @@ def test_zone_tool_active_press_and_release_on_the_same_cell_is_a_no_op(
     )
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     reach_chip = next(
         c for c in find_all(frame, HudChip) if c._caption.cget("text") == "UNREACHABLE"
     )
@@ -177,7 +176,7 @@ def test_break_mode_click_and_drag_only_toggles_the_directly_clicked_wall(
     )
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     reach_chip = next(
         c for c in find_all(frame, HudChip) if c._caption.cget("text") == "UNREACHABLE"
     )
@@ -294,7 +293,7 @@ def test_switching_from_a_zone_tool_to_break_mid_drag_still_dispatches_the_zone_
     )
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     edit_area._activate_destroy_zone()
 
     _click_at_cell(canvas, Position(0, 0))
@@ -335,7 +334,7 @@ def test_switching_from_break_to_a_zone_tool_mid_drag_does_not_trigger_a_zone_op
     )
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     reach_chip = next(
         c for c in find_all(frame, HudChip) if c._caption.cget("text") == "UNREACHABLE"
     )
@@ -378,7 +377,7 @@ def test_a_stray_release_without_a_preceding_press_does_not_replay_a_stale_drag(
     )
 
     edit_area = find_all(frame, _BuilderEditArea)[0]
-    canvas = find_all(frame, tk.Canvas)[0]
+    canvas = find_all(frame, _BuilderMazeCanvas)[0]
     edit_area._activate_destroy_zone()
 
     _drag_zone(canvas, Position(0, 0), Position(1, 1))

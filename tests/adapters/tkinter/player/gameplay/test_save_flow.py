@@ -26,6 +26,10 @@ def test_a_generated_maze_shows_the_save_button(
     )
 
     assert screen._save_button.winfo_exists()
+    # Story 4.10: the Save button is relocated into the right panel's
+    # `save_zone`, under the Movement group -- not a standalone zone
+    # packed directly under the screen.
+    assert screen._save_button.master is screen._right_panel.save_zone
 
 
 def test_a_classic_maze_shows_no_save_button(

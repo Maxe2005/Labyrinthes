@@ -3,17 +3,21 @@
 
 Owns one adapter-local `BuilderSession` (Epic 3 Technical Decisions'
 "adapter-local mutable session wrapper... around the immutable `Maze`
-value") and wires:
-- A left `ToolButtonGroup` side bar: Break Wall / Pass-through / Destroy
-  Zone / Restore Zone / Set Entry / Set Exit, mutually exclusive, mirrored
-  by the `break_wall`/`pass_through`/`destroy_zone`/`restore_zone`/
-  `set_entry`/`set_exit` keybindings (`ScreenId.BUILDER`-scoped, so
-  'b'/'p' can also mean Home's `open_builder`/`open_player` while
-  'd'/'r'/'e'/'x' are Builder-only -- see `common/keybindings.py`'s
+value") and wires a three-column layout (Story 4.10): a left tool panel,
+a centered `Stage` (`common/stage.py`), and a right actions panel.
+- **Left panel**: three labeled `ToolButtonGroup` groups sharing one
+  mutual-exclusion group -- "Walls" (Break Wall / Pass-through), "Zones"
+  (Destroy Zone / Restore Zone), "Markers" (Set Entry / Set Exit) --
+  mirrored by the `break_wall`/`pass_through`/`destroy_zone`/
+  `restore_zone`/`set_entry`/`set_exit` keybindings (`ScreenId.BUILDER`-
+  scoped, so 'b'/'p' can also mean Home's `open_builder`/`open_player`
+  while 'd'/'r'/'e'/'x' are Builder-only -- see `common/keybindings.py`'s
   `scope` field).
-- A center column: `HudChip`s for grid size + live "Walls broken", above
-  `_BuilderMazeCanvas` (`maze_canvas.py`).
-- A HUD row trailing `pill-btn`s: the primary Save pill plus the
+- **Center `Stage`**: `HudChip`s for grid size + live "Unreachable" (+ a
+  "Draft" status chip for a `SKETCH` maze) in a chips-only HUD row, above
+  a bordered `maze-frame` hosting `_BuilderMazeCanvas` (`maze_canvas.py`)
+  -- no buttons remain in the HUD.
+- **Right panel**: one "Actions" group -- the primary Save pill plus the
   non-primary Test in Player pill (Story 3.8), both mirroring the
   `save_maze`/`test_in_player` keybindings ('s'/'t', `ScreenId.BUILDER`) --
   the `test_in_player` binding hands the in-progress `Maze` to the Player
@@ -77,10 +81,13 @@ from labyrinthes.adapters.tkinter.common import (
     NavigateFn,
     PillButton,
     ScreenId,
+    Stage,
     Theme,
     ToolButton,
     ToolButtonGroup,
     bind_shortcut,
+    build_group_heading,
+    build_maze_frame,
     keybinding,
 )
 from labyrinthes.adapters.tkinter.common.tokens import ColorTokens, colors_for
@@ -174,12 +181,13 @@ class _BuilderEditArea(tk.Frame):
         # still reach this screen -- see `confirm_dialog.py`'s docstring).
         self._confirm_dialog: ConfirmDialog | None = None
 
-        self._build_tool_sidebar(colors)
+        self._build_left_panel(colors)
+        self._build_right_panel(colors)
 
-        center = tk.Frame(self, background=colors.window)
-        center.pack(side="left", fill="both", expand=True)
-        self._build_hud(center, colors)
-        self._build_canvas(center)
+        self._stage = Stage(self, colors=colors)
+        self._stage.pack(side="left", fill="both", expand=True)
+        self._build_hud(self._stage.content, colors)
+        self._build_canvas(self._stage.content, colors)
 
         for action_id, direction in _DIRECTION_ACTION_IDS:
             bind_shortcut(self, keybinding(action_id), functools.partial(self._on_move, direction))
@@ -200,16 +208,22 @@ class _BuilderEditArea(tk.Frame):
 
     # -- construction --------------------------------------------------
 
-    def _build_tool_sidebar(self, colors: ColorTokens) -> None:
-        sidebar = tk.Frame(self, background=colors.window)
-        sidebar.pack(side="left", fill="y", padx=(0, SPACING["lg"]))
+    def _build_left_panel(self, colors: ColorTokens) -> None:
+        panel = tk.Frame(self, background=colors.window)
+        panel.pack(side="left", fill="y", padx=(0, SPACING["lg"]))
+        self._left_panel = panel
 
+        # One `ToolButtonGroup` across all six buttons, spanning all three
+        # groups below -- mutual exclusivity is a Builder-tool-wide
+        # invariant (exactly one active tool), not a per-group one.
         group = ToolButtonGroup()
+
+        build_group_heading(panel, "Walls", colors).pack(anchor="w", pady=(0, SPACING["sm"]))
         break_kb = keybinding("break_wall")
         pass_kb = keybinding("pass_through")
 
         self._break_button = ToolButton(
-            sidebar,
+            panel,
             break_kb.label,
             theme=self._theme,
             shortcut=break_kb.display,
@@ -220,7 +234,7 @@ class _BuilderEditArea(tk.Frame):
         self._break_button.pack(fill="x", pady=(0, SPACING["sm"]))
 
         self._pass_through_button = ToolButton(
-            sidebar,
+            panel,
             pass_kb.label,
             theme=self._theme,
             shortcut=pass_kb.display,
@@ -230,11 +244,14 @@ class _BuilderEditArea(tk.Frame):
         )
         self._pass_through_button.pack(fill="x")
 
+        build_group_heading(panel, "Zones", colors).pack(
+            anchor="w", pady=(SPACING["lg"], SPACING["sm"])
+        )
         destroy_kb = keybinding("destroy_zone")
         restore_kb = keybinding("restore_zone")
 
         self._destroy_zone_button = ToolButton(
-            sidebar,
+            panel,
             destroy_kb.label,
             theme=self._theme,
             shortcut=destroy_kb.display,
@@ -245,10 +262,10 @@ class _BuilderEditArea(tk.Frame):
             group=group,
             command=self._activate_destroy_zone,
         )
-        self._destroy_zone_button.pack(fill="x", pady=(SPACING["sm"], 0))
+        self._destroy_zone_button.pack(fill="x")
 
         self._restore_zone_button = ToolButton(
-            sidebar,
+            panel,
             restore_kb.label,
             theme=self._theme,
             shortcut=restore_kb.display,
@@ -261,11 +278,14 @@ class _BuilderEditArea(tk.Frame):
         )
         self._restore_zone_button.pack(fill="x", pady=(SPACING["sm"], 0))
 
+        build_group_heading(panel, "Markers", colors).pack(
+            anchor="w", pady=(SPACING["lg"], SPACING["sm"])
+        )
         entry_kb = keybinding("set_entry")
         exit_kb = keybinding("set_exit")
 
         self._set_entry_button = ToolButton(
-            sidebar,
+            panel,
             entry_kb.label,
             theme=self._theme,
             shortcut=entry_kb.display,
@@ -273,10 +293,10 @@ class _BuilderEditArea(tk.Frame):
             group=group,
             command=self._activate_set_entry,
         )
-        self._set_entry_button.pack(fill="x", pady=(SPACING["sm"], 0))
+        self._set_entry_button.pack(fill="x")
 
         self._set_exit_button = ToolButton(
-            sidebar,
+            panel,
             exit_kb.label,
             theme=self._theme,
             shortcut=exit_kb.display,
@@ -300,9 +320,43 @@ class _BuilderEditArea(tk.Frame):
         elif self._session.tool is BuilderTool.SET_EXIT:
             self._set_exit_button.set_active(True)
 
+    def _build_right_panel(self, colors: ColorTokens) -> None:
+        panel = tk.Frame(self, background=colors.window)
+        panel.pack(side="right", fill="y", padx=(SPACING["lg"], 0))
+        self._right_panel = panel
+
+        build_group_heading(panel, "Actions", colors).pack(anchor="w", pady=(0, SPACING["sm"]))
+
+        # The single primary `pill-btn` for this screen (Epic 3's UX
+        # pattern: "exactly one primary pill-btn per screen -- New Maze,
+        # Save"). Test in Player is the default (non-primary) style. Kept
+        # as attributes (not just packed) so tests can assert parentage/
+        # order directly (Story 4.10 I/O matrix row 1).
+        save_kb = keybinding("save_maze")
+        self._save_button = PillButton(
+            panel,
+            save_kb.label,
+            theme=self._theme,
+            primary=True,
+            shortcut=save_kb.display,
+            command=self.save_maze,
+        )
+        self._save_button.pack(fill="x", pady=(0, SPACING["sm"]))
+
+        test_kb = keybinding("test_in_player")
+        self._test_in_player_button = PillButton(
+            panel,
+            test_kb.label,
+            theme=self._theme,
+            shortcut=test_kb.display,
+            command=self._test_in_player,
+        )
+        self._test_in_player_button.pack(fill="x")
+
     def _build_hud(self, parent: tk.Widget, colors: ColorTokens) -> None:
         hud_row = tk.Frame(parent, background=colors.window)
         hud_row.pack(fill="x", pady=(0, SPACING["lg"]))
+        self._hud_row = hud_row
 
         grid = self._session.maze.grid
         self._grid_chip = HudChip(hud_row, "Grid", f"{grid.width}×{grid.height}", theme=self._theme)
@@ -332,39 +386,18 @@ class _BuilderEditArea(tk.Frame):
         else:
             self._status_chip = None
 
-        # The single primary `pill-btn` for this screen (Epic 3's UX
-        # pattern: "exactly one primary pill-btn per screen -- New Maze,
-        # Save"), placed in the screen body like Home's own "New Maze"
-        # pill (`home/screen.py`), not inside the shared `TopBar` (which
-        # carries only the brand/breadcrumb/icon-btns, per `top_bar.py`).
-        save_kb = keybinding("save_maze")
-        PillButton(
-            hud_row,
-            save_kb.label,
-            theme=self._theme,
-            primary=True,
-            shortcut=save_kb.display,
-            command=self.save_maze,
-        ).pack(side="right")
-
-        # Non-primary variant (exactly one primary `pill-btn` per screen):
-        # Save keeps `primary=True`; Test in Player is the default style.
-        test_kb = keybinding("test_in_player")
-        PillButton(
-            hud_row,
-            test_kb.label,
-            theme=self._theme,
-            shortcut=test_kb.display,
-            command=self._test_in_player,
-        ).pack(side="right")
-
         # Reachability highlight state
         self._reachability_highlight_active: bool = False
         self._inaccessible_cells: frozenset[Position] = frozenset()
 
-    def _build_canvas(self, parent: tk.Widget) -> None:
+    def _build_canvas(self, parent: tk.Widget, colors: ColorTokens) -> None:
+        # Bordered `maze-frame` (Story 4.10) -- shared recipe with Player's
+        # own (`player/gameplay/screen.py`'s `_build_maze_frame`).
+        self._maze_frame = build_maze_frame(parent, colors)
+        self._maze_frame.pack(fill="both", expand=True)
+
         self._canvas = _BuilderMazeCanvas(
-            parent,
+            self._maze_frame,
             maze=self._session.maze,
             cursor=self._session.cursor,
             theme=self._theme,

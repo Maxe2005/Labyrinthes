@@ -31,7 +31,7 @@ def test_hard_mode_starts_disabled_with_the_light_hidden(
     )
 
     assert screen._session.hard_mode is False
-    assert screen._sidebar._mode_hard_button.active is False
+    assert screen._left_panel._mode_hard_button.active is False
     assert screen._hud._status_light_frame.winfo_manager() == ""
     assert screen._maze_canvas.itemcget("fog", "state") == "hidden"
 
@@ -51,7 +51,7 @@ def test_toggling_hard_mode_on_activates_the_button_and_shows_the_ready_light(
     screen._toggle_hard_mode()
 
     assert screen._session.hard_mode is True
-    assert screen._sidebar._mode_hard_button.active is True
+    assert screen._left_panel._mode_hard_button.active is True
     assert screen._hud._status_light_frame.winfo_manager() == "pack"
     ready_color = read_hard_mode_ready_color(fake_settings_repository, colors.accent)
     assert (
@@ -136,7 +136,7 @@ def test_deactivating_hard_mode_mid_leg_shows_the_ball_on_the_next_tick(
     screen._toggle_hard_mode()
 
     assert screen._session.hard_mode is False
-    assert screen._sidebar._mode_hard_button.active is False
+    assert screen._left_panel._mode_hard_button.active is False
     assert screen._hud._status_light_frame.winfo_manager() == ""
     assert screen._maze_canvas.itemcget(ball, "state") == "normal"
     assert screen._maze_canvas.itemcget("fog", "state") == "hidden"
@@ -241,7 +241,7 @@ def test_hard_mode_toggle_is_a_no_op_once_solved(
     # session (stays inactive -- unlike `_toggle_mode`, which is also a no-op
     # but derives its button from the session too).
     assert screen._session.hard_mode is False
-    assert screen._sidebar._mode_hard_button.active is False
+    assert screen._left_panel._mode_hard_button.active is False
     assert screen._hud._status_light_frame.winfo_manager() == ""
 
 
@@ -300,7 +300,7 @@ def test_hard_mode_shortcut_h_invokes_the_toggle(
     screen._hard_mode_handler()
 
     assert screen._session.hard_mode is True
-    assert screen._sidebar._mode_hard_button.active is True
+    assert screen._left_panel._mode_hard_button.active is True
 
 
 def test_enabling_hard_mode_mid_leg_hides_the_ball_and_shows_the_fog_immediately(
