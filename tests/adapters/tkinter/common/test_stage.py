@@ -33,6 +33,22 @@ def test_stage_background_matches_the_given_theme(tk_root):
     assert light_stage.content.cget("background") == colors_for(Theme.LIGHT).window
 
 
+def test_gridlines_use_the_border_color_not_panel(tk_root):
+    # Story 4.10 follow-up: `colors.panel` and `colors.window` are only a
+    # few RGB units apart -- imperceptible on Tk's non-anti-aliased canvas
+    # -- so the gridlines use the more contrasting `colors.border` instead.
+    light_colors = colors_for(Theme.LIGHT)
+    stage = Stage(tk_root, colors=light_colors)
+
+    stage._redraw(_FakeConfigureEvent(200, 150))
+
+    gridlines = stage.find_withtag("gridline")
+    assert len(gridlines) > 0
+    for item in gridlines:
+        assert stage.itemcget(item, "fill") == light_colors.border
+        assert stage.itemcget(item, "fill") != light_colors.panel
+
+
 def test_configure_draws_gridlines_and_insets_the_content_window_from_the_canvas_edges(tk_root):
     stage = Stage(tk_root, colors=colors_for(Theme.LIGHT))
 

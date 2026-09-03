@@ -14,9 +14,13 @@ else), and `create_window()` items always paint *above* canvas primitives
 gridline underneath it, defeating the whole point of a visible grid
 backdrop. `_redraw()` therefore insets `content` by `_GRID_SPACING` on all
 four sides, leaving a visible gridline margin around it; the `maze-frame`
-packed inside `content` (`fill="both", expand=True`, per Story 4.8) still
-gets real available space -- just the inset area's, not the full canvas's
--- to fit-to on its own `<Configure>`.
+packed inside `content` (`expand=True`, no `fill`, per Story 4.10's
+follow-up -- Story 4.8 originally had it stretch with `fill="both"`) still
+sizes its own fit-to-space baseline off `content`'s real available space --
+just the inset area's, not the full canvas's -- while staying snug around
+the drawn maze and centered in that space, via its own `<Configure>`
+binding on `content` (not the canvas itself, and not the `maze-frame`/
+canvas, which no longer resize with their parent).
 """
 
 from __future__ import annotations
@@ -61,9 +65,9 @@ class Stage(tk.Canvas):
     def _redraw_lines(self, width: int, height: int) -> None:
         self.delete("gridline")
         for x in range(0, width, _GRID_SPACING):
-            self.create_line(x, 0, x, height, fill=self._colors.panel, tags="gridline")
+            self.create_line(x, 0, x, height, fill=self._colors.border, tags="gridline")
         for y in range(0, height, _GRID_SPACING):
-            self.create_line(0, y, width, y, fill=self._colors.panel, tags="gridline")
+            self.create_line(0, y, width, y, fill=self._colors.border, tags="gridline")
         # Grid lines are drawn behind the embedded `content` window either
         # way (canvas primitives always sit under `create_window()` items),
         # but `tag_lower` also keeps them behind each other consistently

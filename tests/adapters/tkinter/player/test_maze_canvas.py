@@ -497,6 +497,37 @@ def test_zoom_beyond_the_minimum_clamps_and_is_a_no_op(tk_root):
     assert canvas.coords(canvas.find_withtag("entry-marker")[0]) == before
 
 
+def test_zoom_updates_the_canvas_own_reported_width_and_height_to_match_the_new_cell_size(
+    tk_root,
+):
+    # Story 4.10 follow-up: the canvas's own requested size (its `width=`/
+    # `height=` options) must track its drawn content exactly, so a
+    # `maze-frame` packed with `expand=True` (no `fill`) around it claims
+    # exactly the drawn maze's footprint -- not the stale construction-time
+    # size -- and centers correctly.
+    maze = _maze(width=20, height=20)
+    canvas = MazeCanvas(tk_root, maze, maze.entry, theme=Theme.LIGHT)
+    assert int(canvas.cget("width")) == 20 * 24
+    assert int(canvas.cget("height")) == 20 * 24
+
+    canvas.zoom(4)  # 24 -> 28
+
+    assert canvas._cell_size == 28
+    assert int(canvas.cget("width")) == 20 * 28
+    assert int(canvas.cget("height")) == 20 * 28
+
+
+def test_fit_to_space_updates_the_canvas_own_reported_width_and_height(tk_root):
+    maze = _maze(width=20, height=20)
+    canvas = MazeCanvas(tk_root, maze, maze.entry, theme=Theme.LIGHT)
+
+    canvas.fit_to_space(400, 400)  # min(400 // 20, 400 // 20) == 20
+
+    assert canvas._cell_size == 20
+    assert int(canvas.cget("width")) == 20 * 20
+    assert int(canvas.cget("height")) == 20 * 20
+
+
 def test_resizing_does_not_reset_the_zoom_offset(tk_root):
     # Design Notes: "Resize doesn't reset the user's zoom offset -- only
     # the fit baseline moves."

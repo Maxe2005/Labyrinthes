@@ -125,11 +125,15 @@ def mount(
         exit=exit_marker,
         default_tool=default_tool,
     )
+    # Story 4.10 follow-up: a small fixed margin around the whole
+    # three-panel layout, not the page-level `page-margin`/`section-gap`
+    # pair (that reads as a big blank border outside the panels -- see the
+    # spec's Intent).
     edit_area.pack(
         fill="both",
         expand=True,
-        padx=SPACING["page-margin"],
-        pady=SPACING["section-gap"],
+        padx=SPACING["lg"],
+        pady=SPACING["xl"],
     )
 
     return frame

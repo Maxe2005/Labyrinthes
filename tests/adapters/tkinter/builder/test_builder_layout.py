@@ -137,8 +137,11 @@ def test_theme_toggle_updates_group_heading_stage_grid_and_maze_frame_colors(
     dark_area._stage._redraw(_FakeConfigureEvent(200, 150))
     light_gridline = light_area._stage.find_withtag("gridline")[0]
     dark_gridline = dark_area._stage.find_withtag("gridline")[0]
-    assert light_area._stage.itemcget(light_gridline, "fill") == light_colors.panel
-    assert dark_area._stage.itemcget(dark_gridline, "fill") == dark_colors.panel
+    # `colors.border`, not `colors.panel` (Story 4.10 follow-up): the two
+    # are only a few RGB units apart, imperceptible on Tk's
+    # non-anti-aliased canvas.
+    assert light_area._stage.itemcget(light_gridline, "fill") == light_colors.border
+    assert dark_area._stage.itemcget(dark_gridline, "fill") == dark_colors.border
 
     assert light_area._maze_frame.cget("highlightbackground") == light_colors.border
     assert dark_area._maze_frame.cget("highlightbackground") == dark_colors.border
