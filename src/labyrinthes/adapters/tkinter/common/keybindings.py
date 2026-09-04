@@ -153,9 +153,28 @@ def bind_shortcut(
     mirroring this codebase's `_on_click()` convention for widgets whose
     real X11 events can't be reliably synthesized under a withdrawn
     `tk_root`.
+
+    Story 4.12: the returned handler also skips `callback()` (never
+    `"break"`) when `widget.focus_get()` is a `tk.Entry`/`tk.Text` -- so a
+    screen shortcut never fires while a dialog's text field has focus, but
+    typing into that field is unaffected either way (see `handler()`'s own
+    comment for why). This is a distinct guard from
+    `GameplayScreen._toplevel_has_focus()`, which compares Toplevel
+    identity to keep movement/mode-toggle shortcuts from leaking into a
+    *different* open window rather than a focused text field -- an
+    adjacent problem, not the same check, so the two aren't consolidated.
     """
 
     def handler(_event: tk.Event | None = None) -> None:
+        # Skip the callback -- never "break" -- when a text-entry field
+        # holds Tk focus, e.g. a dialog's `tk.Entry`/`tk.Text` name field.
+        # `bind_all()`'s "all" bindtag is checked *last*, after the widget's
+        # own class binding (e.g. `Entry`'s character-insertion binding)
+        # already ran, so returning here never blocks typing -- it only
+        # stops the shortcut's own side effect from also firing.
+        focused = widget.focus_get()
+        if isinstance(focused, (tk.Entry, tk.Text)):
+            return
         callback()
 
     interpreter_id = id(widget.tk)
