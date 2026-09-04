@@ -293,6 +293,85 @@ def test_bind_shortcut_binds_the_plus_and_minus_keysyms_without_raising(tk_root)
     assert tk_root.bind_all("<KeyPress-minus>") != ""
 
 
+def test_handler_skips_the_callback_when_a_tk_entry_holds_focus(tk_root):
+    # Story 4.12: `bind_shortcut()`'s dispatch handler must skip `callback()`
+    # -- never return "break" -- when Tk focus is inside a `tk.Entry`, e.g. a
+    # dialog's name field. A "break" would stop the bindtag scan before the
+    # Entry's own class binding runs, silently blocking the character from
+    # being typed at all (the bug the old per-dialog guards had).
+    #
+    # `tk_root` itself is withdrawn (see `conftest.py`), so a widget packed
+    # directly into it never becomes X-focusable and `focus_get()` stays
+    # `None` regardless of `focus_set()`; a child `Toplevel` is mapped
+    # ("normal") by default even while its parent root is withdrawn --
+    # mirroring the real `_SaveNameDialog`/`SaveMazeDialog` (both
+    # `Toplevel` subclasses) this guard exists for. `focus_set()` alone is
+    # a request queued for the next event-loop pass, not a synchronous
+    # grab -- under a full-suite Xvfb run with other windows/timing in
+    # play it can lose the real X/WM focus race. `update(); focus_force();
+    # update()` is this codebase's established idiom for reliably winning
+    # real focus in a test (see `test_composition_root.py`'s Settings/F11
+    # focus test).
+    calls = []
+    kb = keybinding("save_maze")
+    dialog = tk.Toplevel(tk_root)
+    entry = tk.Entry(dialog)
+    entry.pack()
+    entry.update()
+    entry.focus_force()
+    entry.update()
+
+    handler = bind_shortcut(tk_root, kb, lambda: calls.append(1))
+    handler()
+
+    assert calls == []
+
+
+def test_handler_skips_the_callback_when_a_tk_text_holds_focus(tk_root):
+    calls = []
+    kb = keybinding("save_maze")
+    dialog = tk.Toplevel(tk_root)
+    text = tk.Text(dialog)
+    text.pack()
+    text.update()
+    text.focus_force()
+    text.update()
+
+    handler = bind_shortcut(tk_root, kb, lambda: calls.append(1))
+    handler()
+
+    assert calls == []
+
+
+def test_handler_still_invokes_the_callback_when_focus_is_on_a_non_text_widget(tk_root):
+    calls = []
+    kb = keybinding("save_maze")
+    dialog = tk.Toplevel(tk_root)
+    button = tk.Button(dialog)
+    button.pack()
+    button.update()
+    button.focus_force()
+    button.update()
+
+    handler = bind_shortcut(tk_root, kb, lambda: calls.append(1))
+    handler()
+
+    assert calls == [1]
+
+
+def test_handler_still_invokes_the_callback_when_no_widget_holds_focus(tk_root):
+    # `tk_root` is withdrawn in tests, so `focus_get()` typically returns
+    # `None` unless a widget explicitly claims focus -- confirm the guard
+    # treats "no focus" the same as "non-text focus".
+    calls = []
+    kb = keybinding("open_builder")
+
+    handler = bind_shortcut(tk_root, kb, lambda: calls.append(1))
+    handler()
+
+    assert calls == [1]
+
+
 def test_destroying_the_newer_widget_still_unregisters_the_shortcut(tk_root):
     kb = keybinding("open_builder")
     old_widget = tk.Frame(tk_root)

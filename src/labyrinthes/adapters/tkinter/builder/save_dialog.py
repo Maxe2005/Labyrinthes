@@ -94,18 +94,6 @@ class _SaveNameDialog(tk.Toplevel):
         self._name_entry.pack(side="left")
         self._name_entry.bind("<KeyRelease>", self._on_name_changed)
         self._name_entry.bind("<Return>", self._on_save_clicked)
-        # Consume "s"/"S" and "t"/"T" locally before they reach the global
-        # `save_maze`/`test_in_player` shortcuts' `bind_all()` handlers --
-        # same guard as `SaveMazeDialog._name_entry` (Story 2.3/2.4):
-        # otherwise typing a "t" into a maze *name* while the dialog is open
-        # fires `_test_in_player` and navigates away mid-save, abandoning
-        # the dialog and the session (Story 3.8's review finding), and
-        # typing an "s" both inserts the character and reopens a second
-        # `_SaveNameDialog` stacked on this one.
-        self._name_entry.bind("<KeyPress-s>", lambda _event: "break")
-        self._name_entry.bind("<KeyPress-S>", lambda _event: "break")
-        self._name_entry.bind("<KeyPress-t>", lambda _event: "break")
-        self._name_entry.bind("<KeyPress-T>", lambda _event: "break")
         self._name_entry.focus_set()
 
         self._message_label = tk.Label(

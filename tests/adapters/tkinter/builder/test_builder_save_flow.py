@@ -15,7 +15,7 @@ from labyrinthes.adapters.tkinter.common import (
     PillButton,
     Theme,
 )
-from labyrinthes.adapters.tkinter.common.keybindings import keybinding
+from labyrinthes.adapters.tkinter.common.keybindings import bind_shortcut, keybinding
 from labyrinthes.adapters.tkinter.common.navigation import ScreenId
 from labyrinthes.application.builder_session import (
     apply_set_exit,
@@ -427,6 +427,123 @@ def test_confirming_the_exit_not_set_dialog_saves_as_a_sketch_and_navigates_back
     screen_id, navigated_maze = calls[0]
     assert screen_id is ScreenId.BUILDER
     assert navigated_maze == saved
+
+
+def test_save_name_dialogs_name_entry_has_no_local_keypress_guards(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
+):
+    # Story 4.12: the old per-dialog "s"/"S"/"t"/"T" `"break"` guards are
+    # deleted -- the centralized `bind_shortcut()` dispatch guard supersedes
+    # them (and fixes the bug where a local "break" pre-empted the Entry
+    # class binding, blocking those letters from ever being typed).
+    navigate, _ = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(
+        tk_root,
+        _sketch_maze(4, 3),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
+    )
+    edit_area = find_all(frame, _BuilderEditArea)[0]
+
+    edit_area.save_maze()
+    find_all(frame, ConfirmDialog)[0]._on_confirm_clicked()
+    dialog = find_all(frame, _SaveNameDialog)[0]
+
+    for key in ("s", "S", "t", "T"):
+        assert dialog._name_entry.bind(f"<KeyPress-{key}>") == ""
+
+
+def test_typing_s_via_the_real_shortcut_handler_does_not_fire_save_while_the_name_entry_is_focused(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
+):
+    # Mirrors the Player-side `SaveMazeDialog` regression: the real
+    # `bind_shortcut()` dispatch guard must skip the callback while the
+    # dialog's name entry holds focus, rather than a local per-letter guard.
+    navigate, _ = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(
+        tk_root,
+        _sketch_maze(4, 3),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
+    )
+    edit_area = find_all(frame, _BuilderEditArea)[0]
+    edit_area.save_maze()
+    find_all(frame, ConfirmDialog)[0]._on_confirm_clicked()
+    dialog = find_all(frame, _SaveNameDialog)[0]
+    dialog._name_entry.update()
+    dialog._name_entry.focus_force()
+    dialog._name_entry.update()
+
+    calls = []
+    handler = bind_shortcut(tk_root, keybinding("save_maze"), lambda: calls.append("fired"))
+    handler()
+
+    assert calls == []
+
+
+def test_typing_t_does_not_fire_test_in_player_while_the_name_entry_is_focused(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_settings_repository,
+    fake_maze_repository,
+):
+    # The original motivating bug for this story: typing a "t" into a maze
+    # *name* while `_SaveNameDialog` is open used to fire `test_in_player`
+    # and navigate away mid-save, abandoning the dialog and the whole
+    # editing session -- more severe than "s" re-opening a second dialog,
+    # since it discards in-progress state outright. The real
+    # `bind_shortcut()`-registered `test_in_player` handler must not fire
+    # while the dialog's name entry holds focus.
+    navigate, calls = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(
+        tk_root,
+        _sketch_maze(4, 3),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        settings_repository=fake_settings_repository,
+        maze_repository=fake_maze_repository,
+    )
+    edit_area = find_all(frame, _BuilderEditArea)[0]
+    # Set the exit first so neither `save_maze`'s nor `_test_in_player`'s
+    # own exit-unset gate (a separate `ConfirmDialog`, unrelated to this
+    # guard) is what's actually stopping the navigation below -- with the
+    # exit set, `save_maze()` opens `_SaveNameDialog` directly (no
+    # ConfirmDialog step), same as `test_saving_with_exit_set_promotes_...`.
+    edit_area._session = apply_set_exit(edit_area._session, Position(row=2, col=3))
+    edit_area.save_maze()
+    assert find_all(frame, ConfirmDialog) == []
+    dialog = find_all(frame, _SaveNameDialog)[0]
+    dialog._name_entry.update()
+    dialog._name_entry.focus_force()
+    dialog._name_entry.update()
+
+    handler = bind_shortcut(tk_root, keybinding("test_in_player"), edit_area._test_in_player)
+    handler()
+
+    assert calls == []
+    assert dialog.winfo_exists()  # still open -- no navigation away mid-save
 
 
 def test_saving_with_exit_set_promotes_sketch_to_creation_and_mints_a_maze_id(
