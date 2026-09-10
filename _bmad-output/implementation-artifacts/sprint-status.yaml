@@ -82,11 +82,11 @@ development_status:
   4-7-player-continue-regenerates-random: done
   4-8-shell-windowing: done
   4-9-top-bar-brand-logo: done
-  4-10-screen-layout-blocks: review
+  4-10-screen-layout-blocks: done
   4-11-classic-vs-creation-maze-kind: done
-  4-12-screen-shortcuts-never-leak-into-dialogs: review
-  4-13-breadcrumb-shows-maze-name: review
-  4-14-player-selection-grid-gallery: review
+  4-12-screen-shortcuts-never-leak-into-dialogs: done
+  4-13-breadcrumb-shows-maze-name: done
+  4-14-player-selection-grid-gallery: done
   5-1-migration-script-legacy-maze-data-mazeid-backfill: backlog
   6-1-recordsrepository-recordsservice: backlog
   6-2-player-records-a-completion-on-win: backlog
