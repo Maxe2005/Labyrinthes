@@ -54,13 +54,13 @@ Low priority, explicitly confirmed by the author — to be tackled after the exi
 
 ## Legacy-to-English data migration (FR-23) — naming reference
 
-Existing legacy paths/headers and their role, covered by the one-time conversion script decided in PRD FR-23:
+Existing legacy paths and their role, covered by the one-time conversion script decided in PRD FR-23:
 
 - `Labyrinthes_classiques/` — hand-built classic mazes shipped with the game.
 - `Labyrinthes_creation/` — work in progress from the builder.
 - `Labyrinthes_croquis/` — incomplete sketch saves.
 - `Labyrinthes_aléatoires_enregistrés/` — saved random mazes (currently unused in practice, see FR-11).
-- `Autres/Parametres_defaut.csv` — settings file, header `entité,nom,valeur`, `entité` value `builder` or `parcoureur`.
-- Per-folder `#_Doc_index.csv` files listing saved items.
 
 None of this affects the 0/1/2/3 cell-encoding values themselves — migration is a renaming/restructuring concern, not a re-encoding one.
+
+**Dropped by the 2026-09-10 course correction** (see `sprint-change-proposal-2026-09-10.md`): `Autres/Parametres_defaut.csv` (header `entité,nom,valeur`, `entité` value `builder` or `parcoureur`) is no longer in scope — `SettingsRepository` (Story 1.5) already reads one JSON file per `(scope, key)` with code-level defaults, never this CSV, so there is nothing left to migrate. Per-folder `#_Doc_index.csv` index files are also dropped — the new layout has no index-file concept; `MazeRepository.list_names()` derives its listing directly from directory contents.
