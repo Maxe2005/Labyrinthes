@@ -103,6 +103,17 @@ def saved_random_maze(width: int, height: int) -> Maze:
     )
 
 
+def creation_maze(width: int, height: int) -> Maze:
+    """A `CREATION` `Maze` of the given size, entry top-left, exit bottom-right."""
+    return Maze(
+        grid=Grid.filled(width=width, height=height),
+        entry=Position(row=0, col=0),
+        exit=Position(row=height - 1, col=width - 1),
+        kind=MazeKind.CREATION,
+        id=None,
+    )
+
+
 @pytest.fixture
 def fake_maze_repository() -> FakeMazeRepository:
     """A bare `FakeMazeRepository`, nothing seeded -- the empty-state case."""

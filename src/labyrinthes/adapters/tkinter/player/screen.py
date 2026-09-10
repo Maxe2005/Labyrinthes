@@ -1,4 +1,5 @@
-"""Player screen: classic-maze selection (Story 2.1), wired into navigation (Story 1.8).
+"""Player screen: maze selection (Story 2.1, rebuilt as a grid by Story 4.14),
+wired into navigation (Story 1.8).
 
 Never imports `home`/`builder` or `adapters/storage/` directly (AD-1, AD-9)
 -- maze access goes through the `MazeRepository` port (`application/`).
@@ -26,9 +27,9 @@ one, plus an `on_back_to_builder` callback so the test-mode win banner's
 "Back to Builder" pill returns the same way.
 
 `mount()` dispatches purely on `state`: `state is None` mounts
-`ClassicMazeGallery` (browsing); `state is not None` mounts
-`GameplayScreen` -- real wall/HUD/ball rendering, movement, and win
-detection (Story 2.4).
+`MazeSelectionGallery` (browsing -- a scrollable Classic/Creations/Random
+card grid, Story 4.14); `state is not None` mounts `GameplayScreen` -- real
+wall/HUD/ball rendering, movement, and win detection (Story 2.4).
 """
 
 from __future__ import annotations
@@ -47,8 +48,8 @@ from labyrinthes.adapters.tkinter.common import (
     TopBar,
     load_logo_image,
 )
-from labyrinthes.adapters.tkinter.player.classic_gallery import ClassicMazeGallery
 from labyrinthes.adapters.tkinter.player.gameplay import GameplayScreen
+from labyrinthes.adapters.tkinter.player.maze_selection_gallery import MazeSelectionGallery
 from labyrinthes.application.maze_repository import MazeRepository
 from labyrinthes.application.settings_repository import SettingsRepository
 from labyrinthes.domain.maze import Maze, MazeKind
@@ -61,6 +62,7 @@ _KIND_LABELS: dict[MazeKind, str] = {
     MazeKind.SAVED_RANDOM: "Saved Random Maze",
     MazeKind.GENERATED: "Random Maze",
     MazeKind.SKETCH: "Sketch",
+    MazeKind.CREATION: "Creation",
 }
 
 
@@ -85,10 +87,11 @@ def mount(
     Home/Builder/`ScreenMountFn` stay untouched (see the story's Design
     Notes).
 
-    `state is None` mounts the classic-maze selection gallery. `state is
-    not None` mounts `GameplayScreen` for that `Maze` -- picking a maze in
-    the gallery calls `navigate(ScreenId.PLAYER, maze)`, which re-runs this
-    very `mount()` with `state=maze`, taking this branch. A
+    `state is None` mounts the maze-selection gallery (`MazeSelectionGallery`,
+    a scrollable Classic/Creations/Random card grid). `state is not None`
+    mounts `GameplayScreen` for that `Maze` -- picking a maze in the gallery
+    calls `navigate(ScreenId.PLAYER, maze)`, which re-runs this very
+    `mount()` with `state=maze`, taking this branch. A
     `BuilderTestLaunch` state (Builder's "Test in Player", Story 3.8)
     mounts the same gameplay view but with a "Builder" breadcrumb segment
     (clickable -- back to the Builder, restoring the session's markers from
@@ -144,18 +147,23 @@ def mount(
     top_bar.pack(fill="x")
 
     if state is None:
-        gallery = ClassicMazeGallery(
+        gallery = MazeSelectionGallery(
             frame,
             theme=theme,
             maze_repository=maze_repository,
             settings_repository=settings_repository,
             navigate=navigate,
         )
+        # Story 4.14: matches the Story 4.10 follow-up's gameplay/edit-area
+        # margin (`SPACING["lg"]`/`["xl"]`) instead of the much larger
+        # page-level `page-margin`/`section-gap` pair, closing the named
+        # deferred-work item (navigating gallery -> gameplay no longer jumps
+        # between two very different outer margins).
         gallery.pack(
             fill="both",
             expand=True,
-            padx=SPACING["page-margin"],
-            pady=SPACING["section-gap"],
+            padx=SPACING["lg"],
+            pady=SPACING["xl"],
         )
     else:
         assert state is not None
@@ -183,9 +191,9 @@ def mount(
         # Story 4.10 follow-up: a small fixed margin around the whole
         # three-panel layout, not the page-level `page-margin`/
         # `section-gap` pair (that reads as a big blank border outside the
-        # panels -- see the spec's Intent). `ClassicMazeGallery`'s own
-        # `gallery.pack()` above is untouched -- out of this correction's
-        # scope.
+        # panels -- see the spec's Intent). Story 4.14 brings the gallery's
+        # own `gallery.pack()` above in line with this same margin, closing
+        # that follow-up's own deferred-work item.
         gameplay.pack(
             fill="both",
             expand=True,

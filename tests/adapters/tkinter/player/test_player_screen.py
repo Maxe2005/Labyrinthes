@@ -4,8 +4,9 @@ import pytest
 
 from labyrinthes.adapters.tkinter.common import SettingsWindow, Theme, TopBar
 from labyrinthes.adapters.tkinter.common.navigation import ScreenId
-from labyrinthes.adapters.tkinter.player.classic_gallery import ClassicMazeGallery
 from labyrinthes.adapters.tkinter.player.gameplay import GameplayScreen
+from labyrinthes.adapters.tkinter.player.maze_card import MazeCard
+from labyrinthes.adapters.tkinter.player.maze_selection_gallery import MazeSelectionGallery
 from labyrinthes.adapters.tkinter.player.screen import mount
 from labyrinthes.application.confirmation_settings import write_confirm_restart
 from labyrinthes.domain.grid import Grid
@@ -144,6 +145,7 @@ def test_breadcrumb_trailing_player_segment_has_no_click_handler(
         (MazeKind.SAVED_RANDOM, "Saved Random Maze"),
         (MazeKind.GENERATED, "Random Maze"),
         (MazeKind.SKETCH, "Sketch"),
+        (MazeKind.CREATION, "Creation"),
     ],
 )
 def test_breadcrumb_grows_to_three_segments_in_the_gameplay_view_with_a_kind_derived_label(
@@ -353,7 +355,7 @@ def test_theme_toggle_icon_click_invokes_the_passed_in_toggle_theme_callable(
     assert calls == [1]
 
 
-def test_state_is_none_mounts_the_classic_maze_gallery(
+def test_state_is_none_mounts_the_maze_selection_gallery(
     tk_root,
     navigate_stub,
     toggle_theme_stub,
@@ -373,7 +375,7 @@ def test_state_is_none_mounts_the_classic_maze_gallery(
         settings_repository=fake_settings_repository,
     )
 
-    galleries = find_all(frame, ClassicMazeGallery)
+    galleries = find_all(frame, MazeSelectionGallery)
     assert len(galleries) == 1
 
 
@@ -397,7 +399,7 @@ def test_state_not_none_mounts_the_gameplay_screen_not_the_gallery(
         settings_repository=fake_settings_repository,
     )
 
-    assert find_all(frame, ClassicMazeGallery) == []
+    assert find_all(frame, MazeSelectionGallery) == []
 
 
 def test_state_not_none_mounts_a_gameplay_screen_holding_that_maze(
@@ -486,8 +488,8 @@ def test_confirming_a_pick_in_the_gallery_hands_the_maze_off_via_navigate(
         settings_repository=fake_settings_repository,
     )
 
-    gallery = find_all(frame, ClassicMazeGallery)[0]
-    gallery._on_play()
+    card = find_all(frame, MazeCard)[0]
+    card._on_activated()
 
     assert len(calls) == 1
     screen_id, maze = calls[0]

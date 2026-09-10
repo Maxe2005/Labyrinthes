@@ -134,7 +134,8 @@ class NewMazeDialog(tk.Toplevel):
         # these letters (e.g. the "abc" non-numeric-field scenario) would
         # otherwise stack a second dialog or navigate away mid-edit.
         # Mirrors `GenerateRandomDialog`'s identical `<KeyPress-n>` guard
-        # (Story 2.2) and `ClassicMazeGallery._jump_entry`'s (Story 2.1).
+        # (Story 2.2) and the pre-Story-4.14 pager gallery's own jump
+        # entry guard (Story 2.1, removed along with the pager itself).
         for letter in ("b", "B", "c", "C", "p", "P"):
             entry.bind(f"<KeyPress-{letter}>", lambda _event: "break")
         self._entries[key] = entry

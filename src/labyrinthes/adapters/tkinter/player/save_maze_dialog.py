@@ -29,9 +29,9 @@ no side effect. `<Return>` in the name field triggers Save, mirroring
 `GenerateRandomDialog`'s own field-to-primary-action binding. "s"/"S"
 keystrokes in the name field are locally consumed (`"break"`) before
 `bind_all()`'s global `save_maze` shortcut can see them -- the same guard
-`ClassicMazeGallery`'s jump entry already applies to "n"/"N" -- since a
-maze *name* is far likelier to contain "s" than a numeric field is to
-contain "n", and without it a second `SaveMazeDialog` would stack on top
+the pre-Story-4.14 pager gallery's jump entry once applied to "n"/"N" --
+since a maze *name* is far likelier to contain "s" than a numeric field is
+to contain "n", and without it a second `SaveMazeDialog` would stack on top
 of this one mid-typing. Story 2.4 adds the same guard for the arrow keys
 (`Up`/`Down`/`Left`/`Right`, the real Tk keysyms -- not lowercase): the
 global `move_*` shortcuts are now also registered via `bind_all()`

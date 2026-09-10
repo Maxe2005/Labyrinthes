@@ -7,7 +7,8 @@ from labyrinthes.adapters.storage.csv_maze_repository import CsvMazeRepository
 from labyrinthes.adapters.storage.json_settings_repository import JsonSettingsRepository
 from labyrinthes.adapters.tkinter.common import SettingsWindow, TopBar
 from labyrinthes.adapters.tkinter.common.tokens import Theme
-from labyrinthes.adapters.tkinter.player.classic_gallery import ClassicMazeGallery
+from labyrinthes.adapters.tkinter.player.maze_card import MazeCard
+from labyrinthes.adapters.tkinter.player.maze_selection_gallery import MazeSelectionGallery
 from labyrinthes.app import composition_root
 from labyrinthes.app.composition_root import App, build_app
 from labyrinthes.app.router import Router, ScreenId
@@ -238,13 +239,13 @@ def test_player_registration_is_reachable_and_uses_the_injected_maze_repository(
 
         assert app.router.current_screen_id == ScreenId.PLAYER
         # Not just "navigation didn't raise" -- the injected repository must
-        # actually have reached `ClassicMazeGallery`: an empty `tmp_path`
-        # library renders the gallery's empty state (no `_play_button`), not
+        # actually have reached `MazeSelectionGallery`: an empty `tmp_path`
+        # library renders every section's empty state (no `MazeCard`s), not
         # some other content a broken `functools.partial` binding could
         # still coincidentally produce a `Frame` for.
-        galleries = _find_all(app.root, ClassicMazeGallery)
+        galleries = _find_all(app.root, MazeSelectionGallery)
         assert len(galleries) == 1
-        assert not hasattr(galleries[0], "_play_button")
+        assert _find_all(galleries[0], MazeCard) == []
     finally:
         app.root.destroy()
 
