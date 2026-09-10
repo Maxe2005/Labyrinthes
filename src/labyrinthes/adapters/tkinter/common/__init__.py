@@ -32,6 +32,7 @@ from labyrinthes.adapters.tkinter.common.navigation import (
 )
 from labyrinthes.adapters.tkinter.common.new_maze_dialog import NewMazeDialog, OnConfirmFn
 from labyrinthes.adapters.tkinter.common.pill_btn import PillButton
+from labyrinthes.adapters.tkinter.common.scrollable_frame import ScrollableFrame
 from labyrinthes.adapters.tkinter.common.settings_window import SettingsWindow
 from labyrinthes.adapters.tkinter.common.stage import Stage
 from labyrinthes.adapters.tkinter.common.tokens import (
@@ -73,6 +74,7 @@ __all__ = [
     "PillButton",
     "ScreenId",
     "ScreenMountFn",
+    "ScrollableFrame",
     "SettingsWindow",
     "Stage",
     "Theme",

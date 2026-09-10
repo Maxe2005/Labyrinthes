@@ -1,6 +1,6 @@
 """`GenerateRandomDialog` -- the 4-field random-maze configuration dialog (Story 2.2).
 
-A `tk.Toplevel` parented to the `ClassicMazeGallery` instance that opens
+A `tk.Toplevel` parented to the `MazeSelectionGallery` instance that opens
 it, not the app's persistent container: nothing here is worth surviving a
 navigate-away, unlike `SettingsWindow` (see that module's docstring for
 the contrast).
@@ -13,15 +13,16 @@ invalid field shows a per-field inline error
 (`typography.body_secondary`/`colors.exit`, `DESIGN.md`'s inline-error
 convention). Clicking "Generate" (a primary `PillButton`) while any field
 is invalid leaves the dialog open with the error still visible and performs
-no navigation/generation -- the same "no crash, no state change" gate
-`ClassicMazeGallery._on_jump` already established, not a disabled-button
-pattern (no `common/` widget supports one).
+no navigation/generation -- a "no crash, no state change" gate, not a
+disabled-button pattern (no `common/` widget supports one).
 
 Each `Entry` binds local `<KeyPress-n>`/`<KeyPress-N>` returning `"break"`,
-mirroring Story 2.1's review-fixed focus-collision guard on
-`ClassicMazeGallery`'s own jump entry, so the global `generate_random`
-shortcut can't refire while typing. `Cancel` (default `PillButton`) and
-`<Escape>` both close the dialog with no side effect.
+mirroring Story 2.1's review-fixed focus-collision guard on the pager
+gallery's own jump entry (removed by Story 4.14's grid rebuild, which has
+no equivalent text-entry field left to guard), so the global
+`generate_random` shortcut can't refire while typing here. `Cancel`
+(default `PillButton`) and `<Escape>` both close the dialog with no side
+effect.
 
 Field-to-field keyboard navigation (Up/Down, boundary-aware Left/Right,
 Enter-advances-then-Generate) is delegated to the shared `FieldNavigator`
@@ -135,8 +136,8 @@ class GenerateRandomDialog(tk.Toplevel):
         entry.pack(side="left")
         entry.bind("<KeyRelease>", self._on_field_changed)
         # Consume "n"/"N" locally before they reach the global
-        # `generate_random` shortcut's `bind_all()` handler -- mirrors
-        # `ClassicMazeGallery._jump_entry`'s identical fix (Story 2.1).
+        # `generate_random` shortcut's `bind_all()` handler -- mirrors the
+        # pre-Story-4.14 pager gallery's own jump-entry fix (Story 2.1).
         entry.bind("<KeyPress-n>", lambda _event: "break")
         entry.bind("<KeyPress-N>", lambda _event: "break")
         self._entries[key] = entry

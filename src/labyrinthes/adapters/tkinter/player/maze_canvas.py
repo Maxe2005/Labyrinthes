@@ -34,6 +34,11 @@ from __future__ import annotations
 import tkinter as tk
 
 from labyrinthes.adapters.tkinter.common.tokens import ColorTokens, Theme, colors_for
+from labyrinthes.adapters.tkinter.player.maze_wall_rendering import (
+    draw_entry_marker,
+    draw_exit_marker,
+    draw_walls,
+)
 from labyrinthes.domain.level_visibility import (
     LevelVisibility,
     Wall,
@@ -128,20 +133,7 @@ class MazeCanvas(tk.Canvas):
         )
 
     def _draw_walls(self, colors: ColorTokens) -> None:
-        grid = self._maze.grid
-        size = self._cell_size
-        for row in range(grid.height + 1):
-            for col in range(grid.width + 1):
-                cell = grid.cell_at(Position(row=row, col=col))
-                x0, y0 = col * size, row * size
-                if cell.has_top_wall:
-                    self.create_line(
-                        x0, y0, x0 + size, y0, width=_WALL_WIDTH, fill=colors.wall, tags=("wall",)
-                    )
-                if cell.has_left_wall:
-                    self.create_line(
-                        x0, y0, x0, y0 + size, width=_WALL_WIDTH, fill=colors.wall, tags=("wall",)
-                    )
+        draw_walls(self, self._maze, self._cell_size, colors, wall_width=_WALL_WIDTH)
 
     def _draw_wall_bar(self, wall: Wall, colors: ColorTokens) -> None:
         """Draw the single wall segment `wall` (raw coordinates) as a wall bar."""
@@ -226,37 +218,10 @@ class MazeCanvas(tk.Canvas):
         return self._cell_size * scale / 2
 
     def _draw_entry_marker(self, colors: ColorTokens) -> None:
-        cx, cy = self._cell_center(self._maze.entry)
-        radius = self._radius(_MARKER_SCALE)
-        # Filled square (entry = square, exit = diamond, player = circle).
-        self.create_rectangle(
-            cx - radius,
-            cy - radius,
-            cx + radius,
-            cy + radius,
-            fill=colors.entry,
-            outline="",
-            tags=("entry-marker",),
-        )
+        draw_entry_marker(self, self._maze, self._cell_size, colors, marker_scale=_MARKER_SCALE)
 
     def _draw_exit_marker(self, colors: ColorTokens) -> None:
-        cx, cy = self._cell_center(self._maze.exit)
-        radius = self._radius(_MARKER_SCALE)
-        # A rotated square (diamond), shape-distinct from the entry circle
-        # and the ball circle -- never color alone (NFR6).
-        self.create_polygon(
-            cx,
-            cy - radius,
-            cx + radius,
-            cy,
-            cx,
-            cy + radius,
-            cx - radius,
-            cy,
-            fill=colors.exit,
-            outline="",
-            tags=("exit-marker",),
-        )
+        draw_exit_marker(self, self._maze, self._cell_size, colors, marker_scale=_MARKER_SCALE)
 
     def _draw_ball(self, position: Position, colors: ColorTokens) -> int:
         cx, cy = self._cell_center(position)
