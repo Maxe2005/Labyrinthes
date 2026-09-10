@@ -102,3 +102,20 @@ class TopBar(tk.Frame):
         """
         if self._breadcrumb is not None:
             self._breadcrumb.set_label(index, label)
+
+    def append_breadcrumb_segment(self, segment: BreadcrumbSegment) -> int:
+        """Grow this bar's breadcrumb by one trailing segment, in place.
+
+        Passthrough to `Breadcrumb.append_segment()` (Story 4.13). A no-op
+        returning `-1` if this bar has no breadcrumb (`breadcrumb_segments=None`
+        at construction) -- mirrors `set_breadcrumb_label()`'s graceful
+        no-op for the same case, so a caller (e.g. Player's gameplay view,
+        whose breadcrumb grows from 3 to 4 segments when a `generated` maze
+        is first saved mid-session) never needs to check whether a
+        breadcrumb exists before calling this. `-1` is never a real segment
+        index (`Breadcrumb.append_segment()` only ever returns `>= 0`), so
+        it's an unambiguous "nothing was appended" signal.
+        """
+        if self._breadcrumb is None:
+            return -1
+        return self._breadcrumb.append_segment(segment)

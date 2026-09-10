@@ -1,5 +1,6 @@
 import tkinter as tk
 
+from labyrinthes.adapters.tkinter.common.navigation import MazeWithName
 from labyrinthes.adapters.tkinter.common.tokens import Theme
 from labyrinthes.adapters.tkinter.player.generate_random_dialog import GenerateRandomDialog
 from labyrinthes.adapters.tkinter.player.maze_card import _MIN_MARKER_RADIUS, MazeCard
@@ -156,9 +157,12 @@ def test_every_section_empty_shows_three_empty_messages_and_generate_random_stil
 # -- card activation -----------------------------------------------------------------
 
 
-def test_clicking_a_card_navigates_to_player_with_that_maze(
+def test_clicking_a_card_navigates_to_player_with_that_maze_and_its_name(
     tk_root, fake_maze_repository, navigate_stub, fake_settings_repository, find_all
 ):
+    # Story 4.13: the gallery hands off `MazeWithName(maze, name)`, not a
+    # bare `Maze` -- Player threads the name into a trailing breadcrumb
+    # segment.
     fake_maze_repository.save(creation_maze(width=5, height=5), "bravo")
     navigate, calls = navigate_stub
     gallery = _gallery(tk_root, fake_maze_repository, navigate, fake_settings_repository)
@@ -167,9 +171,11 @@ def test_clicking_a_card_navigates_to_player_with_that_maze(
     card._on_activated()
 
     assert len(calls) == 1
-    screen_id, maze = calls[0]
+    screen_id, payload = calls[0]
     assert screen_id == ScreenId.PLAYER
-    assert maze == fake_maze_repository.load("bravo", MazeKind.CREATION)
+    assert isinstance(payload, MazeWithName)
+    assert payload.maze == fake_maze_repository.load("bravo", MazeKind.CREATION)
+    assert payload.name == "bravo"
 
 
 def test_keyboard_activation_via_return_or_space_navigates_the_same_as_a_click(

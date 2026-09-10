@@ -48,6 +48,36 @@ def test_set_breadcrumb_label_is_a_no_op_when_there_is_no_breadcrumb(tk_root):
     top_bar.set_breadcrumb_label(0, "Anything")  # must not raise
 
 
+def test_append_breadcrumb_segment_grows_the_breadcrumb_by_one_trailing_segment(tk_root):
+    segments = [
+        BreadcrumbSegment("Home", on_click=lambda: None),
+        BreadcrumbSegment("Player", on_click=lambda: None),
+        BreadcrumbSegment("Random Maze"),
+    ]
+    top_bar = TopBar(tk_root, theme=Theme.LIGHT, breadcrumb_segments=segments)
+
+    index = top_bar.append_breadcrumb_segment(BreadcrumbSegment("foo"))
+
+    assert index == 3
+    assert [label.cget("text") for label in top_bar._breadcrumb._labels] == [
+        "Home",
+        "Player",
+        "Random Maze",
+        "foo",
+    ]
+    assert top_bar._breadcrumb._segment_handlers[3] is None
+
+
+def test_append_breadcrumb_segment_is_a_no_op_returning_negative_one_when_there_is_no_breadcrumb(
+    tk_root,
+):
+    top_bar = TopBar(tk_root, theme=Theme.LIGHT, breadcrumb_segments=None)
+
+    result = top_bar.append_breadcrumb_segment(BreadcrumbSegment("Anything"))  # must not raise
+
+    assert result == -1
+
+
 def test_settings_icon_buttons_command_fires_on_click(tk_root):
     calls = []
     top_bar = TopBar(tk_root, theme=Theme.LIGHT, on_settings=lambda: calls.append(1))

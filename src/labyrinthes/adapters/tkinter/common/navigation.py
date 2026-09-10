@@ -21,7 +21,14 @@ from labyrinthes.adapters.tkinter.common.tokens import Theme
 from labyrinthes.domain.maze import Maze
 from labyrinthes.domain.position import Position
 
-__all__ = ["BuilderTestLaunch", "NavigateFn", "ScreenId", "ScreenMountFn", "ToggleThemeFn"]
+__all__ = [
+    "BuilderTestLaunch",
+    "MazeWithName",
+    "NavigateFn",
+    "ScreenId",
+    "ScreenMountFn",
+    "ToggleThemeFn",
+]
 
 
 class ScreenId(enum.Enum):
@@ -51,11 +58,28 @@ class BuilderTestLaunch:
     exit: Position | None
 
 
+@dataclass(frozen=True)
+class MazeWithName:
+    """A `Maze` plus its storage-layer (filename-derived) name (Story 4.13).
+
+    A thin sibling to `BuilderTestLaunch` in this same module, not a `Maze`
+    field -- `Maze` (domain) gains no `name` concept; name is a
+    storage-layer/filename thing threaded through screen state only. The
+    gallery (`maze_selection_gallery.py`) already has `(name, maze)`
+    together when a card is activated -- this carries both through
+    `navigate()` to Player, which appends the name as a trailing breadcrumb
+    segment after the existing kind-derived one.
+    """
+
+    maze: Maze
+    name: str
+
+
 # The narrow capability `mount()` receives instead of a full `Router`
 # reference -- enough to trigger a screen swap, nothing that would let a
 # screen `register()` a new screen or read `current_screen_id` (see the
 # spec's Design Notes on why not just pass `Router` itself).
-NavigateFn = Callable[[ScreenId, Maze | None | BuilderTestLaunch], None]
+NavigateFn = Callable[[ScreenId, Maze | None | BuilderTestLaunch | MazeWithName], None]
 
 # The narrow capability `mount()` receives to trigger a theme toggle
 # (Story 1.9) -- a screen only ever needs to fire the toggle, never to
@@ -69,5 +93,6 @@ ToggleThemeFn = Callable[[], None]
 # two, wrapping each `ScreenMountFn` into a `MountFn` bound to one
 # `NavigateFn` closure plus the live `theme`/`ToggleThemeFn` pair.
 ScreenMountFn = Callable[
-    [tk.Widget, Maze | None | BuilderTestLaunch, NavigateFn, Theme, ToggleThemeFn], tk.Frame
+    [tk.Widget, Maze | None | BuilderTestLaunch | MazeWithName, NavigateFn, Theme, ToggleThemeFn],
+    tk.Frame,
 ]
