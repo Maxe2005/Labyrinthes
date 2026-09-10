@@ -31,6 +31,7 @@ bmad-advanced-elicitation's pick_methods.py.)
 
 Default output is lean text for an LLM to read; pass --json for structured output.
 """
+
 import argparse
 import csv
 import hashlib
@@ -41,7 +42,15 @@ import sys
 from pathlib import Path
 
 DEFAULT_FILE = Path(__file__).resolve().parent.parent / "assets" / "brain-methods.csv"
-FIELDS = ("category", "technique_name", "description", "detail", "provenance", "good_for", "audience")
+FIELDS = (
+    "category",
+    "technique_name",
+    "description",
+    "detail",
+    "provenance",
+    "good_for",
+    "audience",
+)
 # Optional columns beyond the original four — absent in older CSVs and in --extra
 # overlays, so always read through .get/setdefault. `provenance` (classic|signature|
 # playful) drives the "Proven & Professional" lead group; `good_for` (a |-separated
@@ -74,15 +83,17 @@ def load_extra(file: Path) -> list[dict]:
     for item in data:
         if not isinstance(item, dict):
             raise ValueError(f"each --extra entry must be a JSON object, got: {item!r}")
-        rows.append({
-            "category": str(item.get("category", "")).strip(),
-            "technique_name": str(item.get("technique_name", "")).strip(),
-            "description": str(item.get("description", "")).strip(),
-            "detail": str(item.get("detail") or "").strip(),
-            "provenance": str(item.get("provenance") or "").strip(),
-            "good_for": str(item.get("good_for") or "").strip(),
-            "audience": str(item.get("audience") or "").strip(),
-        })
+        rows.append(
+            {
+                "category": str(item.get("category", "")).strip(),
+                "technique_name": str(item.get("technique_name", "")).strip(),
+                "description": str(item.get("description", "")).strip(),
+                "detail": str(item.get("detail") or "").strip(),
+                "provenance": str(item.get("provenance") or "").strip(),
+                "good_for": str(item.get("good_for") or "").strip(),
+                "audience": str(item.get("audience") or "").strip(),
+            }
+        )
     return rows
 
 
@@ -132,7 +143,9 @@ def resolve_detail(row: dict, csv_dir: Path) -> str | None:
         return None
     path = (csv_dir / row["detail"]).resolve()
     if not path.is_file():
-        print(f"# detail file not found for {row['technique_name']}: {row['detail']}", file=sys.stderr)
+        print(
+            f"# detail file not found for {row['technique_name']}: {row['detail']}", file=sys.stderr
+        )
         return None
     return path.read_text(encoding="utf-8").strip()
 
@@ -145,7 +158,9 @@ def fmt_categories(cats: list[tuple[str, int]], as_json: bool) -> str:
 
 def fmt_list(rows: list[dict], as_json: bool) -> str:
     if as_json:
-        return json.dumps([{k: r[k] for k in ("category", "technique_name", "description")} for r in rows])
+        return json.dumps(
+            [{k: r[k] for k in ("category", "technique_name", "description")} for r in rows]
+        )
     return "\n".join(f"{r['category']}\t{r['technique_name']}\t{r['description']}" for r in rows)
 
 
@@ -185,7 +200,9 @@ def pretty(cat: str) -> str:
 
 ICON_FILE = DEFAULT_FILE.parent / "brain-icons.json"
 
-CHIP = '<rect x="1.5" y="1.5" width="41" height="41" rx="12" fill="currentColor" fill-opacity="0.12"/>'
+CHIP = (
+    '<rect x="1.5" y="1.5" width="41" height="41" rx="12" fill="currentColor" fill-opacity="0.12"/>'
+)
 
 _FALLBACK_GLYPH = (
     '<circle cx="22" cy="22" r="11" fill="currentColor" fill-opacity="0.16"/>'
@@ -554,7 +571,10 @@ LEAD_HUE = "#3d4f73"  # a dignified slate for the professional lead group
 # via --extra) render last under "More", alphabetically — so custom catalogs always show.
 CATEGORY_GROUPS = (
     ("Structured & Analytical", ("structured", "deep")),
-    ("Creative & Generative", ("creative", "biomimetic", "cultural", "speculative_future", "quantum")),
+    (
+        "Creative & Generative",
+        ("creative", "biomimetic", "cultural", "speculative_future", "quantum"),
+    ),
     ("Wild & Playful", ("wild", "absurdist", "theatrical", "constraint")),
     ("Introspective & Personal", ("introspective_delight", "collaborative")),
 )
@@ -632,7 +652,9 @@ def html_doc(rows: list[dict]) -> str:
         disp = html.escape(pretty(cat))
         cards = [_card(r) for r in groups[cat]]
         cards.append(_invent_card(disp, glyph))
-        chips.append(f'<button type="button" class="chip" data-cat="{disp}" style="--cc:{hue}">{disp}</button>')
+        chips.append(
+            f'<button type="button" class="chip" data-cat="{disp}" style="--cc:{hue}">{disp}</button>'
+        )
         body.append(
             f'<section data-cat="{disp}" style="--c:{hue}"><h2>{disp}<span class="cnt">{len(groups[cat])}</span></h2>'
             f'<div class="grid">{"".join(cards)}</div></section>'
@@ -643,7 +665,9 @@ def html_doc(rows: list[dict]) -> str:
     if classics:
         disp = html.escape(CLASSIC_GROUP)
         lead_cards = "".join(_card(r, lead=True) for r in classics)
-        chips.append(f'<button type="button" class="chip" data-cat="{disp}" style="--cc:{LEAD_HUE}">{disp}</button>')
+        chips.append(
+            f'<button type="button" class="chip" data-cat="{disp}" style="--cc:{LEAD_HUE}">{disp}</button>'
+        )
         body.append(
             f'<section data-cat="{disp}" style="--c:{LEAD_HUE}"><h2>{disp}<span class="cnt">{len(classics)}</span></h2>'
             f'<div class="grid">{lead_cards}</div></section>'
@@ -676,7 +700,9 @@ def html_doc(rows: list[dict]) -> str:
                 present_goals.add(g)
     goalbar = ""
     if present_goals:
-        ordered = [g for g in GOAL_LABELS if g in present_goals] + sorted(present_goals - set(GOAL_LABELS))
+        ordered = [g for g in GOAL_LABELS if g in present_goals] + sorted(
+            present_goals - set(GOAL_LABELS)
+        )
         gchips = "".join(
             f'<button type="button" class="goal" data-goal="{html.escape(g)}">{html.escape(GOAL_LABELS.get(g, g))}</button>'
             for g in ordered
@@ -693,15 +719,28 @@ def html_doc(rows: list[dict]) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--file", type=Path, default=DEFAULT_FILE, help="technique CSV (default: sibling assets/brain-methods.csv)")
-    p.add_argument("--extra", type=Path, help="JSON overlay of additional techniques (customize.toml additional_techniques), merged into every command")
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    p.add_argument(
+        "--file",
+        type=Path,
+        default=DEFAULT_FILE,
+        help="technique CSV (default: sibling assets/brain-methods.csv)",
+    )
+    p.add_argument(
+        "--extra",
+        type=Path,
+        help="JSON overlay of additional techniques (customize.toml additional_techniques), merged into every command",
+    )
     p.add_argument("--json", action="store_true", help="emit structured JSON instead of lean text")
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("categories", help="list category names + counts")
     pl = sub.add_parser("list", help="the index: category/name/gist (needs --category or --all)")
     pl.add_argument("--category", action="append", help="filter to a category (repeatable)")
-    pl.add_argument("--all", action="store_true", help="dump the entire catalog (deliberate; large)")
+    pl.add_argument(
+        "--all", action="store_true", help="dump the entire catalog (deliberate; large)"
+    )
     ps = sub.add_parser("show", help="full gist + detail file for named techniques")
     ps.add_argument("names", nargs="+")
     pr = sub.add_parser("random", help="pick techniques at random")

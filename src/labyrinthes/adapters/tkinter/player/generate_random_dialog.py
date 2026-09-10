@@ -1,6 +1,6 @@
 """`GenerateRandomDialog` -- the 4-field random-maze configuration dialog (Story 2.2).
 
-A `tk.Toplevel` parented to the `ClassicMazeGallery` instance that opens
+A `tk.Toplevel` parented to the `MazeSelectionGallery` instance that opens
 it, not the app's persistent container: nothing here is worth surviving a
 navigate-away, unlike `SettingsWindow` (see that module's docstring for
 the contrast).
@@ -13,16 +13,22 @@ invalid field shows a per-field inline error
 (`typography.body_secondary`/`colors.exit`, `DESIGN.md`'s inline-error
 convention). Clicking "Generate" (a primary `PillButton`) while any field
 is invalid leaves the dialog open with the error still visible and performs
-no navigation/generation -- the same "no crash, no state change" gate
-`ClassicMazeGallery._on_jump` already established, not a disabled-button
-pattern (no `common/` widget supports one).
+no navigation/generation -- a "no crash, no state change" gate, not a
+disabled-button pattern (no `common/` widget supports one).
 
-Each `Entry` binds `<Return>` to trigger Generate and local
-`<KeyPress-n>`/`<KeyPress-N>` returning `"break"`, mirroring Story 2.1's
-review-fixed focus-collision guard on `ClassicMazeGallery`'s own jump
-entry, so the global `generate_random` shortcut can't refire while typing.
-`Cancel` (default `PillButton`) and `<Escape>` both close the dialog with
-no side effect.
+Each `Entry` binds local `<KeyPress-n>`/`<KeyPress-N>` returning `"break"`,
+mirroring Story 2.1's review-fixed focus-collision guard on the pager
+gallery's own jump entry (removed by Story 4.14's grid rebuild, which has
+no equivalent text-entry field left to guard), so the global
+`generate_random` shortcut can't refire while typing here. `Cancel`
+(default `PillButton`) and `<Escape>` both close the dialog with no side
+effect.
+
+Field-to-field keyboard navigation (Up/Down, boundary-aware Left/Right,
+Enter-advances-then-Generate) is delegated to the shared `FieldNavigator`
+-- see that module's docstring for the full behavior; this dialog only
+supplies the field order and the `Generate` button as the chain's final
+stop.
 """
 
 from __future__ import annotations
@@ -30,6 +36,7 @@ from __future__ import annotations
 import tkinter as tk
 from collections.abc import Callable
 
+from labyrinthes.adapters.tkinter.common.field_navigation import FieldNavigator
 from labyrinthes.adapters.tkinter.common.pill_btn import PillButton
 from labyrinthes.adapters.tkinter.common.tokens import SPACING, TYPOGRAPHY, Theme, colors_for
 from labyrinthes.domain.maze_generation import validate_start_position
@@ -59,6 +66,8 @@ class GenerateRandomDialog(tk.Toplevel):
         *,
         theme: Theme,
         bounds: MazeSizeBounds,
+        default_columns: int | None = None,
+        default_rows: int | None = None,
         on_confirm: OnConfirmFn,
     ) -> None:
         super().__init__(parent)
@@ -66,6 +75,11 @@ class GenerateRandomDialog(tk.Toplevel):
         self._theme = theme
         self._bounds = bounds
         self._on_confirm = on_confirm
+
+        if default_columns is None:
+            default_columns = bounds.min_columns
+        if default_rows is None:
+            default_rows = bounds.min_rows
 
         colors = colors_for(theme)
         self.configure(background=colors.window)
@@ -76,8 +90,8 @@ class GenerateRandomDialog(tk.Toplevel):
         form = tk.Frame(self, background=colors.window)
         form.pack(padx=SPACING["2xl"], pady=SPACING["2xl"], fill="both", expand=True)
 
-        self._add_field(form, "columns", str(bounds.min_columns))
-        self._add_field(form, "rows", str(bounds.min_rows))
+        self._add_field(form, "columns", str(default_columns))
+        self._add_field(form, "rows", str(default_rows))
         self._add_field(form, "start_col", "0")
         self._add_field(form, "start_row", "0")
         self._entries["columns"].focus_set()
@@ -92,6 +106,10 @@ class GenerateRandomDialog(tk.Toplevel):
             buttons, "Generate", theme=theme, primary=True, command=self._on_generate_clicked
         )
         self._generate_button.pack(side="left")
+
+        self._navigator = FieldNavigator(
+            [self._entries[key] for key in _FIELD_ORDER], self._generate_button
+        )
 
         self.bind("<Escape>", self._on_cancel)
 
@@ -117,10 +135,9 @@ class GenerateRandomDialog(tk.Toplevel):
         entry.insert(0, initial_text)
         entry.pack(side="left")
         entry.bind("<KeyRelease>", self._on_field_changed)
-        entry.bind("<Return>", self._on_generate_clicked)
         # Consume "n"/"N" locally before they reach the global
-        # `generate_random` shortcut's `bind_all()` handler -- mirrors
-        # `ClassicMazeGallery._jump_entry`'s identical fix (Story 2.1).
+        # `generate_random` shortcut's `bind_all()` handler -- mirrors the
+        # pre-Story-4.14 pager gallery's own jump-entry fix (Story 2.1).
         entry.bind("<KeyPress-n>", lambda _event: "break")
         entry.bind("<KeyPress-N>", lambda _event: "break")
         self._entries[key] = entry

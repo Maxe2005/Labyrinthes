@@ -15,12 +15,11 @@ from labyrinthes.adapters.storage.paths import DEFAULT_MAZES_ROOT, MAZE_FILE_SUF
 from labyrinthes.application.errors import MazeNotFoundError
 from labyrinthes.application.maze_repository import MazeRepository
 from labyrinthes.domain.errors import LabyrinthesError
-from labyrinthes.domain.maze import Maze, MazeKind
+from labyrinthes.domain.maze import ID_ELIGIBLE_KINDS, Maze, MazeKind
 from labyrinthes.domain.maze_id import MazeId
 
-_ID_ELIGIBLE_KINDS = frozenset({MazeKind.CLASSIC, MazeKind.SAVED_RANDOM})
 # Stable iteration order for find_by_id's directory scan.
-_ID_LOOKUP_KINDS = (MazeKind.CLASSIC, MazeKind.SAVED_RANDOM)
+_ID_LOOKUP_KINDS = (MazeKind.CLASSIC, MazeKind.SAVED_RANDOM, MazeKind.CREATION)
 
 
 class CsvMazeRepository(MazeRepository):
@@ -30,7 +29,7 @@ class CsvMazeRepository(MazeRepository):
         self._root = root
 
     def save(self, maze: Maze, name: str) -> Maze:
-        if maze.kind in _ID_ELIGIBLE_KINDS and maze.id is None:
+        if maze.kind in ID_ELIGIBLE_KINDS and maze.id is None:
             maze = dataclasses.replace(maze, id=mint_maze_id())
         path = maze_file_path(self._root, maze.kind, name)
         write_maze_csv(path, maze)

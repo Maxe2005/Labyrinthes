@@ -22,6 +22,7 @@ Output (one line of JSON on stdout):
 Budgets this feeds: SKILL.md ~1500-2500, multi-branch reference ~4500,
 single-purpose reference ~9000.
 """
+
 import argparse
 import json
 import sys

@@ -41,7 +41,11 @@ def section_metrics(text: str) -> list[dict]:
             marker = fence.group(1)
             if open_fence is None:
                 open_fence = (marker[0], len(marker))
-            elif marker[0] == open_fence[0] and len(marker) >= open_fence[1] and line.strip() == marker:
+            elif (
+                marker[0] == open_fence[0]
+                and len(marker) >= open_fence[1]
+                and line.strip() == marker
+            ):
                 open_fence = None
             current["body"].append(line)
             continue
@@ -62,9 +66,7 @@ def section_metrics(text: str) -> list[dict]:
         words = word_count("\n".join(section["body"]))
         if section["heading"] == "(preamble)" and words == 0:
             continue
-        out.append(
-            {"heading": section["heading"], "level": section["level"], "words": words}
-        )
+        out.append({"heading": section["heading"], "level": section["level"], "words": words})
     return out
 
 

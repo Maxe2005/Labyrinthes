@@ -18,7 +18,7 @@ action_items:
   id: epic-2-retro-item-1-router-cascade
   owner: Amelia (dev)
   ref: _bmad-output/implementation-artifacts/epic-2/epic-2-retrospective-2026-08-17.md
-  status: open
+  status: done
 - action: 'Add a persistence-hardening story: atomic writes (temp-file-plus-rename)
     + typed LabyrinthesError for malformed content in MazeRepository/SettingsRepository'
   epic: 2
@@ -73,19 +73,21 @@ development_status:
   3-7-builder-theme-toggle: done
   3-8-test-in-player-launch-the-game-from-the-builder: done
   3-9-edit-in-builder-launch-the-builder-from-the-game: done
-  4-1-builder-cursor-and-marker-glyphs: backlog
-  4-2-wall-tool-semantics-break-vs-pass-through: backlog
-  4-3-zone-selection-colored-outline-click-click: backlog
-  4-4-entry-exit-live-placement: backlog
-  4-5-reachability-counter-and-highlight: backlog
-  4-6-configurable-defaults: backlog
-  4-7-player-continue-regenerates-random: backlog
-  4-8-shell-windowing: backlog
-  4-9-top-bar-brand-logo: backlog
-  4-10-screen-layout-blocks: backlog
-  5-1-migration-script-folder-file-renaming: backlog
-  5-2-migration-script-settings-csv-header-renaming: backlog
-  5-3-migration-script-mazeid-backfill: backlog
+  4-1-builder-cursor-and-marker-glyphs: done
+  4-2-wall-tool-semantics-break-vs-pass-through: done
+  4-3-zone-selection-colored-outline-click-click: done
+  4-4-entry-exit-live-placement: done
+  4-5-reachability-counter-and-highlight: done
+  4-6-configurable-defaults: done
+  4-7-player-continue-regenerates-random: done
+  4-8-shell-windowing: done
+  4-9-top-bar-brand-logo: done
+  4-10-screen-layout-blocks: done
+  4-11-classic-vs-creation-maze-kind: done
+  4-12-screen-shortcuts-never-leak-into-dialogs: done
+  4-13-breadcrumb-shows-maze-name: done
+  4-14-player-selection-grid-gallery: done
+  5-1-migration-script-legacy-maze-data-mazeid-backfill: backlog
   6-1-recordsrepository-recordsservice: backlog
   6-2-player-records-a-completion-on-win: backlog
   6-3-home-personal-records-zone-with-record-group: backlog
@@ -97,7 +99,7 @@ development_status:
   epic-2-retrospective: done
   epic-3: done
   epic-3-retrospective: optional
-  epic-4: backlog
+  epic-4: in-progress
   epic-4-retrospective: optional
   epic-5: backlog
   epic-5-retrospective: optional
@@ -106,7 +108,7 @@ development_status:
   epic-7: backlog
   epic-7-retrospective: optional
 generated: 2026-08-05
-last_updated: 08-20-2026 00:00
+last_updated: 09-10-2026
 project: Labyrinthes
 project_key: NOKEY
 story_location: _bmad-output/implementation-artifacts

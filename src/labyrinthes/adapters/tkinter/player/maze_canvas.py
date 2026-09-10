@@ -34,6 +34,11 @@ from __future__ import annotations
 import tkinter as tk
 
 from labyrinthes.adapters.tkinter.common.tokens import ColorTokens, Theme, colors_for
+from labyrinthes.adapters.tkinter.player.maze_wall_rendering import (
+    draw_entry_marker,
+    draw_exit_marker,
+    draw_walls,
+)
 from labyrinthes.domain.level_visibility import (
     LevelVisibility,
     Wall,
@@ -73,6 +78,14 @@ class MazeCanvas(tk.Canvas):
         self._maze = maze
         self._theme = theme
         self._cell_size = _cell_size(maze.grid.width, maze.grid.height)
+        # Story 4.8: `_fit_cell_size` is the resize-driven baseline
+        # (recomputed on every `<Configure>` via `fit_to_space()`),
+        # `_zoom_offset` is the user's Ctrl+wheel/`+`/`-` adjustment on top
+        # of it -- see `_apply_effective_cell_size()`. Seeded from the same
+        # construction-time clamp as `self._cell_size` so the two agree
+        # until the first real `<Configure>` corrects the baseline.
+        self._fit_cell_size = self._cell_size
+        self._zoom_offset = 0
         colors = colors_for(theme)
 
         super().__init__(
@@ -120,20 +133,7 @@ class MazeCanvas(tk.Canvas):
         )
 
     def _draw_walls(self, colors: ColorTokens) -> None:
-        grid = self._maze.grid
-        size = self._cell_size
-        for row in range(grid.height + 1):
-            for col in range(grid.width + 1):
-                cell = grid.cell_at(Position(row=row, col=col))
-                x0, y0 = col * size, row * size
-                if cell.has_top_wall:
-                    self.create_line(
-                        x0, y0, x0 + size, y0, width=_WALL_WIDTH, fill=colors.wall, tags=("wall",)
-                    )
-                if cell.has_left_wall:
-                    self.create_line(
-                        x0, y0, x0, y0 + size, width=_WALL_WIDTH, fill=colors.wall, tags=("wall",)
-                    )
+        draw_walls(self, self._maze, self._cell_size, colors, wall_width=_WALL_WIDTH)
 
     def _draw_wall_bar(self, wall: Wall, colors: ColorTokens) -> None:
         """Draw the single wall segment `wall` (raw coordinates) as a wall bar."""
@@ -218,36 +218,10 @@ class MazeCanvas(tk.Canvas):
         return self._cell_size * scale / 2
 
     def _draw_entry_marker(self, colors: ColorTokens) -> None:
-        cx, cy = self._cell_center(self._maze.entry)
-        radius = self._radius(_MARKER_SCALE)
-        self.create_oval(
-            cx - radius,
-            cy - radius,
-            cx + radius,
-            cy + radius,
-            fill=colors.entry,
-            outline="",
-            tags=("entry-marker",),
-        )
+        draw_entry_marker(self, self._maze, self._cell_size, colors, marker_scale=_MARKER_SCALE)
 
     def _draw_exit_marker(self, colors: ColorTokens) -> None:
-        cx, cy = self._cell_center(self._maze.exit)
-        radius = self._radius(_MARKER_SCALE)
-        # A rotated square (diamond), shape-distinct from the entry circle
-        # and the ball circle -- never color alone (NFR6).
-        self.create_polygon(
-            cx,
-            cy - radius,
-            cx + radius,
-            cy,
-            cx,
-            cy + radius,
-            cx - radius,
-            cy,
-            fill=colors.exit,
-            outline="",
-            tags=("exit-marker",),
-        )
+        draw_exit_marker(self, self._maze, self._cell_size, colors, marker_scale=_MARKER_SCALE)
 
     def _draw_ball(self, position: Position, colors: ColorTokens) -> int:
         cx, cy = self._cell_center(position)
@@ -292,3 +266,70 @@ class MazeCanvas(tk.Canvas):
         """
         self.itemconfigure("fog", state="normal" if moving else "hidden")
         self.itemconfigure(self._ball_id, state="hidden" if moving else "normal")
+
+    # -- Zoom/fit (Story 4.8) -----------------------------------------
+
+    def fit_to_space(self, available_width: int, available_height: int) -> None:
+        """Recompute the fit-to-space baseline cell size from the canvas's
+        current `<Configure>`-reported pixel dimensions, then re-apply the
+        effective size (fit + zoom offset) -- called by `GameplayScreen` on
+        every `<Configure>` of this canvas. A resize alone never resets
+        `self._zoom_offset`; only this baseline moves under it.
+        """
+        grid = self._maze.grid
+        raw = min(available_width // grid.width, available_height // grid.height)
+        self._fit_cell_size = max(_MIN_CELL_SIZE, min(_MAX_CELL_SIZE, raw))
+        # Re-clamp the offset to the new baseline's valid range so a large
+        # offset accumulated before this resize can't keep the effective
+        # size pinned at a bound the new baseline would otherwise leave
+        # (e.g. zoomed to _MAX_CELL_SIZE, then the window shrinks a lot --
+        # without this, `fit + stale_offset` would still clamp to
+        # _MAX_CELL_SIZE, silently defeating this resize's fit).
+        self._zoom_offset = max(
+            _MIN_CELL_SIZE - self._fit_cell_size,
+            min(_MAX_CELL_SIZE - self._fit_cell_size, self._zoom_offset),
+        )
+        self._apply_effective_cell_size()
+
+    def zoom(self, delta: int) -> None:
+        """Adjust the zoom offset by `delta` px (e.g. `+2`/`-2` per wheel
+        notch or `+`/`-` keypress) on top of the current fit baseline, then
+        re-apply the effective size. `delta` is never clamped itself --
+        only the effective size is (`_apply_effective_cell_size`) -- so a
+        zoom-in pressed while already at `_MAX_CELL_SIZE` (or zoom-out at
+        `_MIN_CELL_SIZE`) is a no-op rather than a crash, per the spec's I/O
+        matrix. `fit_to_space` re-clamps the offset itself on the next
+        resize, so it can still grow unbounded here between resizes.
+        """
+        self._zoom_offset += delta
+        self._apply_effective_cell_size()
+
+    def _apply_effective_cell_size(self) -> None:
+        """Rescale every drawn item to `clamp(fit + zoom, MIN, MAX)` px.
+
+        A no-op when the effective size hasn't actually changed from
+        `self._cell_size` -- both to avoid a pointless zero-op `.scale()`
+        call and to keep repeated zoom-at-bound presses cheap. `.scale()`
+        rescales every item's coordinates (walls, contour, fog, entry/exit
+        markers, ball) proportionally around the origin in one call, since
+        every one of them is drawn from coordinates directly proportional
+        to `self._cell_size` -- so this never needs to track "what's
+        currently drawn" (e.g. the active `LevelVisibility`) to redraw it
+        correctly; `_radius()`/`_cell_center()` read `self._cell_size` fresh
+        on every future call, so a marker/ball drawn after this always
+        matches. Wall line width deliberately stays constant in raw pixels
+        across zoom levels (`.scale()` never touches item line width).
+        """
+        new_size = max(_MIN_CELL_SIZE, min(_MAX_CELL_SIZE, self._fit_cell_size + self._zoom_offset))
+        if new_size == self._cell_size:
+            return
+        factor = new_size / self._cell_size
+        self.scale("all", 0, 0, factor, factor)
+        self._cell_size = new_size
+        # Story 4.10 follow-up: the canvas's own requested size must match
+        # its drawn content exactly, so `maze-frame`'s `pack(expand=True)`
+        # (no `fill`) claims exactly the drawn maze's footprint -- never the
+        # canvas's earlier, now-stale `width=`/`height=` from construction
+        # or the previous rescale.
+        grid = self._maze.grid
+        self.configure(width=grid.width * new_size, height=grid.height * new_size)

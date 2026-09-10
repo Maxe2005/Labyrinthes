@@ -54,6 +54,7 @@ see the story's Design Notes on AC-3 being structural.
 from __future__ import annotations
 
 import tkinter as tk
+from collections.abc import Callable
 
 from labyrinthes.adapters.tkinter.common.tokens import (
     FOCUS_RING_THICKNESS,
@@ -63,6 +64,7 @@ from labyrinthes.adapters.tkinter.common.tokens import (
     Theme,
     colors_for,
 )
+from labyrinthes.application.builder_session import BuilderTool
 from labyrinthes.application.confirmation_settings import (
     read_confirm_invalid_input,
     read_confirm_level_change,
@@ -75,12 +77,29 @@ from labyrinthes.application.confirmation_settings import (
     write_confirm_restart,
     write_confirm_switch_maze,
 )
+from labyrinthes.application.defaults_settings import (
+    read_builder_default_tool,
+    read_new_maze_defaults,
+    read_random_maze_defaults,
+    write_builder_default_tool,
+    write_new_maze_default_columns,
+    write_new_maze_default_rows,
+    write_random_maze_default_columns,
+    write_random_maze_default_rows,
+)
 from labyrinthes.application.settings_repository import SettingsRepository
 from labyrinthes.application.theme_logo_settings import read_theme_logo, write_theme_logo
+from labyrinthes.application.window_settings import (
+    MIN_WINDOW_HEIGHT,
+    MIN_WINDOW_WIDTH,
+    read_window_size,
+    write_window_height,
+    write_window_width,
+)
 
 __all__ = ["SettingsWindow"]
 
-_CATEGORIES = ("Appearance", "Confirmation")
+_CATEGORIES = ("Appearance", "Confirmation", "Defaults")
 _APPEARANCE_PLACEHOLDER = "Appearance settings are coming soon."
 
 # `(row text, reader, writer)` for the confirmation toggles -- one per
@@ -113,14 +132,13 @@ class SettingsWindow(tk.Toplevel):
         *,
         theme: Theme,
         settings_repository: SettingsRepository,
-        show_logo_picker: bool = False,
     ) -> None:
         super().__init__(parent)
         self.title("Settings")
         self._theme = theme
         self._settings_repository = settings_repository
-        self._show_logo_picker = show_logo_picker
         self._nav_focused: dict[str, bool] = {}
+        self._default_dimension_errors: dict[tk.Entry, tk.Label] = {}
         colors = colors_for(theme)
         self.configure(background=colors.window)
 
@@ -154,6 +172,49 @@ class SettingsWindow(tk.Toplevel):
         self._content = tk.Frame(self, background=colors.window)
         self._content.pack(side="left", fill="both", expand=True)
         self._select_category(_CATEGORIES[0])
+
+        # Story 4.8: centered, resizable, and its own F11 fullscreen --
+        # scoped to this `Toplevel` alone, never the root (see
+        # `_toggle_fullscreen`'s docstring).
+        self._fullscreen = False
+        self.bind("<F11>", self._toggle_fullscreen)
+        self._center_on_screen()
+        self.resizable(True, True)
+
+    def _center_on_screen(self) -> None:
+        """Center this window on the primary screen at its current natural size.
+
+        This `Toplevel`'s own natural-post-mount-size centering (unlike
+        `app/composition_root.py::build_app()`'s root-window centering,
+        which Story 4.10's follow-up changed to a fixed, `shared`-scope-
+        setting-driven size read once at startup instead -- see that
+        module's docstring). Position only (`+x+y`, no `WxH`) -- an
+        explicit size would pin this window at its first category's
+        natural size and stop it auto-growing when a taller category is
+        later selected.
+        """
+        self.update_idletasks()
+        width = self.winfo_width()
+        height = self.winfo_height()
+        x = max(0, (self.winfo_screenwidth() - width) // 2)
+        y = max(0, (self.winfo_screenheight() - height) // 2)
+        self.geometry(f"+{x}+{y}")
+
+    def _toggle_fullscreen(self, _event: tk.Event | None = None) -> str:
+        """Toggle fullscreen for *this* window only (Story 4.8's Design Notes).
+
+        `bind_all()`'s F11 toggle (bound once at the root, in
+        `composition_root.py`) is interpreter-wide, so it would also fire
+        while this `Toplevel` has focus. Binding locally here instead, and
+        returning `"break"`, relies on Tk checking a focused widget's own
+        toplevel bindtag before the shared `"all"` bindtag: the `"break"`
+        return stops that scan right there, so the root's global toggle
+        never also runs. Fullscreen state is tracked as a plain bool (no Tk
+        getter exists for it), local to this window alone.
+        """
+        self._fullscreen = not self._fullscreen
+        self.attributes("-fullscreen", self._fullscreen)
+        return "break"
 
     def _make_select_handler(self, category: str):
         def _select(_event: tk.Event | None = None) -> None:
@@ -198,26 +259,16 @@ class SettingsWindow(tk.Toplevel):
         self._confirmation_rows = {}
         if name == "Appearance":
             self._build_appearance(self._content)
-        else:
+        elif name == "Confirmation":
             self._build_confirmation(self._content)
+        else:
+            self._build_defaults(self._content)
 
     def _build_appearance(self, container: tk.Frame) -> None:
-        colors = colors_for(self._theme)
-        if self._show_logo_picker:
-            self._build_logo_picker(container)
-        else:
-            tk.Label(
-                container,
-                text=_APPEARANCE_PLACEHOLDER,
-                font=TYPOGRAPHY.body_secondary.to_tk_font(),
-                background=colors.window,
-                foreground=colors.ink_soft,
-                wraplength=280,
-                justify="left",
-            ).pack(padx=SPACING["2xl"], pady=SPACING["2xl"])
+        self._build_logo_picker(container)
 
     def _build_logo_picker(self, container: tk.Frame) -> None:
-        from labyrinthes.application.logos import _logo_path
+        from labyrinthes.application.logos import logo_path
 
         colors = colors_for(self._theme)
         logo_frame = tk.Frame(container, background=colors.window)
@@ -227,7 +278,7 @@ class SettingsWindow(tk.Toplevel):
             from PIL import Image, ImageTk
 
             current_key = read_theme_logo(self._settings_repository)
-            img = Image.open(_logo_path(current_key))
+            img = Image.open(logo_path(current_key))
             img = img.resize((128, 128), Image.Resampling.LANCZOS)
             self._logo_photo = ImageTk.PhotoImage(img)
             logo_label = tk.Label(
@@ -235,7 +286,6 @@ class SettingsWindow(tk.Toplevel):
                 image=self._logo_photo,
                 background=colors.window,
             )
-            logo_label.image = self._logo_photo
             logo_label.pack(anchor="w", pady=(0, SPACING["sm"]))
         except Exception:
             tk.Label(
@@ -283,7 +333,7 @@ class SettingsWindow(tk.Toplevel):
         next_btn.pack(side="left", padx=(SPACING["sm"], 0))
 
     def _on_prev_logo(self) -> None:
-        from labyrinthes.application.logos import _LOGO_OPTIONS, _logo_path
+        from labyrinthes.application.logos import _LOGO_OPTIONS, logo_path
 
         current = read_theme_logo(self._settings_repository)
         keys = [o[0] for o in _LOGO_OPTIONS]
@@ -297,20 +347,19 @@ class SettingsWindow(tk.Toplevel):
         try:
             from PIL import Image, ImageTk
 
-            img = Image.open(_logo_path(new_key))
+            img = Image.open(logo_path(new_key))
             img = img.resize((128, 128), Image.Resampling.LANCZOS)
             self._logo_photo = ImageTk.PhotoImage(img)
             logo_frame = self._logo_key_label.master
             for child in logo_frame.winfo_children():
                 if isinstance(child, tk.Label) and child.cget("image") == str(self._logo_photo):
                     child.configure(image=self._logo_photo)
-                    child.image = self._logo_photo
                     break
         except Exception:
             pass
 
     def _on_next_logo(self) -> None:
-        from labyrinthes.application.logos import _LOGO_OPTIONS, _logo_path
+        from labyrinthes.application.logos import _LOGO_OPTIONS, logo_path
 
         current = read_theme_logo(self._settings_repository)
         keys = [o[0] for o in _LOGO_OPTIONS]
@@ -324,14 +373,13 @@ class SettingsWindow(tk.Toplevel):
         try:
             from PIL import Image, ImageTk
 
-            img = Image.open(_logo_path(new_key))
+            img = Image.open(logo_path(new_key))
             img = img.resize((128, 128), Image.Resampling.LANCZOS)
             self._logo_photo = ImageTk.PhotoImage(img)
             logo_frame = self._logo_key_label.master
             for child in logo_frame.winfo_children():
                 if isinstance(child, tk.Label) and child.cget("image") == str(self._logo_photo):
                     child.configure(image=self._logo_photo)
-                    child.image = self._logo_photo
                     break
         except Exception:
             pass
@@ -355,3 +403,260 @@ class SettingsWindow(tk.Toplevel):
             )
             checkbutton.pack(anchor="w", fill="x", padx=SPACING["2xl"], pady=SPACING["sm"])
             self._confirmation_rows[text] = variable
+
+    def _build_defaults(self, container: tk.Frame) -> None:
+        colors = colors_for(self._theme)
+
+        # Default Builder tool dropdown
+        tool_frame = tk.Frame(container, background=colors.window)
+        tool_frame.pack(fill="x", padx=SPACING["2xl"], pady=SPACING["md"])
+
+        tk.Label(
+            tool_frame,
+            text="Default Builder tool",
+            font=TYPOGRAPHY.body.to_tk_font(),
+            background=colors.window,
+            foreground=colors.ink,
+            anchor="w",
+        ).pack(anchor="w", pady=(0, SPACING["xs"]))
+
+        current_tool = read_builder_default_tool(self._settings_repository)
+        tool_var = tk.StringVar(value=current_tool.value)
+        tool_options = [t.value for t in BuilderTool]
+
+        tool_menu = tk.OptionMenu(tool_frame, tool_var, *tool_options)
+        tool_menu.configure(
+            background=colors.window,
+            foreground=colors.ink,
+            activebackground=colors.window,
+            activeforeground=colors.ink,
+            font=TYPOGRAPHY.body.to_tk_font(),
+            cursor="hand2",
+        )
+        tool_menu.pack(fill="x")
+
+        def on_tool_change(*_args: str) -> None:
+            write_builder_default_tool(self._settings_repository, BuilderTool(tool_var.get()))
+
+        tool_var.trace_add("write", on_tool_change)
+
+        # Dimension fields - New Maze defaults
+        new_maze_frame = tk.Frame(container, background=colors.window)
+        new_maze_frame.pack(fill="x", padx=SPACING["2xl"], pady=(SPACING["lg"], SPACING["md"]))
+
+        tk.Label(
+            new_maze_frame,
+            text="New Maze defaults",
+            font=TYPOGRAPHY.body.to_tk_font(),
+            background=colors.window,
+            foreground=colors.ink,
+            anchor="w",
+        ).pack(anchor="w", pady=(0, SPACING["xs"]))
+
+        new_maze_cols, new_maze_rows = read_new_maze_defaults(self._settings_repository)
+        self._add_default_dimension_field(
+            new_maze_frame,
+            "Columns",
+            str(new_maze_cols),
+            lambda v: write_new_maze_default_columns(self._settings_repository, v),
+        )
+        self._add_default_dimension_field(
+            new_maze_frame,
+            "Rows",
+            str(new_maze_rows),
+            lambda v: write_new_maze_default_rows(self._settings_repository, v),
+        )
+
+        # Dimension fields - Random Maze defaults
+        random_maze_frame = tk.Frame(container, background=colors.window)
+        random_maze_frame.pack(fill="x", padx=SPACING["2xl"], pady=(SPACING["lg"], SPACING["md"]))
+
+        tk.Label(
+            random_maze_frame,
+            text="Random Maze defaults",
+            font=TYPOGRAPHY.body.to_tk_font(),
+            background=colors.window,
+            foreground=colors.ink,
+            anchor="w",
+        ).pack(anchor="w", pady=(0, SPACING["xs"]))
+
+        random_maze_cols, random_maze_rows = read_random_maze_defaults(self._settings_repository)
+        self._add_default_dimension_field(
+            random_maze_frame,
+            "Columns",
+            str(random_maze_cols),
+            lambda v: write_random_maze_default_columns(self._settings_repository, v),
+        )
+        self._add_default_dimension_field(
+            random_maze_frame,
+            "Rows",
+            str(random_maze_rows),
+            lambda v: write_random_maze_default_rows(self._settings_repository, v),
+        )
+
+        # Window size (Story 4.10 follow-up) -- applies on next launch, not
+        # live, same precedent as Story 4.9's logo-change timing.
+        window_frame = tk.Frame(container, background=colors.window)
+        window_frame.pack(fill="x", padx=SPACING["2xl"], pady=(SPACING["lg"], SPACING["md"]))
+
+        tk.Label(
+            window_frame,
+            text="Window size (applies on next launch)",
+            font=TYPOGRAPHY.body.to_tk_font(),
+            background=colors.window,
+            foreground=colors.ink,
+            anchor="w",
+        ).pack(anchor="w", pady=(0, SPACING["xs"]))
+
+        # Captured once here, not re-queried inside the writer lambdas below:
+        # if the window moved to a different-resolution monitor between
+        # opening Settings and editing the field, a fresh
+        # `winfo_screenwidth()`/`winfo_screenheight()` read at write time
+        # could disagree with the `max_value` bound the field was just
+        # validated against, so the inline "Clamped to X" note and the
+        # actually-persisted value could diverge.
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        window_width, window_height = read_window_size(
+            self._settings_repository, screen_width, screen_height
+        )
+        self._add_default_dimension_field(
+            window_frame,
+            "Width",
+            str(window_width),
+            lambda v: write_window_width(self._settings_repository, v, screen_width),
+            min_value=MIN_WINDOW_WIDTH,
+            max_value=screen_width,
+            clamp=True,
+        )
+        self._add_default_dimension_field(
+            window_frame,
+            "Height",
+            str(window_height),
+            lambda v: write_window_height(self._settings_repository, v, screen_height),
+            min_value=MIN_WINDOW_HEIGHT,
+            max_value=screen_height,
+            clamp=True,
+        )
+
+    def _add_default_dimension_field(
+        self,
+        parent: tk.Frame,
+        label: str,
+        initial_value: str,
+        writer: Callable,
+        *,
+        min_value: int = 1,
+        max_value: int | None = None,
+        clamp: bool = False,
+    ) -> None:
+        """A `label` + `tk.Entry` + inline-error-label row, validated live.
+
+        `min_value`/`max_value` bound the field (`max_value=None` falls back
+        to the maze-size bound below, the original New Maze/Random Maze
+        columns/rows behavior). `clamp=False` (the default, matching that
+        original behavior) rejects an out-of-bounds entry -- an inline error
+        shows and `writer` is never called, so the previously stored value
+        is left untouched. `clamp=True` (the Window size fields, Story 4.10
+        follow-up) instead *clamps* an out-of-bounds entry into range,
+        writes the clamped value, and shows an informational inline note --
+        matching the setting's own `write_window_width`/`write_window_height`
+        clamping contract (a value is always persisted, never just refused).
+        """
+        colors = colors_for(self._theme)
+
+        row = tk.Frame(parent, background=colors.window)
+        row.pack(fill="x", pady=(0, SPACING["xs"]))
+
+        tk.Label(
+            row,
+            text=label,
+            font=TYPOGRAPHY.body.to_tk_font(),
+            background=colors.window,
+            foreground=colors.ink,
+            width=8,
+            anchor="w",
+        ).pack(side="left")
+
+        entry = tk.Entry(row, width=6)
+        entry.insert(0, initial_value)
+        entry.pack(side="left")
+        entry.bind(
+            "<KeyRelease>",
+            lambda _e: self._validate_default_dimension(
+                entry, writer, min_value=min_value, max_value=max_value, clamp=clamp
+            ),
+        )
+
+        error_label = tk.Label(
+            parent,
+            text="",
+            font=TYPOGRAPHY.body_secondary.to_tk_font(),
+            background=colors.window,
+            foreground=colors.exit,
+            anchor="w",
+            justify="left",
+        )
+        error_label.pack(fill="x", pady=(0, SPACING["sm"]))
+
+        self._default_dimension_errors[entry] = error_label
+
+    def _validate_default_dimension(
+        self,
+        entry: tk.Entry,
+        writer: Callable,
+        *,
+        min_value: int = 1,
+        max_value: int | None = None,
+        clamp: bool = False,
+    ) -> None:
+        from labyrinthes.domain.maze_size_bounds import DEFAULT_MAZE_SIZE_BOUNDS
+
+        text = entry.get()
+        error_label = self._default_dimension_errors.get(entry)
+        if error_label is None:
+            return
+        colors = colors_for(self._theme)
+
+        bound = max_value
+        if bound is None:
+            # We don't know if this is columns or rows here, but the
+            # writers clamp on read too. For UX, check against the max
+            # bounds (the original New Maze/Random Maze fields' own
+            # behavior, unaffected by `clamp`/explicit bounds).
+            bound = max(DEFAULT_MAZE_SIZE_BOUNDS.max_columns, DEFAULT_MAZE_SIZE_BOUNDS.max_rows)
+
+        try:
+            value = int(text)
+        except ValueError:
+            error_label.configure(text="Enter a whole number.", foreground=colors.exit)
+            return
+
+        if value < min_value or value > bound:
+            if clamp:
+                # The value *was* accepted and persisted (clamped), not
+                # rejected -- `colors.ink_soft`, not the error red, so this
+                # doesn't read as "something went wrong" the way "Enter a
+                # whole number."/"Maximum is N." do below. The entry's own
+                # displayed text is also rewritten to the clamped value, so
+                # the field never visibly disagrees with what was actually
+                # persisted (e.g. a stray "99999" left showing above a
+                # "Clamped to 1920." note) until Settings is closed and
+                # reopened.
+                clamped = max(min_value, min(value, bound))
+                entry.delete(0, "end")
+                entry.insert(0, str(clamped))
+                error_label.configure(text=f"Clamped to {clamped}.", foreground=colors.ink_soft)
+                writer(clamped)
+                return
+            if value < min_value:
+                message = (
+                    "Must be a positive number." if min_value <= 1 else f"Minimum is {min_value}."
+                )
+            else:
+                message = f"Maximum is {bound}."
+            error_label.configure(text=message, foreground=colors.exit)
+            return
+
+        error_label.configure(text="")
+        writer(value)

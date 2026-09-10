@@ -16,9 +16,10 @@ class MazeKind(enum.Enum):
     SKETCH = "sketch"
     SAVED_RANDOM = "saved-random"
     GENERATED = "generated"
+    CREATION = "creation"
 
 
-_ID_ELIGIBLE_KINDS = frozenset({MazeKind.CLASSIC, MazeKind.SAVED_RANDOM})
+ID_ELIGIBLE_KINDS = frozenset({MazeKind.CLASSIC, MazeKind.SAVED_RANDOM, MazeKind.CREATION})
 
 
 @dataclass(frozen=True)
@@ -41,8 +42,8 @@ class Maze:
     def __post_init__(self) -> None:
         self.grid.cell_at(self.entry)
         self.grid.cell_at(self.exit)
-        if self.id is not None and self.kind not in _ID_ELIGIBLE_KINDS:
-            eligible = sorted(kind.name for kind in _ID_ELIGIBLE_KINDS)
+        if self.id is not None and self.kind not in ID_ELIGIBLE_KINDS:
+            eligible = sorted(kind.name for kind in ID_ELIGIBLE_KINDS)
             raise DomainValidationError(
                 f"Maze.id may only be set for kind in {eligible}, got kind={self.kind.name}"
             )

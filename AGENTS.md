@@ -1,74 +1,40 @@
-# AGENTS.md
+<!-- bmad:context -->
+<!-- Verified 2026-09-03 against 9ff760a. Managed by bmad-project-context; edits inside this block are replaced on refresh. Keep anything you want preserved outside the markers. -->
 
-## Repository layout & which branch to work on
+## Labyrinthes
 
-Two live branches, different purposes — check `git branch --show-current` before touching anything:
+Two French-language Tkinter desktop apps (maze editor + maze game), being rewritten from scratch under `src/labyrinthes/`. Two live branches: `rewrite` (active, all new work happens here) and `main` (legacy monoliths, read-only reference — and the repo's actual default branch on the remote, per `origin/HEAD`). `CLAUDE.md` is the authoritative architecture/workflow doc; read it for anything beyond this block. Planning artifacts live under `_bmad-output/`.
 
-- **`rewrite` (ACTIVE, default HEAD)** — modular, tested reimplementation under `src/labyrinthes/`. All new work happens here. Only this tree is linted/type-checked/tested.
-- **`main`** — legacy French Tkinter monoliths (`Creer_labyrinthes.py`, `Labyrinthes_copy.py`, `Autres/`). Read-only reference for behavior/logic. **Never edit or lint them.** They are excluded from `ruff` via `extend-exclude` in `pyproject.toml`; the old `refonte` branch is unrelated prior art.
+## Policy
 
-`CLAUDE.md` is the authoritative architecture/workflow doc (legacy + rewrite); it is thorough — read it for details beyond this file.
+- Check `git branch --show-current` before editing anything — `main` and `rewrite` have very different purposes (see above).
+- Never edit or lint `main`'s legacy monoliths (`Creer_labyrinthes.py`, `Labyrinthes_copy.py`, `Autres/`) — read-only reference; they're excluded from `ruff` via `extend-exclude`.
+- Never commit directly to an epic branch — every story gets its own branch off the epic.
+- Conventional Commits in English, atomic per logical unit, with the story number in the subject line — e.g. `feat(domain): add Cell value object (story 1.1)`.
+- Never merge a story into its epic before code review is done on the story branch (`review` → `done` in `sprint-status.yaml`).
+- Epic branches accumulate stories and live until every story in them is `done` — never merge an epic into `rewrite` just because one of its stories is done, and only via a pull request even then (full detail in `CLAUDE.md` § Git workflow).
+- `bmad-loop`'s merge commits (`Merge bmad-loop/<run>/<story> …`) are orchestration history — leave them as-is.
+- `.claude/skills/`, `_bmad/`, `.bmad-loop/runs|cache` are gitignored, regenerable BMad install output — never commit them; only `_bmad-output/` (what BMad produces) is committed. Restore skills after a fresh clone with `npx bmad-method install`.
 
-## Setup & commands
+## Where things are
 
-```bash
-python3 -m venv .venv --upgrade-deps
-source .venv/bin/activate
-pip install -e . --group dev      # editable install + dev group (ruff, pytest)
-```
+- Entry point: `src/labyrinthes/app/__main__.py` → `app/composition_root.py`.
+- Layers: `domain/` (pure logic), `application/` (services + repository ports), `adapters/storage/` (CSV/JSON persistence), `adapters/tkinter/` (`home/`, `builder/`, `player/`, `common/`), `app/` (composition root, router, theme controller).
+- Import boundaries are machine-checked by `tests/test_architecture_boundaries.py` (AST-based, runs on every `pytest`): `domain/`/`application/` never import `tkinter` or `adapters/`; the three screens never import each other; `adapters/tkinter/` never imports `adapters/storage/` directly.
+- Planning sources of truth: PRD at `_bmad-output/planning-artifacts/prds/prd-Labyrinthes-2026-08-04/`, architecture spine at `.../architecture/architecture-Labyrinthes-2026-08-04/ARCHITECTURE-SPINE.md`, epics/stories at `_bmad-output/planning-artifacts/epics.md`, task records under `_bmad-output/implementation-artifacts/`.
 
-| Task | Command |
-|---|---|
-| lint | `ruff check .` |
-| format | `ruff format .` (check-only: `ruff format --check .`) |
-| test (all) | `pytest` |
-| test (one file/module) | `pytest tests/domain/test_cell.py` |
-| test (one test) | `pytest tests/domain/test_cell.py::test_name` |
-| run the app | `python -m labyrinthes.app` |
+## Running and verifying
 
-Equivalent `make` targets exist (`make lint`, `make test`, `make run`, …). Verification order after a change: `ruff check .` → `ruff format --check .` → `pytest`.
+- `make help` lists every target; verification order after a change is `ruff check .` → `ruff format --check .` → `pytest`.
+- GUI tests (`tests/adapters/tkinter/`) open real `Tk()` windows via the `tk_root` fixture — they need a working X display and fail headless without `xvfb`.
 
-## Architecture (rewrite)
+## Conventions that differ from defaults
 
-Clean-layered, under `src/labyrinthes/`; entry point is `app/__main__.py` → `app/composition_root.py`:
+- On `rewrite`, code, identifiers, comments, UI strings, docs, and on-disk data are all English, even though the legacy `main` tree is French — don't carry that style forward.
+- Maze cell walls stay digit-encoded (`0`/`1`/`2`/`3`, language-independent) through the English migration — never localize the encoding itself.
 
-- `domain/` — pure business logic (grid, cell, maze, movement, generation). No `tkinter`, no adapters.
-- `application/` — services + port interfaces (maze/settings repositories). No `tkinter`, no adapters.
-- `adapters/storage/` — CSV/JSON persistence implementations of the ports.
-- `adapters/tkinter/` — UI, split into `home/`, `builder/`, `player/` screens plus shared `common/` widgets.
-- `app/` — composition root, router (screen navigation), theme controller.
+## Known pitfalls
 
-**Import boundaries are machine-checked** by an AST-based test (`tests/test_architecture_boundaries.py`, runs on every `pytest`, doesn't import the scanned modules):
+- Some focus-dependent GUI tests (e.g. `test_gameplay_screen.py::test_move_is_a_no_op_while_focus_is_on_a_non_entry_widget_in_another_toplevel`) are flaky in a full-suite run but pass in isolation — re-run the single test alone before assuming a regression.
 
-- `domain/` and `application/` must not import `tkinter` or anything from `adapters/`.
-- The three screens (`home`, `builder`, `player`) never import each other; `common/` never imports any screen.
-- The whole `adapters/tkinter/` tree never imports `adapters/storage/` directly — persistence access always goes through an `application/` service.
-
-## Testing quirks
-
-- GUI tests (`tests/adapters/tkinter/`) create **real `Tk()` windows** via the `tk_root` fixture (see `tests/conftest.py`) — they require a working X display; they fail headless (no `xvfb`). Machine-specific note: the working tree here can be set up for it.
-- Some focus-dependent GUI tests (e.g. `test_gameplay_screen.py::test_move_is_a_no_op_while_focus_is_on_a_non_entry_widget_in_another_toplevel`) are flaky in a full-suite run but pass in isolation. Re-run a single failing GUI test alone before assuming a regression.
-- `pyproject.toml` sets `pythonpath = ["."]` so the boundary scanner test can import its sibling under plain `pytest`.
-
-## Language conventions
-
-- On `rewrite`: code, identifiers, comments, UI strings, docs, and on-disk data are all **English**. Only conversation with the user stays French. The legacy `main` tree is French — don't copy that style forward.
-- Maze cell wall encoding is digits `0`/`1`/`2`/`3` (language-independent) and must be preserved as-is; legacy save files need migration to the English layout (see PRD).
-- `ruff`: line-length 100, target `py312`, rules `E, F, I, UP, B, SIM`. No comments unless asked.
-
-## Git workflow
-
-Strict, story-driven convention (full detail in `CLAUDE.md` "Git workflow"):
-
-- One **epic branch** from `rewrite` (named after the epic in `_bmad-output/planning-artifacts/epics.md`); one **story branch** from that epic (named after its sprint-status key). Never commit directly to an epic branch.
-- Atomic commits, Conventional Commits **in English**, with the story number in the subject line (e.g. `feat(domain): add Cell value object with wall-bit decoding (story 1.1)`).
-- **Never merge a story into its epic before the code review is done.** The review runs on the story branch and may bring modifications, so the merge happens only once the story is marked `done` (`review` -> `done` in `sprint-status.yaml`): story dev → story branch commits → `code-review` on the story branch (review patches committed there) → story `done` → `git merge --no-ff` story → epic. A story in `review` status stays unmerged.
-- Story → epic via `git merge --no-ff`; epic → `rewrite` only via pull request.
-- **Epic branches accumulate stories**: the epic branch lives until *all* its stories are done (every status `done` in `sprint-status.yaml`), and only then is it merged into `rewrite` via a pull request. A finished story is merged story → epic, then left there; **never** merge an epic into `rewrite` just because one of its stories is done — an epic with unfinished stories stays off `rewrite`.
-- `bmad-loop` automates story dev/review/merge in gitignored worktrees; its merge commits (`Merge bmad-loop/<run>/<story> …`) are orchestration history — leave them as-is.
-
-## BMad planning artifacts
-
-- `.claude/skills/`, `_bmad/`, `.bmad-loop/runs|cache` are gitignored, regenerable third-party install output — do not commit them. Only what BMad **produces** (`_bmad-output/`) is committed.
-- Planning sources of truth: PRD at `_bmad-output/planning-artifacts/prds/prd-Labyrinthes-2026-08-04/`, architecture spine at `.../architecture/architecture-Labyrinthes-2026-08-04/ARCHITECTURE-SPINE.md`, story/epic breakdown at `_bmad-output/planning-artifacts/epics.md`, implementation/task records under `_bmad-output/implementation-artifacts/`.
-- Restore the skills after a fresh clone with `npx bmad-method install` (see `README.md` for the module list).
+<!-- /bmad:context -->

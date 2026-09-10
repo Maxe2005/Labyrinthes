@@ -197,14 +197,15 @@ The system persists each application's (Builder, Game) default settings between 
 Every keyboard shortcut maps to exactly one action, and the label/tooltip shown to the user accurately describes the real shortcut.
 *(Fixes a legacy collision where `r` triggers "Restart" while its tooltip claims "Settings".)*
 
-#### FR-23: Legacy data migration to English
-The system provides a one-time conversion script — not a dual-layout compatibility shim — that converts existing on-disk legacy data — folder names, save file naming, and CSV headers (e.g. the `entité,nom,valeur` settings file) — to the new English-named layout, without altering the maze content itself (cell encoding, entry/exit, saved settings values).
+#### FR-23: Legacy maze data migration to English
+The system provides a one-time conversion script — not a dual-layout compatibility shim — that moves existing on-disk legacy maze folders/files to the new English-named layout, without altering the maze content itself (cell encoding, entry/exit). Settings persistence needs no equivalent migration: Epic 1's `SettingsRepository` (one JSON file per scope+key, with code-level defaults) already fully supersedes the legacy single-CSV `entité,nom,valeur` settings format — there is nothing left on that side to convert.
 **Consequences (testable):**
-- Every maze and settings file present under the legacy French-named layout is reachable, unchanged in content, under the new English-named layout after the script runs.
+- Every maze file present under the legacy French-named layout is reachable, unchanged in content, under the new English-named layout after the script runs — by reusing `MazeRepository`'s own save path (folder creation, naming, `MazeId` minting), never a bespoke serializer, since the legacy and new file shapes (entry/exit lines + grid rows) are already identical aside from the additive `MazeId` line.
+- The `#_Doc_index.csv` per-folder index files are not migrated — the new layout has no index-file concept; `MazeRepository.list_names()` derives its listing directly from directory contents.
 - The 0/1/2/3 cell-encoding values are copied as-is — migration touches naming, not the encoding.
-- The script renames/moves legacy files and folders in place: once it completes, the French-named layout no longer exists on disk — there is no side-by-side copy and no built-in rollback beyond whatever backup (e.g. a git commit or manual copy) the author takes before running it.
-- The script also mints and writes FR-20's Maze ID header line for every legacy classic and saved-random maze it converts — legacy files predate that concept, so this is the one point where migration adds a line rather than only renaming, and it's what makes every pre-existing maze eligible for a Personal Record (FR-27) from day one.
-**Notes:** resolves Open Questions §8's former migration-approach item — see the addendum's "Legacy-to-English data migration" section for the concrete path/header inventory the script must cover.
+- The script relocates legacy files/folders in place: once it completes, the French-named layout no longer exists on disk — there is no side-by-side copy and no built-in rollback beyond whatever backup (e.g. a git commit or manual copy) the author takes before running it.
+- The script also mints and writes FR-20's Maze ID header line for every legacy classic, saved-random, and creation maze it converts (all three predate that concept) — what makes every pre-existing maze eligible for a Personal Record (FR-27) from day one.
+**Notes:** resolves Open Questions §8's former migration-approach item. Narrowed from its original scope (which also covered settings-file migration) by a 2026-09-10 course correction — see `sprint-change-proposal-2026-09-10.md` for rationale.
 
 ### 4.6 Game — New modes (deferred, P2)
 

@@ -3,9 +3,10 @@ import tkinter as tk
 import pytest
 
 from labyrinthes.adapters.tkinter.common import SettingsWindow, Theme, TopBar
-from labyrinthes.adapters.tkinter.common.navigation import ScreenId
-from labyrinthes.adapters.tkinter.player.classic_gallery import ClassicMazeGallery
-from labyrinthes.adapters.tkinter.player.gameplay_screen import GameplayScreen
+from labyrinthes.adapters.tkinter.common.navigation import BuilderTestLaunch, MazeWithName, ScreenId
+from labyrinthes.adapters.tkinter.player.gameplay import GameplayScreen
+from labyrinthes.adapters.tkinter.player.maze_card import MazeCard
+from labyrinthes.adapters.tkinter.player.maze_selection_gallery import MazeSelectionGallery
 from labyrinthes.adapters.tkinter.player.screen import mount
 from labyrinthes.application.confirmation_settings import write_confirm_restart
 from labyrinthes.domain.grid import Grid
@@ -144,6 +145,7 @@ def test_breadcrumb_trailing_player_segment_has_no_click_handler(
         (MazeKind.SAVED_RANDOM, "Saved Random Maze"),
         (MazeKind.GENERATED, "Random Maze"),
         (MazeKind.SKETCH, "Sketch"),
+        (MazeKind.CREATION, "Creation"),
     ],
 )
 def test_breadcrumb_grows_to_three_segments_in_the_gameplay_view_with_a_kind_derived_label(
@@ -206,6 +208,136 @@ def test_breadcrumb_trailing_label_updates_after_saving_a_generated_maze(
     gameplay._on_save_confirmed("forest")
 
     assert breadcrumb._labels[2].cget("text") == "Saved Random Maze"
+
+
+# -- Story 4.13: maze-name breadcrumb segment --------------------------------------
+
+
+def test_breadcrumb_gains_a_fourth_segment_with_the_mazes_own_name_when_opened_from_the_gallery(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_maze_repository,
+    fake_settings_repository,
+):
+    navigate, _ = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(
+        tk_root,
+        MazeWithName(_maze(MazeKind.CLASSIC), "10x10edf"),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+
+    breadcrumb = find_all(frame, TopBar)[0]._breadcrumb
+    assert [label.cget("text") for label in breadcrumb._labels] == [
+        "Home",
+        "Player",
+        "Classic Maze",
+        "10x10edf",
+    ]
+    assert breadcrumb._segment_handlers[3] is None
+
+
+def test_breadcrumb_has_no_name_segment_for_a_fresh_unsaved_generated_maze(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_maze_repository,
+    fake_settings_repository,
+):
+    navigate, _ = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(
+        tk_root,
+        _maze(MazeKind.GENERATED),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+
+    breadcrumb = find_all(frame, TopBar)[0]._breadcrumb
+    assert [label.cget("text") for label in breadcrumb._labels] == [
+        "Home",
+        "Player",
+        "Random Maze",
+    ]
+
+
+def test_breadcrumb_grows_to_four_segments_after_saving_a_generated_maze_mid_session(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_maze_repository,
+    fake_settings_repository,
+):
+    navigate, _ = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(
+        tk_root,
+        _maze(MazeKind.GENERATED),
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+    breadcrumb = find_all(frame, TopBar)[0]._breadcrumb
+    first_three_labels = list(breadcrumb._labels)
+    first_three_handlers = list(breadcrumb._segment_handlers)
+    gameplay = find_all(frame, GameplayScreen)[0]
+
+    gameplay._on_save_confirmed("foo")
+
+    assert [label.cget("text") for label in breadcrumb._labels] == [
+        "Home",
+        "Player",
+        "Saved Random Maze",
+        "foo",
+    ]
+    assert breadcrumb._segment_handlers[3] is None
+    # The first 3 segments' own widgets/handlers are untouched -- grown, not
+    # rebuilt (`set_label` above only edits label 2's text in place; this
+    # confirms the objects themselves stayed identical).
+    assert breadcrumb._labels[:3] == first_three_labels
+    assert breadcrumb._segment_handlers[:3] == first_three_handlers
+
+
+def test_breadcrumb_has_no_name_segment_for_a_builder_test_launch(
+    tk_root,
+    navigate_stub,
+    toggle_theme_stub,
+    find_all,
+    fake_maze_repository,
+    fake_settings_repository,
+):
+    launch = BuilderTestLaunch(_maze(MazeKind.CREATION), Position(row=0, col=0), None)
+    navigate, _ = navigate_stub
+    toggle_theme, _ = toggle_theme_stub
+    frame = mount(
+        tk_root,
+        launch,
+        navigate,
+        Theme.LIGHT,
+        toggle_theme,
+        maze_repository=fake_maze_repository,
+        settings_repository=fake_settings_repository,
+    )
+
+    breadcrumb = find_all(frame, TopBar)[0]._breadcrumb
+    assert [label.cget("text") for label in breadcrumb._labels] == [
+        "Home",
+        "Builder",
+        "Creation",
+    ]
 
 
 def test_breadcrumb_player_segment_is_clickable_and_navigates_back_to_the_gallery(
@@ -353,7 +485,7 @@ def test_theme_toggle_icon_click_invokes_the_passed_in_toggle_theme_callable(
     assert calls == [1]
 
 
-def test_state_is_none_mounts_the_classic_maze_gallery(
+def test_state_is_none_mounts_the_maze_selection_gallery(
     tk_root,
     navigate_stub,
     toggle_theme_stub,
@@ -373,7 +505,7 @@ def test_state_is_none_mounts_the_classic_maze_gallery(
         settings_repository=fake_settings_repository,
     )
 
-    galleries = find_all(frame, ClassicMazeGallery)
+    galleries = find_all(frame, MazeSelectionGallery)
     assert len(galleries) == 1
 
 
@@ -397,7 +529,7 @@ def test_state_not_none_mounts_the_gameplay_screen_not_the_gallery(
         settings_repository=fake_settings_repository,
     )
 
-    assert find_all(frame, ClassicMazeGallery) == []
+    assert find_all(frame, MazeSelectionGallery) == []
 
 
 def test_state_not_none_mounts_a_gameplay_screen_holding_that_maze(
@@ -486,13 +618,13 @@ def test_confirming_a_pick_in_the_gallery_hands_the_maze_off_via_navigate(
         settings_repository=fake_settings_repository,
     )
 
-    gallery = find_all(frame, ClassicMazeGallery)[0]
-    gallery._on_play()
+    card = find_all(frame, MazeCard)[0]
+    card._on_activated()
 
     assert len(calls) == 1
-    screen_id, maze = calls[0]
+    screen_id, payload = calls[0]
     assert screen_id == ScreenId.PLAYER
-    assert isinstance(maze, Maze)
+    assert isinstance(payload, MazeWithName)
 
 
 def test_open_settings_from_player_reflects_a_stored_confirmation_value(

@@ -110,7 +110,7 @@ class ConfirmDialog(tk.Toplevel):
 
         # Sit above the owning screen (not modal -- `lift()` only) so the
         # prompt is visibly in front of the action that opened it.
-        self.transient(parent)
+        self.transient(parent)  # type: ignore[arg-type]
         self.lift()
 
     def _close(self, confirmed: bool) -> None:

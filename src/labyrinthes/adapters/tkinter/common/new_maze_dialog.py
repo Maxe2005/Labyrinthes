@@ -14,6 +14,12 @@ the "leave errors visible, no state change" pattern, not a disabled-button
 one (no `common/` widget supports one, and the spec explicitly rules it
 out).
 
+Field-to-field keyboard navigation (Up/Down, boundary-aware Left/Right,
+Enter-advances-then-Create) is delegated to the shared
+`FieldNavigator` -- see that module's docstring for the full behavior;
+this dialog only supplies the field order and the `Create` button as the
+chain's final stop.
+
 Bounds come from the shared `read_maze_size_bounds(settings_repository)`
 reader (FR-4: "The bounds are defined once, in settings, and read by both
 the Builder and the Game") -- never hardcoded here, and never written back.
@@ -29,8 +35,10 @@ from __future__ import annotations
 import tkinter as tk
 from collections.abc import Callable
 
+from labyrinthes.adapters.tkinter.common.field_navigation import FieldNavigator
 from labyrinthes.adapters.tkinter.common.pill_btn import PillButton
 from labyrinthes.adapters.tkinter.common.tokens import SPACING, TYPOGRAPHY, Theme, colors_for
+from labyrinthes.application.defaults_settings import read_new_maze_defaults
 from labyrinthes.application.maze_size_bounds import read_maze_size_bounds
 from labyrinthes.application.settings_repository import SettingsRepository
 from labyrinthes.domain.grid import Grid
@@ -64,6 +72,8 @@ class NewMazeDialog(tk.Toplevel):
         self._on_confirm = on_confirm
         # Read-with-fallback, never written back to (see module docstring).
         self._bounds = read_maze_size_bounds(settings_repository)
+        # Read defaults at construction time (Story 4.6), falling back to bounds' minimums.
+        default_columns, default_rows = read_new_maze_defaults(settings_repository, self._bounds)
 
         colors = colors_for(theme)
         self.configure(background=colors.window)
@@ -74,8 +84,8 @@ class NewMazeDialog(tk.Toplevel):
         form = tk.Frame(self, background=colors.window)
         form.pack(padx=SPACING["2xl"], pady=SPACING["2xl"], fill="both", expand=True)
 
-        self._add_field(form, "columns", str(self._bounds.min_columns))
-        self._add_field(form, "rows", str(self._bounds.min_rows))
+        self._add_field(form, "columns", str(default_columns))
+        self._add_field(form, "rows", str(default_rows))
         self._entries["columns"].focus_set()
 
         buttons = tk.Frame(self, background=colors.window)
@@ -88,6 +98,10 @@ class NewMazeDialog(tk.Toplevel):
             buttons, "Create", theme=theme, primary=True, command=self._on_confirm_clicked
         )
         self._confirm_button.pack(side="left")
+
+        self._navigator = FieldNavigator(
+            [self._entries[key] for key in _FIELD_ORDER], self._confirm_button
+        )
 
         self.bind("<Escape>", self._on_cancel)
 
@@ -113,7 +127,6 @@ class NewMazeDialog(tk.Toplevel):
         entry.insert(0, initial_text)
         entry.pack(side="left")
         entry.bind("<KeyRelease>", self._on_field_changed)
-        entry.bind("<Return>", self._on_confirm_clicked)
         # Consume "b"/"B", "c"/"C", "p"/"P" locally before they reach the
         # global `open_builder`/`open_new_maze`/`open_player` shortcuts'
         # `bind_all()` handlers -- this dialog is opened from Home while
@@ -121,7 +134,8 @@ class NewMazeDialog(tk.Toplevel):
         # these letters (e.g. the "abc" non-numeric-field scenario) would
         # otherwise stack a second dialog or navigate away mid-edit.
         # Mirrors `GenerateRandomDialog`'s identical `<KeyPress-n>` guard
-        # (Story 2.2) and `ClassicMazeGallery._jump_entry`'s (Story 2.1).
+        # (Story 2.2) and the pre-Story-4.14 pager gallery's own jump
+        # entry guard (Story 2.1, removed along with the pager itself).
         for letter in ("b", "B", "c", "C", "p", "P"):
             entry.bind(f"<KeyPress-{letter}>", lambda _event: "break")
         self._entries[key] = entry

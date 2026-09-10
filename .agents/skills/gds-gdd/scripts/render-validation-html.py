@@ -105,12 +105,12 @@ def render_finding(f: dict) -> str:
     status_class = "na" if status == "n/a" else status
     parts = [
         f'<article class="finding finding-{status_class}">',
-        '<header>',
+        "<header>",
         f'<span class="badge badge-status badge-{status_class}">{status.upper()}</span>',
         f'<span class="badge badge-severity badge-sev-{severity}">{severity}</span>',
         f'<span class="finding-id">{fid}</span>',
         f'<h3 class="finding-title">{title}</h3>',
-        '</header>',
+        "</header>",
     ]
     if location:
         parts.append(f'<div class="finding-location"><strong>Location:</strong> {location}</div>')
@@ -212,7 +212,9 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--findings", required=True, help="Path to validation-findings.json")
     parser.add_argument("--template", required=True, help="Path to HTML template")
     parser.add_argument("--output", required=True, help="Path to write the rendered HTML")
-    parser.add_argument("--open", action="store_true", help="Open the rendered HTML in the default browser")
+    parser.add_argument(
+        "--open", action="store_true", help="Open the rendered HTML in the default browser"
+    )
     args = parser.parse_args(argv)
 
     findings_path = Path(args.findings)
@@ -273,12 +275,16 @@ def main(argv: list[str]) -> int:
     md_path = output_path.with_suffix(".md")
     md_path.write_text(render_markdown_report(data, findings, stats, grade), encoding="utf-8")
 
-    print(json.dumps({
-        "output": str(output_path),
-        "markdown": str(md_path),
-        "grade": grade,
-        "stats": stats,
-    }))
+    print(
+        json.dumps(
+            {
+                "output": str(output_path),
+                "markdown": str(md_path),
+                "grade": grade,
+                "stats": stats,
+            }
+        )
+    )
 
     if args.open:
         webbrowser.open(output_path.resolve().as_uri())

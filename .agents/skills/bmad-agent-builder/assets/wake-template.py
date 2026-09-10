@@ -55,9 +55,7 @@ def main() -> int:
     sanctum = project_root / "_bmad" / "memory" / SKILL_NAME
 
     core_ok = (
-        sanctum.is_dir()
-        and (sanctum / "CREED.md").is_file()
-        and (sanctum / "MEMORY.md").is_file()
+        sanctum.is_dir() and (sanctum / "CREED.md").is_file() and (sanctum / "MEMORY.md").is_file()
     )
     if not core_ok:
         print("MODE: FIRST_BREATH")

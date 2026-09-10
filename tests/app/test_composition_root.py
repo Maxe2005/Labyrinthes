@@ -1,3 +1,4 @@
+import re
 import tkinter as tk
 
 import pytest
@@ -6,10 +7,12 @@ from labyrinthes.adapters.storage.csv_maze_repository import CsvMazeRepository
 from labyrinthes.adapters.storage.json_settings_repository import JsonSettingsRepository
 from labyrinthes.adapters.tkinter.common import SettingsWindow, TopBar
 from labyrinthes.adapters.tkinter.common.tokens import Theme
-from labyrinthes.adapters.tkinter.player.classic_gallery import ClassicMazeGallery
+from labyrinthes.adapters.tkinter.player.maze_card import MazeCard
+from labyrinthes.adapters.tkinter.player.maze_selection_gallery import MazeSelectionGallery
 from labyrinthes.app import composition_root
 from labyrinthes.app.composition_root import App, build_app
 from labyrinthes.app.router import Router, ScreenId
+from labyrinthes.application.settings_repository import SettingsScope
 from labyrinthes.domain.grid import Grid
 from labyrinthes.domain.maze import Maze, MazeKind
 from labyrinthes.domain.position import Position
@@ -41,6 +44,15 @@ def test_build_app_destroys_the_root_if_wiring_fails_partway_through(monkeypatch
     class FakeRoot:
         def destroy(self) -> None:
             destroy_calls.append(True)
+
+        def winfo_screenwidth(self) -> int:
+            return 1920
+
+        def winfo_screenheight(self) -> int:
+            return 1080
+
+        def geometry(self, spec: str | None = None) -> str:
+            return ""
 
     class FakeFrame:
         def pack(self, **kwargs) -> None:
@@ -227,13 +239,13 @@ def test_player_registration_is_reachable_and_uses_the_injected_maze_repository(
 
         assert app.router.current_screen_id == ScreenId.PLAYER
         # Not just "navigation didn't raise" -- the injected repository must
-        # actually have reached `ClassicMazeGallery`: an empty `tmp_path`
-        # library renders the gallery's empty state (no `_play_button`), not
+        # actually have reached `MazeSelectionGallery`: an empty `tmp_path`
+        # library renders every section's empty state (no `MazeCard`s), not
         # some other content a broken `functools.partial` binding could
         # still coincidentally produce a `Frame` for.
-        galleries = _find_all(app.root, ClassicMazeGallery)
+        galleries = _find_all(app.root, MazeSelectionGallery)
         assert len(galleries) == 1
-        assert not hasattr(galleries[0], "_play_button")
+        assert _find_all(galleries[0], MazeCard) == []
     finally:
         app.root.destroy()
 
@@ -248,6 +260,189 @@ def test_build_app_defaults_maze_repository_to_a_real_csv_maze_repository(tmp_pa
         app.router.navigate(ScreenId.PLAYER)
 
         assert app.router.current_screen_id == ScreenId.PLAYER
+    finally:
+        app.root.destroy()
+
+
+def test_root_window_is_given_a_fixed_size_and_centered_on_screen_at_startup_exactly_once(
+    monkeypatch, tmp_path
+):
+    # Story 4.10 follow-up: unlike Story 4.8's natural-post-mount-size
+    # `_center_on_screen()`, the window's size *and* position are now set
+    # together, once, before Home is ever mounted -- asserts on the exact
+    # `.geometry()` string requested, not on `winfo_x()`/`winfo_y()` after
+    # the fact (whether that request is actually *honored* is up to the
+    # platform's window manager, outside this codebase's control -- mirrors
+    # `test_f11_is_bound_on_the_root_...`'s same rationale for
+    # `-fullscreen`).
+    calls = []
+    original_geometry = tk.Tk.geometry
+
+    def spying_geometry(self, spec=None):
+        if spec is not None:
+            calls.append(spec)
+        return original_geometry(self, spec)
+
+    monkeypatch.setattr(tk.Tk, "geometry", spying_geometry)
+    app = build_app(settings_repository=JsonSettingsRepository(root=tmp_path))
+    try:
+        # Exactly one `.geometry(...)` call for the entire build -- the
+        # window never auto-resizes across navigation.
+        assert len(calls) == 1
+        match = re.fullmatch(r"(\d+)x(\d+)\+(\d+)\+(\d+)", calls[0])
+        assert match is not None
+        width, height, x, y = (int(group) for group in match.groups())
+        # No stored setting: defaults to 1280x800 (clamped to the screen).
+        screen_width = app.root.winfo_screenwidth()
+        screen_height = app.root.winfo_screenheight()
+        assert width == min(1280, max(800, screen_width))
+        assert height == min(800, max(600, screen_height))
+        assert x == (screen_width - width) // 2
+        assert y == (screen_height - height) // 2
+    finally:
+        app.root.destroy()
+
+
+def test_root_window_size_reads_the_stored_shared_scope_setting(monkeypatch, tmp_path):
+    calls = []
+    original_geometry = tk.Tk.geometry
+
+    def spying_geometry(self, spec=None):
+        if spec is not None:
+            calls.append(spec)
+        return original_geometry(self, spec)
+
+    monkeypatch.setattr(tk.Tk, "geometry", spying_geometry)
+    repository = JsonSettingsRepository(root=tmp_path)
+    repository.set(SettingsScope.SHARED, "window_width", 900)
+    repository.set(SettingsScope.SHARED, "window_height", 700)
+
+    app = build_app(settings_repository=repository)
+    try:
+        assert len(calls) == 1
+        match = re.fullmatch(r"(\d+)x(\d+)\+(\d+)\+(\d+)", calls[0])
+        assert match is not None
+        width, height, _x, _y = (int(group) for group in match.groups())
+        assert width == 900
+        assert height == 700
+    finally:
+        app.root.destroy()
+
+
+def test_root_window_never_resizes_across_navigation(tmp_path):
+    app = build_app(settings_repository=JsonSettingsRepository(root=tmp_path))
+    try:
+        app.root.withdraw()
+        initial_geometry = app.root.geometry()
+
+        app.router.navigate(ScreenId.BUILDER)
+        app.router.navigate(ScreenId.PLAYER)
+        app.router.navigate(ScreenId.HOME)
+
+        assert app.root.geometry() == initial_geometry
+    finally:
+        app.root.destroy()
+
+
+def test_root_window_is_resizable_in_both_directions(tmp_path):
+    app = build_app(settings_repository=JsonSettingsRepository(root=tmp_path))
+    try:
+        assert app.root.resizable() == (1, 1)
+    finally:
+        app.root.destroy()
+
+
+def test_f11_is_bound_on_the_root_and_toggles_its_fullscreen_attribute(monkeypatch, tmp_path):
+    # `bind_shortcut` is monkeypatched here (rather than a real F11
+    # keypress) for the same reason `test_navigate_closure_bound_...`
+    # monkeypatches `mount_home` to capture `navigate`: it hands back the
+    # real closure `build_app()` wires up, so the toggle can be exercised
+    # and asserted on directly instead of relying on unreliable real X11
+    # key-event synthesis under a withdrawn root (see `keybindings.py`'s
+    # own test file for that convention).
+    captured = {}
+
+    def capturing_bind_shortcut(widget, kb, callback):
+        captured[kb.action_id] = (widget, callback)
+        return lambda event=None: None
+
+    monkeypatch.setattr(composition_root, "bind_shortcut", capturing_bind_shortcut)
+    app = build_app(settings_repository=JsonSettingsRepository(root=tmp_path))
+    try:
+        app.root.withdraw()
+        assert "toggle_fullscreen" in captured
+        widget, toggle = captured["toggle_fullscreen"]
+        # AD-10: F11 is bound on the root itself, not some other widget.
+        assert widget is app.root
+
+        # `.attributes("-fullscreen")` has no reliable getter under a
+        # headless/no-window-manager `Xvfb` (confirmed live: it reads back
+        # `0` even right after being set `True`) -- asserting on the calls
+        # `toggle_root_fullscreen()` makes is the only way this story's own
+        # Design Notes ("track fullscreen per-window as a bool flag, no Tk
+        # getter") lets the toggle be verified at all.
+        calls = []
+        monkeypatch.setattr(app.root, "attributes", lambda *args: calls.append(args))
+
+        toggle()
+        toggle()
+
+        assert calls == [("-fullscreen", True), ("-fullscreen", False)]
+    finally:
+        app.root.destroy()
+
+
+def test_resizing_the_root_while_a_screen_without_a_maze_canvas_is_mounted_raises_nothing(
+    tmp_path,
+):
+    # I/O matrix row (spec-4-8): `<Configure>` is bound directly on each
+    # maze canvas widget (`edit_area.py`/`gameplay/screen.py`), never on the
+    # root or a screen's frame -- so resizing while Home (no canvas) is
+    # mounted has no handler to reach at all, by construction.
+    app = build_app(settings_repository=JsonSettingsRepository(root=tmp_path))
+    try:
+        app.root.withdraw()
+        assert app.router.current_screen_id == ScreenId.HOME
+
+        app.root.event_generate("<Configure>", width=900, height=700)
+        app.root.update_idletasks()
+
+        assert app.router.current_screen_id == ScreenId.HOME
+    finally:
+        app.root.destroy()
+
+
+def test_f11_on_a_focused_settings_window_does_not_also_toggle_the_roots_fullscreen(
+    tmp_path,
+):
+    # Integration regression for the Design Notes' F11 cross-window
+    # scoping claim: with both the root's global F11 binding (`bind_all`,
+    # interpreter-wide) and `SettingsWindow`'s own local override live at
+    # once, a real F11 dispatched while the Settings `Toplevel` has focus
+    # must invoke only its own handler -- the local binding's `"break"`
+    # return must stop Tk's bindtag scan before it reaches the root's.
+    # Unlike `test_f11_is_bound_on_the_root_...` (which monkeypatches
+    # `bind_shortcut` to inspect the closure directly) and
+    # `test_f11_handler_returns_break_...` (which calls the Settings
+    # handler directly), this drives both real bindings through a real
+    # dispatched event to prove the cross-widget mechanism itself.
+    app = build_app(settings_repository=JsonSettingsRepository(root=tmp_path))
+    try:
+        app.root.withdraw()
+        top_bar = _find_all(app.root, TopBar)[0]
+        top_bar._settings_button._on_click()
+        settings_window = _find_all(app.root, SettingsWindow)[0]
+
+        root_calls = []
+        app.root.attributes = lambda *args: root_calls.append(args)
+
+        settings_window.update()
+        settings_window.focus_force()
+        settings_window.update()
+        settings_window.event_generate("<F11>")
+        app.root.update()
+
+        assert root_calls == []
     finally:
         app.root.destroy()
 

@@ -33,6 +33,17 @@ Story 2.10 widens the same partial pattern to Home and Builder: their
 (for `SettingsWindow`'s confirmation toggles, reachable from every screen's
 top bar), so `mount_home`/`mount_builder` are each `partial`-bound with it
 here, mirroring Player's Story 2.2 binding below.
+
+Story 4.10's follow-up fixes the root window's size once, at creation, from
+a `shared`-scope `window_width`/`window_height` setting
+(`application/window_settings.py`) instead of letting it take whatever size
+the just-mounted screen naturally requests (Story 4.8's approach, which
+visibly jumped between Home's small size and Builder/Player's larger one on
+every navigation). `root.geometry()` is called exactly once, with both size
+and centered position together, before Home is ever mounted -- the window
+never auto-resizes again across navigation; every screen still fills
+whatever that fixed size is via the existing `fill="both", expand=True`
+pack chain.
 """
 
 from __future__ import annotations
@@ -44,6 +55,7 @@ from functools import partial
 from labyrinthes.adapters.storage.csv_maze_repository import CsvMazeRepository
 from labyrinthes.adapters.storage.json_settings_repository import JsonSettingsRepository
 from labyrinthes.adapters.tkinter.builder.screen import mount as mount_builder
+from labyrinthes.adapters.tkinter.common.keybindings import bind_shortcut, keybinding
 from labyrinthes.adapters.tkinter.common.navigation import (
     BuilderTestLaunch,
     NavigateFn,
@@ -56,6 +68,7 @@ from labyrinthes.app.router import MountFn, Router, ScreenId
 from labyrinthes.app.theme_controller import ThemeController
 from labyrinthes.application.maze_repository import MazeRepository
 from labyrinthes.application.settings_repository import SettingsRepository
+from labyrinthes.application.window_settings import read_window_size
 from labyrinthes.domain.maze import Maze
 
 __all__ = ["App", "build_app", "main"]
@@ -112,6 +125,20 @@ def build_app(
 
     root = tk.Tk()
     try:
+        # Story 4.10 follow-up (FR-31 superseding Story 4.8's natural-size
+        # approach): read the fixed initial size once, before anything is
+        # mounted, and set it -- together with a centered position -- in
+        # one `.geometry()` call. `winfo_screenwidth()`/`winfo_screenheight()`
+        # are available immediately after `Tk()` construction (screen
+        # dimensions, not a layout result), unlike `winfo_width()`/
+        # `winfo_height()` which need a real geometry pass first.
+        screen_width = root.winfo_screenwidth()
+        screen_height = root.winfo_screenheight()
+        width, height = read_window_size(settings_repository, screen_width, screen_height)
+        x = max(0, (screen_width - width) // 2)
+        y = max(0, (screen_height - height) // 2)
+        root.geometry(f"{width}x{height}+{x}+{y}")
+
         container = tk.Frame(root)
         container.pack(fill="both", expand=True)
 
@@ -173,6 +200,26 @@ def build_app(
         # correctness here would otherwise depend on Home always being
         # stateless rather than being structurally guaranteed.
         navigate(ScreenId.HOME)
+
+        # Resizable + F11 fullscreen on the one `Tk()` root (Story 4.8).
+        # The window's size/position was already fixed above, before this
+        # point -- Tk's default is already resizable in both directions;
+        # `.resizable(True, True)` makes that explicit rather than assumed.
+        root.resizable(True, True)
+
+        is_fullscreen = False
+
+        def toggle_root_fullscreen() -> None:
+            # Tracked as a plain bool, not read back from Tk (`.attributes
+            # ("-fullscreen")` has no reliable getter across window
+            # managers -- see the story's Design Notes) -- this closure is
+            # the single source of truth for whether the root is currently
+            # fullscreen.
+            nonlocal is_fullscreen
+            is_fullscreen = not is_fullscreen
+            root.attributes("-fullscreen", is_fullscreen)
+
+        bind_shortcut(root, keybinding("toggle_fullscreen"), toggle_root_fullscreen)
     except Exception:
         root.destroy()
         raise

@@ -188,11 +188,13 @@ def test_apply_set_exit_marks_a_top_row_cell():
     assert result.exit == Position(0, 1)
 
 
-def test_apply_set_exit_rejects_an_interior_cell():
+def test_apply_set_exit_accepts_an_interior_cell():
+    # Exit can now be placed on any cell except the entry (Story 4.4).
     session = _session_at(Position(0, 0), BuilderTool.SET_EXIT)
 
-    with pytest.raises(DomainValidationError):
-        apply_set_exit(session, Position(2, 2))
+    result = apply_set_exit(session, Position(2, 2))
+
+    assert result.exit == Position(2, 2)
 
 
 def test_apply_set_exit_rejects_the_cell_already_holding_the_entry():

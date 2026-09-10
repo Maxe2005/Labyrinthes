@@ -88,10 +88,12 @@ def test_game_launches():
     assert wait_for_main_menu(timeout=30)
     process.terminate()
 
+
 def test_new_game_starts():
     launch_game()
     click_new_game()
     assert wait_for_gameplay(timeout=60)
+
 
 def test_save_load_roundtrip():
     launch_game()
@@ -122,7 +124,7 @@ class PlaythroughBot:
 def test_main_menu_visual():
     launch_game()
     screenshot = capture_screen()
-    assert compare_to_baseline(screenshot, 'main_menu', threshold=0.01)
+    assert compare_to_baseline(screenshot, "main_menu", threshold=0.01)
 ```
 
 ## Performance Regression Detection

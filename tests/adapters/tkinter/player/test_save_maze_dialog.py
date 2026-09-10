@@ -1,3 +1,4 @@
+from labyrinthes.adapters.tkinter.common.keybindings import bind_shortcut, keybinding
 from labyrinthes.adapters.tkinter.common.tokens import Theme
 from labyrinthes.adapters.tkinter.player.save_maze_dialog import SaveMazeDialog
 
@@ -151,17 +152,36 @@ def test_return_on_the_name_field_is_bound_to_trigger_save(tk_root):
     assert dialog._name_entry.bind("<Return>") != ""
 
 
-def test_name_entry_locally_consumes_s_before_the_global_save_maze_shortcut(tk_root):
-    # Regression: the global "s"/"S" (save_maze) shortcut is registered via
-    # `bind_all()`, which Tk dispatches to every widget regardless of which
-    # window holds focus -- so the name field must have its own "s"/"S"
-    # bindings that return "break" to stop it there, rather than letting a
-    # save-name that happens to contain "s" also reopen a second dialog.
+def test_name_entry_has_no_local_keypress_s_guard(tk_root):
+    # Story 4.12: the old per-dialog "s"/"S" `"break"` guards are deleted --
+    # the centralized `bind_shortcut()` dispatch guard supersedes them (and
+    # fixes the bug where a local "break" pre-empted the Entry class binding,
+    # blocking "s"/"S" from ever being typed).
     on_confirm, _ = _confirm_stub()
     dialog = _dialog(tk_root, on_confirm)
 
-    assert dialog._name_entry.bind("<KeyPress-s>") != ""
-    assert dialog._name_entry.bind("<KeyPress-S>") != ""
+    assert dialog._name_entry.bind("<KeyPress-s>") == ""
+    assert dialog._name_entry.bind("<KeyPress-S>") == ""
+
+
+def test_typing_s_via_the_real_shortcut_handler_does_not_fire_save_while_the_name_entry_is_focused(
+    tk_root,
+):
+    # The real `bind_shortcut()`-registered `save_maze` handler must not
+    # invoke the confirm callback while `_name_entry` holds focus -- the
+    # centralized focus-aware guard in `keybindings.py` is what prevents a
+    # save-name that happens to contain "s" from reopening a second dialog.
+    on_confirm, calls = _confirm_stub()
+    dialog = _dialog(tk_root, on_confirm)
+    dialog._name_entry.update()
+    dialog._name_entry.focus_force()
+    dialog._name_entry.update()
+
+    kb = keybinding("save_maze")
+    handler = bind_shortcut(tk_root, kb, lambda: on_confirm("shortcut-fired"))
+    handler()
+
+    assert calls == []
 
 
 # Story 2.4's `move_up`/`move_down`/`move_left`/`move_right` global
@@ -172,7 +192,7 @@ def test_name_entry_locally_consumes_s_before_the_global_save_maze_shortcut(tk_r
 # disabling the field's own arrow-key cursor navigation -- confirmed live.
 # `GameplayScreen._on_move` guards itself instead by checking
 # `self.focus_get()`; see `test_move_is_a_no_op_while_a_text_entry_holds_focus`
-# in `test_gameplay_screen.py`.
+# in `test_gameplay/test_screen.py`.
 
 
 def test_whitespace_only_name_is_rejected_as_required(tk_root):

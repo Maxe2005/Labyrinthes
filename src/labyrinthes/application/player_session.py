@@ -3,7 +3,7 @@
 Free functions over a frozen dataclass, matching `maze_size_bounds.
 read_maze_size_bounds`'s established style (not a stateless class): no
 Tkinter, no wall-clock reads (`time.monotonic()` stays entirely in
-`adapters/tkinter/player/gameplay_screen.py`, which passes the already-
+`adapters/tkinter/player/gameplay/screen.py`, which passes the already-
 computed elapsed `Duration` in).
 
 Story 2.5 reworks the keypress-snap model into a leg/animation model. A
@@ -201,6 +201,7 @@ def advance_step(session: PlayerSession) -> PlayerSession:
         return replace(session, step=new_step)
 
     position = session.leg_target
+    assert position is not None
     solved = position == session.maze.exit
     if solved:
         return replace(
@@ -238,6 +239,7 @@ def _resolve_smooth_next(session: PlayerSession) -> PlayerSession:
     position = session.position
     pending = session.pending_direction
     heading = session.moving_direction
+    assert heading is not None
 
     if pending is not None and attempt_move(session.maze.grid, position, pending) != position:
         return replace(_start_leg(session, pending), pending_direction=None)

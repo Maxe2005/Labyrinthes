@@ -90,6 +90,14 @@ FR-33 *(added by the 2026-08-19 course correction)*: Play again — after solvin
 
 FR-34 *(added by the 2026-08-19 course correction)*: Layout grouping — the Builder's and Player's controls and displays are grouped into labeled blocks on the sides and top, clearly separated from the maze frame.
 
+FR-35 *(added by the 2026-08-25 course correction)*: Classic vs. Creation maze — a Classic maze is a hand-built maze present at first install, authored by the project's developer as shipped game content; it is never produced by a player's own Builder save. A Creation is a finished maze (entry and exit set) a player builds and saves via the Builder — built with the same tool as a Classic maze, but distinct in provenance and never shipped as game content. A Creation is `MazeId`-eligible and Personal-Record-eligible on the same terms as Classic and Saved-random (FR-20, FR-27).
+
+FR-36 *(added by the 2026-08-25 course correction)*: Screen shortcuts never leak into a focused text field — no keyboard shortcut registered for the active screen fires while a text-entry field inside an open dialog holds keyboard focus; enforced once, at the shortcut-dispatch mechanism, not by individually blocking each colliding letter per dialog.
+
+FR-37 *(added by the 2026-08-25 course correction)*: Maze name in the breadcrumb — whenever a screen has a specific maze loaded, its breadcrumb gains one additional trailing segment carrying that maze's own saved name, appended after the existing kind-derived segment (e.g. "Home / Player / Classic / 10x10edf") — the kind segment is never replaced or removed.
+
+FR-38 *(added by the 2026-08-25 course correction)*: Grid gallery, split by category — the Player's maze-selection screen presents Classic, Creation, and Random (saved) mazes as three separate, clearly labeled sections in one scrollable card grid, per the locked mockup, replacing the single-item pager.
+
 ### NonFunctional Requirements
 
 NFR1: Logic/UI decoupling — the maze engine (grid, 0/1/2/3 encoding, generation, Level/Difficulty rules) depends on no UI library. This is a PRD requirement, not just good practice — it's what makes a future web/mobile interface possible.
@@ -182,8 +190,12 @@ FR-31: Epic 4 - Window management (centered, resizable, zoom, fullscreen)
 FR-32: Epic 4 - Top-bar brand mark (logo before the app name)
 FR-33: Epic 4 - Play again (win banner regenerates a random maze)
 FR-34: Epic 4 - Layout grouping (labeled blocks separated from the maze)
+FR-35: Epic 4 (Story 4.11) - Classic vs. Creation maze kind
+FR-36: Epic 4 (Story 4.12) - Screen shortcuts never leak into a focused text field
+FR-37: Epic 4 (Story 4.13) - Maze name in the breadcrumb
+FR-38: Epic 4 (Story 4.14) - Grid gallery, split by category (Classic / Creations / Random)
 
-**Epic 4 amendments:** Epic 4's stories also refine the acceptance criteria of FR-1 (wall-tool semantics, cursor glyph), FR-2 (zone gestures), FR-3 (marker shapes, live placement), FR-4 (default dimensions), FR-10 (random defaults, play-again), FR-18 (top-bar logo) delivered by Epics 1-3 — those FR rows stay owned by their original epic, with the refinements tracked in Epic 4's stories.
+**Epic 4 amendments:** Epic 4's stories also refine the acceptance criteria of FR-1 (wall-tool semantics, cursor glyph), FR-2 (zone gestures), FR-3 (marker shapes, live placement), FR-4 (default dimensions), FR-10 (random defaults, play-again), FR-18 (top-bar logo) delivered by Epics 1-3 — those FR rows stay owned by their original epic, with the refinements tracked in Epic 4's stories. The 2026-08-25 course correction (Stories 4.11-4.14, FR-35 through FR-38) further amends FR-5/FR-9/FR-11/FR-20/FR-27 (Classic vs. Creation), FR-22 (keybinding dispatch), and FR-26 (breadcrumb) — see `sprint-change-proposal-2026-08-25.md`.
 
 **NFRs — cross-cutting, apply to every epic (not owned by a single one):**
 NFR1 (Logic/UI decoupling), NFR4 (Language convention), NFR5 (Readable git workflow) apply to all epics' stories. NFR2 (Data contract stability) and NFR3 (Quality and tests, including the AD-9 import-boundary test) are established structurally in Epic 1 and must hold for every epic thereafter. NFR6 (Accessibility floor) gets its explicit anchor in Epic 1 (Story 1.10, shared-widget focus/contrast/keyboard operability) but every epic's screen-specific stories (e.g. Epic 2/3's marker and wall-bar shape-vs-color distinction) must uphold it too.
@@ -203,8 +215,8 @@ Wall and zone editing, entry/exit marking, new maze / sketch creation with share
 **FRs covered:** FR-1, FR-2, FR-3, FR-4, FR-5, FR-6, FR-7, FR-8, FR-19
 
 ### Epic 4: Review Corrections — Builder & Player Polish, Windowing, Configurable Defaults
-Corrects delivered Builder/Player/shell behavior per the 2026-08-19 course correction: distinct marker/cursor glyphs, reworked Break vs Pass-through semantics, visible zone selection with a second gesture, live entry/exit placement, a reachability counter replacing "Walls broken", configurable defaults (Builder tool, new-maze and random dimensions), a play-again win-banner action, shell windowing (centered, resizable, zoom, fullscreen), a top-bar brand logo, and grouped screen layouts. Amends acceptance criteria of Epics 1-3 (FR-1/2/3/4/10/18) and adds FR-29 through FR-34.
-**FRs covered:** FR-29, FR-30, FR-31, FR-32, FR-33, FR-34
+Corrects delivered Builder/Player/shell behavior per the 2026-08-19 course correction: distinct marker/cursor glyphs, reworked Break vs Pass-through semantics, visible zone selection with a second gesture, live entry/exit placement, a reachability counter replacing "Walls broken", configurable defaults (Builder tool, new-maze and random dimensions), a play-again win-banner action, shell windowing (centered, resizable, zoom, fullscreen), a top-bar brand logo, and grouped screen layouts. Amends acceptance criteria of Epics 1-3 (FR-1/2/3/4/10/18) and adds FR-29 through FR-34. The 2026-08-25 course correction extends the epic further: a Classic-vs-Creation maze-kind distinction, a keybinding-dispatch fix so screen shortcuts never leak into a focused text field, the maze's own name added to the breadcrumb, and a Classic/Creations/Random sectioned grid gallery. Adds FR-35 through FR-38.
+**FRs covered:** FR-29, FR-30, FR-31, FR-32, FR-33, FR-34, FR-35, FR-36, FR-37, FR-38
 
 ### Epic 5: Legacy Data Migration to English
 A one-time conversion script that renames the legacy French-named folders/files/CSV headers to the new English-named layout without altering maze content, and backfills the `MazeId` header line on every legacy classic and saved-random maze. Makes the author's existing maze library usable under the rewritten app, and eligible for Personal Records from day one of Epic 6.
@@ -949,9 +961,9 @@ So that I can jump straight into editing it.
 
 ## Epic 4: Review Corrections — Builder & Player Polish, Windowing, Configurable Defaults
 
-Delivers the 2026-08-19 course correction: distinct marker/cursor glyphs, reworked Break vs Pass-through semantics, visible zone selection with a second gesture, live entry/exit placement, a reachability counter replacing "Walls broken", configurable defaults (Builder tool, new-maze and random dimensions), a play-again win-banner action, shell windowing (centered, resizable, zoom, fullscreen), a top-bar brand logo, and grouped screen layouts. Amends acceptance criteria delivered by Epics 1-3 (FR-1/2/3/4/10/18) and adds FR-29 through FR-34.
+Delivers the 2026-08-19 course correction: distinct marker/cursor glyphs, reworked Break vs Pass-through semantics, visible zone selection with a second gesture, live entry/exit placement, a reachability counter replacing "Walls broken", configurable defaults (Builder tool, new-maze and random dimensions), a play-again win-banner action, shell windowing (centered, resizable, zoom, fullscreen), a top-bar brand logo, and grouped screen layouts. Amends acceptance criteria delivered by Epics 1-3 (FR-1/2/3/4/10/18) and adds FR-29 through FR-34. Also delivers the 2026-08-25 course correction (Stories 4.11-4.14): a Classic-vs-Creation maze-kind distinction, a keybinding-dispatch fix so screen shortcuts never leak into a focused text field, the maze's own name added to the breadcrumb, and a Classic/Creations/Random sectioned grid gallery. Adds FR-35 through FR-38.
 
-**FRs covered:** FR-29, FR-30, FR-31, FR-32, FR-33, FR-34
+**FRs covered:** FR-29, FR-30, FR-31, FR-32, FR-33, FR-34, FR-35, FR-36, FR-37, FR-38
 
 ### Story 4.1: Builder cursor & marker glyphs
 
@@ -1185,70 +1197,146 @@ So that the UI reads as tidy panels around a focused grid.
 **When** rendered
 **Then** they use the shared typography tokens, with consistent spacing across Builder and Player
 
+### Story 4.11: Classic vs. Creation maze kind
+
+_Added by the 2026-08-25 course correction — see `sprint-change-proposal-2026-08-25.md`._
+
+As a maze author,
+I want a maze I save as finished from the Builder to be tagged `Creation`, never `Classic`,
+So that "Classic" stays reserved for the mazes the project's developer ships with the game, matching the legacy app's own `Labyrinthes_classiques/` vs `Labyrinthes_creation/` split.
+
+**Acceptance Criteria:**
+
+**Given** the Builder's "Save as Maze" (finished) flow
+**When** confirmed
+**Then** the resulting `Maze` carries `MazeKind.CREATION`, never `MazeKind.CLASSIC`
+
+**Given** `MazeKind.CREATION`
+**When** a `Maze` of that kind is saved
+**Then** `MazeRepository` mints a `MazeId` exactly as it does for `CLASSIC`/`SAVED_RANDOM` (Story 1.4's minting rule extended)
+
+**Given** the Records eligibility check (Story 6.1's `RecordsService.record_completion`, once implemented)
+**When** a `CREATION` maze is won
+**Then** a record is written, on the same terms as `CLASSIC`/`SAVED_RANDOM`
+
+**Given** existing `CLASSIC`-folder local saves made under the pre-correction behavior
+**When** this story lands
+**Then** they are not silently reinterpreted — no automatic reclassification is in scope here (Epic 5/migration territory if ever needed for real shipped data)
+
+### Story 4.12: Screen shortcuts never fire while a text-entry dialog is focused
+
+_Added by the 2026-08-25 course correction — see `sprint-change-proposal-2026-08-25.md`._
+
+As a maze author,
+I want to type any character into a maze-name field without a screen-wide keyboard shortcut firing instead,
+So that saving a maze named e.g. "destroy" or "break" doesn't accidentally trigger the Destroy Zone or Break tool.
+
+**Acceptance Criteria:**
+
+**Given** any screen-scoped keyboard shortcut registered via `bind_shortcut()`
+**When** the current Tk focus widget is a text-entry field (`tk.Entry`/`tk.Text`) inside an open dialog
+**Then** the shortcut's callback does not fire and the keystroke reaches the entry field normally
+
+**Given** `_SaveNameDialog`'s and `SaveMazeDialog`'s per-letter `<KeyPress-s/S/t/T>` `"break"` guards
+**When** this story lands
+**Then** they are deleted — the general dispatch guard supersedes them, so no dialog needs its own allowlist
+
+**Given** `NewMazeDialog`'s and `GenerateRandomDialog`'s numeric entry fields
+**When** checked against this same guard
+**Then** they are covered too, even though no prior collision was reported for them (defense-in-depth, not a per-field patch)
+
+**Given** the canonical keybinding table's collision test (Story 1.10)
+**When** this story lands
+**Then** it still passes unchanged — this is a dispatch-time fix, not a table change
+
+### Story 4.13: Breadcrumb shows the maze's own name
+
+_Added by the 2026-08-25 course correction — see `sprint-change-proposal-2026-08-25.md`._
+
+As a user,
+I want the breadcrumb to show the specific maze's own saved name, in addition to its kind,
+So that I always know exactly which maze I'm in, not just what category it belongs to.
+
+**Acceptance Criteria:**
+
+**Given** the Builder with a maze loaded (new, opened sketch, or Test-in-Player round-trip)
+**When** the top bar renders
+**Then** a new trailing segment carrying that maze's saved name is appended after "Builder" (or an in-progress/unsaved indicator, for a maze with no name yet) — "Builder" itself is untouched
+
+**Given** the Player with a maze mounted (classic, creation, saved-random, or generated)
+**When** the top bar renders
+**Then** a new trailing segment carrying that maze's saved name is appended *after* the existing kind-derived segment (e.g. "Home / Player / Classic / 10x10edf") — the kind segment is never replaced or removed; an unsaved `generated` maze simply gets no name segment appended (it has none)
+
+**Given** the current `Maze` domain value
+**When** inspected
+**Then** it has no `name` field (name is a storage-layer/filename concept) — this story resolves how the name is threaded from `MazeRepository`/the save flow through to the screen's breadcrumb without adding a UI concern to `domain/`
+
+### Story 4.14: Player selection screen — grid gallery split into Classic / Creations / Random
+
+_Added by the 2026-08-25 course correction — see `sprint-change-proposal-2026-08-25.md`. Depends on Story 4.11 (needs the `Creation` kind to populate its section)._
+
+As a player,
+I want the maze-selection screen to show a scrollable card grid split into Classic, Creations, and Random sections,
+So that I can browse my library the way the locked UX mockup always intended, now that maze-frame rendering exists to draw the cards from.
+
+**Acceptance Criteria:**
+
+**Given** the Player's maze-selection screen
+**When** it renders
+**Then** it shows a scrollable card grid with three labeled sections — Classic, Creations, Random — per `key-player-selection.html`'s `gallery-grid`/`maze-card` pattern
+
+**Given** a section with no mazes
+**When** rendered
+**Then** that section alone shows an inline empty-state message (e.g. Creations before the player has saved one) — the other populated sections stay unaffected
+
+**Given** a maze card
+**When** clicked or activated via keyboard
+**Then** the router mounts the gameplay screen with that Maze as state (same commit behavior as today's pager)
+
+**Given** the "Generate random" entry point
+**When** rendered
+**Then** it stays a clearly separate action, not a fourth section card (existing behavior, FR-10)
+
+**Given** the accessibility floor (NFR6)
+**When** the grid is keyboard-navigated
+**Then** every card is reachable and operable via Tab + Enter/Space, with a visible focus indicator
+
 ## Epic 5: Legacy Data Migration to English
 
-A one-time conversion script that renames the legacy French-named folders/files/CSV headers to the new English-named layout without altering maze content, and backfills the `MazeId` header line on every legacy classic and saved-random maze. Makes the author's existing maze library usable under the rewritten app, and eligible for Personal Records from day one of Epic 6.
+A one-time conversion script that moves the legacy French-named maze folders/files to the new English-named layout — reusing `MazeRepository`'s own save path rather than a bespoke serializer, since the legacy and new file shapes are already identical aside from the additive `MazeId` line — and mints that `MazeId` for every legacy classic, saved-random, and creation maze it converts. Makes the author's existing maze library usable under the rewritten app, and eligible for Personal Records from day one of Epic 6. Settings persistence needs no equivalent conversion: Epic 1's `SettingsRepository` (one JSON file per scope+key, code-level defaults) already fully supersedes the legacy `entité,nom,valeur` settings CSV, so no settings-migration story is needed.
 
 **FRs covered:** FR-23
 
-### Story 5.1: Migration script — folder & file renaming
+### Story 5.1: Migration script — legacy maze data to new layout with MazeId backfill
 
 As the project's author,
-I want a one-time script that renames the legacy French-named data folders and files to the new English-named layout,
-So that my existing maze library becomes usable under the rewritten app.
+I want a one-time script that moves my existing legacy maze files (classic, sketch, creation, saved-random) into the new English-named layout and mints a `MazeId` for every classic, saved-random, and creation maze it converts,
+So that my existing maze library becomes usable under the rewritten app and eligible for Personal Records from day one.
 
 **Acceptance Criteria:**
 
 **Given** the legacy folders (`Labyrinthes_classiques/`, `Labyrinthes_creation/`, `Labyrinthes_croquis/`, `Labyrinthes_aléatoires_enregistrés/`)
 **When** the script runs
-**Then** each is renamed/moved to its new English-named equivalent, using the same path constants `MazeRepository` uses (Story 1.4)
+**Then** each legacy maze file is read using the legacy line format (entry line, exit line, grid rows — structurally identical to the new format) and written through `MazeRepository.save()` under its corresponding new `MazeKind` folder — never a bespoke migration-script writer, since `save()` already handles folder creation and `MazeId` minting
 
-**Given** the maze CSV content (entry/exit lines + grid)
-**When** files are moved
-**Then** their content — including the 0/1/2/3 grid values — is copied byte-for-byte unchanged (this story only renames/relocates; it does not touch file content)
+**Given** a legacy classic, saved-random, or creation maze (the three `ID_ELIGIBLE_KINDS`)
+**When** it's saved via `MazeRepository.save()`
+**Then** it receives a freshly minted `MazeId` exactly as a normal new save would — no bespoke migration-script id serializer
+
+**Given** a legacy sketch (croquis)
+**When** migrated
+**Then** it's saved as a sketch maze with no `MazeId` line, consistent with `SKETCH` not being id-eligible
 
 **Given** the per-folder `#_Doc_index.csv` files
-**When** migrated
-**Then** they're renamed/rewritten consistently so the index still lists the moved files correctly
+**When** the script runs
+**Then** they are not migrated or recreated — `MazeRepository.list_names()` derives the maze listing directly from directory contents, so the index-file concept has no equivalent in the new layout
 
 **Given** the script completes
 **When** the legacy folders are checked
 **Then** the French-named layout no longer exists on disk — no side-by-side copy, no built-in rollback beyond whatever backup the author took beforehand
 
-### Story 5.2: Migration script — settings CSV header renaming
-
-As the project's author,
-I want the legacy settings file's `entité,nom,valeur` header and `builder`/`parcoureur` entity tags renamed to the new English-named layout,
-So that Settings persistence (Epic 1) reads a consistent, English-named file from day one.
-
-**Acceptance Criteria:**
-
-**Given** `Autres/Parametres_defaut.csv`
-**When** the script runs
-**Then** its header and entity-tag values are renamed to their new English equivalents without altering the stored setting values themselves
-
-**Given** the renamed settings file
-**When** `SettingsRepository` (Story 1.5) reads it
-**Then** every existing default setting value is present, unchanged, under its new key
-
-### Story 5.3: Migration script — MazeId backfill
-
-As the project's author,
-I want the migration script to mint and write a `MazeId` for every legacy classic and saved-random maze it converts,
-So that my existing maze library is eligible for Personal Records from day one.
-
-**Acceptance Criteria:**
-
-**Given** a migrated classic or saved-random maze with no `MazeId`
-**When** the script processes it
-**Then** it mints one via `MazeRepository`'s shared minting/writer routine (Story 1.4), not a bespoke migration-script serializer, and inserts it immediately after the entry/exit header lines, before the grid rows
-
-**Given** a migrated sketch
-**When** processed
-**Then** no `MazeId` line is added
-
-**Given** the migration completes
-**When** any migrated classic/saved-random maze is reloaded via `MazeRepository`
+**Given** any migrated classic/saved-random/creation maze
+**When** reloaded via `MazeRepository`
 **Then** it carries a non-`None` `id`
 
 ## Epic 6: Home Enrichment — Personal Records & First-Activation Explainers

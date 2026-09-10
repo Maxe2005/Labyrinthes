@@ -147,9 +147,7 @@ def _parse_log(output, stories):
                     # spanning two stories belongs to both. Word-boundary match
                     # so a story id like "1-2" does not also match "11-2".
                     "stories": [
-                        sid
-                        for sid in stories
-                        if re.search(rf"\b{re.escape(sid)}\b", subject)
+                        sid for sid in stories if re.search(rf"\b{re.escape(sid)}\b", subject)
                     ],
                     "is_merge": len(parents.split()) > 1,
                 }
@@ -223,9 +221,7 @@ def main(argv=None):
         # dict.fromkeys dedupes while keeping the caller's order: a repeated id
         # would otherwise land twice in a commit's `stories`, double counting
         # that commit in any per-story total built from the output.
-        stories = list(
-            dict.fromkeys(s.strip() for s in args.stories.split(",") if s.strip())
-        )
+        stories = list(dict.fromkeys(s.strip() for s in args.stories.split(",") if s.strip()))
 
     if not args.range:
         _emit(

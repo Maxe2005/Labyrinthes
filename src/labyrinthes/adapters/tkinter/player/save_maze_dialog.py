@@ -29,9 +29,9 @@ no side effect. `<Return>` in the name field triggers Save, mirroring
 `GenerateRandomDialog`'s own field-to-primary-action binding. "s"/"S"
 keystrokes in the name field are locally consumed (`"break"`) before
 `bind_all()`'s global `save_maze` shortcut can see them -- the same guard
-`ClassicMazeGallery`'s jump entry already applies to "n"/"N" -- since a
-maze *name* is far likelier to contain "s" than a numeric field is to
-contain "n", and without it a second `SaveMazeDialog` would stack on top
+the pre-Story-4.14 pager gallery's jump entry once applied to "n"/"N" --
+since a maze *name* is far likelier to contain "s" than a numeric field is
+to contain "n", and without it a second `SaveMazeDialog` would stack on top
 of this one mid-typing. Story 2.4 adds the same guard for the arrow keys
 (`Up`/`Down`/`Left`/`Right`, the real Tk keysyms -- not lowercase): the
 global `move_*` shortcuts are now also registered via `bind_all()`
@@ -111,23 +111,19 @@ class SaveMazeDialog(tk.Toplevel):
         self._name_entry.pack(side="left")
         self._name_entry.bind("<KeyRelease>", self._on_name_changed)
         self._name_entry.bind("<Return>", self._on_save_clicked)
-        # Consume "s"/"S" locally before they reach the global `save_maze`
-        # shortcut's `bind_all()` handler -- mirrors `ClassicMazeGallery`'s
-        # jump-entry guard for "n"/"N" (see that module's comment).
-        # Otherwise typing an "s" into a maze *name* (far likelier than into
-        # a numeric field) both inserts the character and reopens a second
-        # `SaveMazeDialog` stacked on this one.
-        self._name_entry.bind("<KeyPress-s>", lambda _event: "break")
-        self._name_entry.bind("<KeyPress-S>", lambda _event: "break")
-        # Story 2.4's now-global movement shortcuts are *not* guarded the
-        # same "break" way here: an instance-level "break" stops Tk's
-        # bindtag scan before the "Entry" class binding ever runs, which is
-        # what performs cursor movement/self-insert -- confirmed live, a
-        # "break" guard on Up/Down/Left/Right would silently disable the
-        # entry's own cursor navigation, not just suppress the shortcut.
-        # `GameplayScreen._on_move` guards itself instead (see its
-        # docstring), by checking focus before moving the ball -- this
-        # dialog's `_name_entry` needs no changes for that to work.
+        # No local "break" guard is needed here for "s"/"S" (save_maze) or
+        # any other global shortcut: `bind_shortcut()`'s dispatch handler
+        # (Story 4.12) itself skips `callback()` whenever `focus_get()` is a
+        # `tk.Entry`/`tk.Text`, so typing into `_name_entry` both inserts
+        # the character normally and never fires the shortcut -- without
+        # the old per-letter "break" bindings pre-empting the Entry class
+        # binding (which used to silently block the letter from being
+        # typed at all). `GameplayScreen._on_move` guards movement the same
+        # way in spirit -- checking Tk focus before acting -- but by a
+        # different, coarser criterion (`focus_get().winfo_toplevel()`
+        # identity, not widget type; see its own docstring), so this
+        # dialog's `_name_entry` needs no widget-level changes for either
+        # guard to work, but the two aren't the same check.
         self._name_entry.focus_set()
 
         self._message_label = tk.Label(

@@ -19,7 +19,7 @@ class MazeRepository(abc.ABC):
     def save(self, maze: Maze, name: str) -> Maze:
         """Persist `maze` under `name`, returning the (possibly updated) `Maze`.
 
-        For `MazeKind`s eligible for an id (`CLASSIC`/`SAVED_RANDOM`) with
+        For `MazeKind`s eligible for an id (`CLASSIC`/`SAVED_RANDOM`/`CREATION`) with
         `maze.id is None`, a fresh `MazeId` is minted and carried by the
         returned `Maze`; an already-set id is carried forward unchanged.
 
@@ -45,8 +45,8 @@ class MazeRepository(abc.ABC):
     def find_by_id(self, maze_id: MazeId) -> Maze | None:
         """Look up a maze by its `MazeId`, or `None` if it no longer exists.
 
-        `MazeId` values are unique across both id-eligible kinds combined
-        (`CLASSIC` and `SAVED_RANDOM`) — this is a single global lookup,
+        `MazeId` values are unique across all id-eligible kinds combined
+        (`CLASSIC`, `SAVED_RANDOM`, and `CREATION`) — this is a single global lookup,
         not scoped or repeated per kind.
 
         Unlike `load()`, absence is an expected outcome here (e.g. resolving

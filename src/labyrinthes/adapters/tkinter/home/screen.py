@@ -39,6 +39,7 @@ import tkinter as tk
 
 from labyrinthes.adapters.tkinter.common import (
     SPACING,
+    BuilderTestLaunch,
     NavigateFn,
     NewMazeDialog,
     PillButton,
@@ -49,6 +50,7 @@ from labyrinthes.adapters.tkinter.common import (
     TopBar,
     bind_shortcut,
     keybinding,
+    load_logo_image,
 )
 from labyrinthes.application.settings_repository import SettingsRepository
 from labyrinthes.domain.maze import Maze
@@ -58,7 +60,7 @@ __all__ = ["mount"]
 
 def mount(
     parent: tk.Widget,
-    state: Maze | None,
+    state: Maze | None | BuilderTestLaunch,
     navigate: NavigateFn,
     theme: Theme,
     toggle_theme: ToggleThemeFn,
@@ -74,6 +76,8 @@ def mount(
     """
     frame = tk.Frame(parent)
 
+    logo_image = load_logo_image(settings_repository)
+
     def open_settings() -> None:
         # `parent` (not `frame`) as the `Toplevel`'s master (Story 1.11):
         # `parent` is the app's persistent container, never destroyed by
@@ -88,6 +92,7 @@ def mount(
         breadcrumb_segments=None,
         on_settings=open_settings,
         on_theme_toggle=toggle_theme,
+        logo=logo_image,
     )
     top_bar.pack(fill="x")
 

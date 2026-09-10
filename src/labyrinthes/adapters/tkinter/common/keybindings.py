@@ -97,6 +97,7 @@ KEYBINDINGS: tuple[Keybinding, ...] = (
     Keybinding("move_right", "Move right", "Right"),
     Keybinding("toggle_movement_mode", "Toggle movement mode", "m"),
     Keybinding("toggle_hard_mode", "Toggle HARD mode", "h"),
+    Keybinding("toggle_break_pass_through", "Toggle Break/Pass-through", "space", ScreenId.BUILDER),
     Keybinding("break_wall", "Break Wall", "b", ScreenId.BUILDER),
     Keybinding("pass_through", "Pass-through", "p", ScreenId.BUILDER),
     Keybinding("destroy_zone", "Destroy Zone", "d", ScreenId.BUILDER),
@@ -105,6 +106,21 @@ KEYBINDINGS: tuple[Keybinding, ...] = (
     Keybinding("set_exit", "Set Exit", "x", ScreenId.BUILDER),
     Keybinding("test_in_player", "Test in Player", "t", ScreenId.BUILDER),
     Keybinding("edit_in_builder", "Edit in Builder", "f", ScreenId.BUILDER),
+    Keybinding("place_marker", "Place Marker", "Return", ScreenId.BUILDER),
+    # Story 4.8: F11 fullscreen is screen-agnostic (`scope=None`, bound once
+    # at the root -- see `composition_root.py`); zoom is scoped per-screen
+    # since Builder and Player each drive their own `_BuilderMazeCanvas`/
+    # `MazeCanvas` zoom (`edit_area.py`/`gameplay/screen.py`). `"plus"`/
+    # `"minus"` are the real Tk keysyms for `+`/`-` -- the literal `"+"`
+    # character isn't a valid Tk bind-sequence keysym (`bind_all()` raises
+    # `TclError: bad event type or keysym "+"`, confirmed against a live Tk
+    # instance), so `key` must name the keysym, exactly like `"space"` does
+    # for the spacebar above.
+    Keybinding("toggle_fullscreen", "Toggle Fullscreen", "F11", scope=None),
+    Keybinding("zoom_in_builder", "Zoom In", "plus", ScreenId.BUILDER),
+    Keybinding("zoom_out_builder", "Zoom Out", "minus", ScreenId.BUILDER),
+    Keybinding("zoom_in_player", "Zoom In", "plus", ScreenId.PLAYER),
+    Keybinding("zoom_out_player", "Zoom Out", "minus", ScreenId.PLAYER),
 )
 
 _BY_ACTION_ID: dict[str, Keybinding] = {kb.action_id: kb for kb in KEYBINDINGS}
@@ -137,9 +153,28 @@ def bind_shortcut(
     mirroring this codebase's `_on_click()` convention for widgets whose
     real X11 events can't be reliably synthesized under a withdrawn
     `tk_root`.
+
+    Story 4.12: the returned handler also skips `callback()` (never
+    `"break"`) when `widget.focus_get()` is a `tk.Entry`/`tk.Text` -- so a
+    screen shortcut never fires while a dialog's text field has focus, but
+    typing into that field is unaffected either way (see `handler()`'s own
+    comment for why). This is a distinct guard from
+    `GameplayScreen._toplevel_has_focus()`, which compares Toplevel
+    identity to keep movement/mode-toggle shortcuts from leaking into a
+    *different* open window rather than a focused text field -- an
+    adjacent problem, not the same check, so the two aren't consolidated.
     """
 
     def handler(_event: tk.Event | None = None) -> None:
+        # Skip the callback -- never "break" -- when a text-entry field
+        # holds Tk focus, e.g. a dialog's `tk.Entry`/`tk.Text` name field.
+        # `bind_all()`'s "all" bindtag is checked *last*, after the widget's
+        # own class binding (e.g. `Entry`'s character-insertion binding)
+        # already ran, so returning here never blocks typing -- it only
+        # stops the shortcut's own side effect from also firing.
+        focused = widget.focus_get()
+        if isinstance(focused, (tk.Entry, tk.Text)):
+            return
         callback()
 
     interpreter_id = id(widget.tk)

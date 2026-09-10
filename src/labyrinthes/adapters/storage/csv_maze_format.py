@@ -28,11 +28,9 @@ from labyrinthes.adapters.storage.atomic_write import atomic_open_for_write
 from labyrinthes.application.errors import MazeCorruptError
 from labyrinthes.domain.cell import Cell
 from labyrinthes.domain.grid import Grid
-from labyrinthes.domain.maze import Maze, MazeKind
+from labyrinthes.domain.maze import ID_ELIGIBLE_KINDS, Maze, MazeKind
 from labyrinthes.domain.maze_id import MazeId
 from labyrinthes.domain.position import Position
-
-_ID_ELIGIBLE_KINDS = frozenset({MazeKind.CLASSIC, MazeKind.SAVED_RANDOM})
 
 
 def read_maze_csv(path: Path, kind: MazeKind) -> Maze:
@@ -48,7 +46,7 @@ def read_maze_csv(path: Path, kind: MazeKind) -> Maze:
 
         remaining = lines[2:]
         maze_id: MazeId | None = None
-        if kind in _ID_ELIGIBLE_KINDS:
+        if kind in ID_ELIGIBLE_KINDS:
             maze_id = MazeId(value=remaining[0])
             remaining = remaining[1:]
     except (IndexError, ValueError) as exc:
@@ -80,7 +78,7 @@ def write_maze_csv(path: Path, maze: Maze) -> None:
         writer = csv.writer(handle, lineterminator="\n")
         writer.writerow([maze.entry.col, maze.entry.row])
         writer.writerow([maze.exit.col, maze.exit.row])
-        if maze.kind in _ID_ELIGIBLE_KINDS and maze.id is not None:
+        if maze.kind in ID_ELIGIBLE_KINDS and maze.id is not None:
             writer.writerow([maze.id.value])
         for row in maze.grid.cells:
             writer.writerow([cell.value for cell in row])
