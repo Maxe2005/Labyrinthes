@@ -4,6 +4,12 @@ Per the epic's top-bar pattern, every non-Home screen carries a clickable
 Home segment plus its own, non-clickable current-screen segment; Home
 itself renders no `Breadcrumb` at all (depth 0) -- callers with nothing to
 show simply never construct one (see `TopBar`'s `breadcrumb_segments=None`).
+
+`segments` at construction need not be the breadcrumb's final shape:
+`append_segment()` (Story 4.13) grows it by one trailing segment after the
+fact, without touching any segment already rendered -- e.g. Player's
+gameplay view, whose breadcrumb gains a 4th, name-carrying segment only
+once a `generated` maze is saved mid-session.
 """
 
 from __future__ import annotations
@@ -40,6 +46,10 @@ class BreadcrumbSegment:
 class Breadcrumb(tk.Frame):
     """Renders `segments` left-to-right, " / "-separated.
 
+    `segments` seeds the initial render, not a fixed final shape --
+    `append_segment()` can grow the breadcrumb by one more trailing segment
+    later, without rebuilding or otherwise touching what's already there.
+
     Each clickable segment's `<Button-1>` handler is kept in
     `_segment_handlers`, aligned index-for-index with `segments`/`_labels`
     (`None` for the non-clickable trailing segment) -- mirroring every other
@@ -71,58 +81,87 @@ class Breadcrumb(tk.Frame):
         # takes on a withdrawn `tk_root`).
         self._focus_handlers: list[tuple[Callable[[], None], Callable[[], None]] | None] = []
 
+        self._colors = colors
         for index, segment in enumerate(segments):
-            if index > 0:
-                tk.Label(
-                    self,
-                    text=" / ",
-                    font=TYPOGRAPHY.body.to_tk_font(),
-                    background=colors.window,
-                    foreground=colors.ink_soft,
-                ).pack(side="left")
+            self._add_segment(index, segment)
 
-            clickable = segment.on_click is not None
-            label = tk.Label(
+    def _add_segment(self, index: int, segment: BreadcrumbSegment) -> None:
+        """Pack one segment at `index`, wiring click/hover/focus if clickable.
+
+        Shared by `__init__`'s construction loop and `append_segment()` --
+        the same per-segment logic either way, indexed identically into
+        `_labels`/`_segment_handlers`/`_hover_handlers`/`_focus_handlers`.
+        """
+        colors = self._colors
+        if index > 0:
+            tk.Label(
                 self,
-                text=segment.label,
+                text=" / ",
                 font=TYPOGRAPHY.body.to_tk_font(),
                 background=colors.window,
-                foreground=colors.ink_soft if clickable else colors.ink,
+                foreground=colors.ink_soft,
+            ).pack(side="left")
+
+        clickable = segment.on_click is not None
+        label = tk.Label(
+            self,
+            text=segment.label,
+            font=TYPOGRAPHY.body.to_tk_font(),
+            background=colors.window,
+            foreground=colors.ink_soft if clickable else colors.ink,
+        )
+        label.pack(side="left", padx=(SPACING["xs"], 0) if index == 0 else 0)
+
+        handler: Callable[[], None] | None = None
+        hover: tuple[Callable[[], None], Callable[[], None]] | None = None
+        focus: tuple[Callable[[], None], Callable[[], None]] | None = None
+        if segment.on_click is not None:
+            handler = segment.on_click
+            label.configure(
+                cursor="hand2",
+                takefocus=True,
+                highlightthickness=RESTING_RING_THICKNESS,
+                # Resting ring matches the breadcrumb's own background
+                # (`colors.window`), so it's invisible until focused.
+                highlightbackground=colors.window,
+                highlightcolor=colors.window,
             )
-            label.pack(side="left", padx=(SPACING["xs"], 0) if index == 0 else 0)
+            label.bind("<Button-1>", self._click_handler(handler))
+            label.bind("<Return>", self._click_handler(handler))
+            label.bind("<space>", self._click_handler(handler))
 
-            handler: Callable[[], None] | None = None
-            hover: tuple[Callable[[], None], Callable[[], None]] | None = None
-            focus: tuple[Callable[[], None], Callable[[], None]] | None = None
-            if segment.on_click is not None:
-                handler = segment.on_click
-                label.configure(
-                    cursor="hand2",
-                    takefocus=True,
-                    highlightthickness=RESTING_RING_THICKNESS,
-                    # Resting ring matches the breadcrumb's own background
-                    # (`colors.window`), so it's invisible until focused.
-                    highlightbackground=colors.window,
-                    highlightcolor=colors.window,
-                )
-                label.bind("<Button-1>", self._click_handler(handler))
-                label.bind("<Return>", self._click_handler(handler))
-                label.bind("<space>", self._click_handler(handler))
+            on_enter, on_leave, on_focus_in, on_focus_out = self._segment_interactions(
+                label, colors
+            )
+            label.bind("<Enter>", self._click_handler(on_enter), add="+")
+            label.bind("<Leave>", self._click_handler(on_leave), add="+")
+            label.bind("<FocusIn>", self._click_handler(on_focus_in), add="+")
+            label.bind("<FocusOut>", self._click_handler(on_focus_out), add="+")
+            hover = (on_enter, on_leave)
+            focus = (on_focus_in, on_focus_out)
 
-                on_enter, on_leave, on_focus_in, on_focus_out = self._segment_interactions(
-                    label, colors
-                )
-                label.bind("<Enter>", self._click_handler(on_enter), add="+")
-                label.bind("<Leave>", self._click_handler(on_leave), add="+")
-                label.bind("<FocusIn>", self._click_handler(on_focus_in), add="+")
-                label.bind("<FocusOut>", self._click_handler(on_focus_out), add="+")
-                hover = (on_enter, on_leave)
-                focus = (on_focus_in, on_focus_out)
+        self._labels.append(label)
+        self._segment_handlers.append(handler)
+        self._hover_handlers.append(hover)
+        self._focus_handlers.append(focus)
 
-            self._labels.append(label)
-            self._segment_handlers.append(handler)
-            self._hover_handlers.append(hover)
-            self._focus_handlers.append(focus)
+    def append_segment(self, segment: BreadcrumbSegment) -> int:
+        """Grow the breadcrumb by one trailing segment, without touching the rest.
+
+        Packs a leading " / " separator plus `segment`'s label (and its
+        click/hover/focus wiring, if clickable) after every existing
+        segment. Returns the new segment's index so a caller can later
+        address it via `set_label()`.
+
+        Additive-only by design (Story 4.13): existing tests assert on
+        `_labels`/`_segment_handlers` by index, and a full rebuild would
+        risk invalidating those indices for no benefit, since a screen's
+        first segments never change shape once mounted -- only grow a new
+        one on, e.g., a `generated` maze getting a name mid-session.
+        """
+        index = len(self._labels)
+        self._add_segment(index, segment)
+        return index
 
     def set_label(self, index: int, label: str) -> None:
         """Update segment `index`'s displayed text in place.

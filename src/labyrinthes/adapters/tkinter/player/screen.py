@@ -20,6 +20,15 @@ keeps that trailing label in sync if the mounted maze's own `kind`
 changes mid-session (saving a `GENERATED` maze into `SAVED_RANDOM`)
 without a full re-navigate.
 
+When the mounted maze's own saved name is already known -- a gallery card
+carries `(name, maze)` together (`MazeWithName`, Story 4.13) -- the
+breadcrumb gains a further trailing segment carrying that name, after the
+kind-derived one, never clickable. A freshly `GENERATED` maze (no gallery
+card, no name yet) gets no such segment until it's saved mid-session via
+the existing Save Maze flow, at which point `GameplayScreen`'s
+`on_name_saved` callback appends it in place (`TopBar.append_breadcrumb_segment`)
+without disturbing the first 3 segments.
+
 A `BuilderTestLaunch` state (Builder's "Test in Player", Story 3.8)
 mounts gameplay with a "Builder" breadcrumb segment -- clickable, back to
 the Builder restoring the session's markers -- in place of the "Player"
@@ -40,6 +49,7 @@ from labyrinthes.adapters.tkinter.common import (
     SPACING,
     BreadcrumbSegment,
     BuilderTestLaunch,
+    MazeWithName,
     NavigateFn,
     ScreenId,
     SettingsWindow,
@@ -68,7 +78,7 @@ _KIND_LABELS: dict[MazeKind, str] = {
 
 def mount(
     parent: tk.Widget,
-    state: Maze | None | BuilderTestLaunch,
+    state: Maze | None | BuilderTestLaunch | MazeWithName,
     navigate: NavigateFn,
     theme: Theme,
     toggle_theme: ToggleThemeFn,
@@ -90,14 +100,16 @@ def mount(
     `state is None` mounts the maze-selection gallery (`MazeSelectionGallery`,
     a scrollable Classic/Creations/Random card grid). `state is not None`
     mounts `GameplayScreen` for that `Maze` -- picking a maze in the gallery
-    calls `navigate(ScreenId.PLAYER, maze)`, which re-runs this very
-    `mount()` with `state=maze`, taking this branch. A
+    calls `navigate(ScreenId.PLAYER, MazeWithName(maze, name))`, which
+    re-runs this very `mount()` with `state=MazeWithName(...)`, taking this
+    branch and unwrapping both the `maze` and its `name` (Story 4.13). A
     `BuilderTestLaunch` state (Builder's "Test in Player", Story 3.8)
     mounts the same gameplay view but with a "Builder" breadcrumb segment
     (clickable -- back to the Builder, restoring the session's markers from
     the payload) in place of the "Player" one, and hands `GameplayScreen`
     an `on_back_to_builder` callback so the test-mode win banner's "Back to
-    Builder" pill navigates the same way.
+    Builder" pill navigates the same way. Builder never tracks a name, so a
+    `BuilderTestLaunch`-originated maze never gets a name segment.
     """
     frame = tk.Frame(parent)
 
@@ -117,6 +129,27 @@ def mount(
 
     is_test_launch = isinstance(state, BuilderTestLaunch)
     test_launch = state if is_test_launch else None
+    named_state = state if isinstance(state, MazeWithName) else None
+
+    # `maze`/`maze_name` unwrap every non-`None` `state` shape into the two
+    # things the rest of `mount()` needs -- `maze_name` is only ever
+    # non-`None` for a gallery-originated `MazeWithName` (Story 4.13): a
+    # `BuilderTestLaunch` maze has no name (Builder never tracks one), and a
+    # bare `Maze` (a freshly `generated`, unsaved maze) has none yet either.
+    if state is None:
+        maze: Maze | None = None
+        maze_name: str | None = None
+    elif is_test_launch:
+        assert test_launch is not None
+        maze = test_launch.maze
+        maze_name = None
+    elif named_state is not None:
+        maze = named_state.maze
+        maze_name = named_state.name
+    else:
+        assert isinstance(state, Maze)
+        maze = state
+        maze_name = None
 
     if state is None:
         breadcrumb_segments = [
@@ -131,11 +164,16 @@ def mount(
             BreadcrumbSegment(_KIND_LABELS[test_launch.maze.kind]),
         ]
     else:
+        assert maze is not None
         breadcrumb_segments = [
             BreadcrumbSegment("Home", on_click=lambda: navigate(ScreenId.HOME, None)),
             BreadcrumbSegment("Player", on_click=lambda: navigate(ScreenId.PLAYER, None)),
-            BreadcrumbSegment(_KIND_LABELS[state.kind]),
+            BreadcrumbSegment(_KIND_LABELS[maze.kind]),
         ]
+        if maze_name is not None:
+            # Trailing 4th segment, appended *after* the kind-derived one --
+            # never clickable, same as the kind segment (Story 4.13).
+            breadcrumb_segments.append(BreadcrumbSegment(maze_name))
     top_bar = TopBar(
         frame,
         theme=theme,
@@ -166,12 +204,17 @@ def mount(
             pady=SPACING["xl"],
         )
     else:
-        assert state is not None
-        if is_test_launch:
-            assert test_launch is not None
-            maze = test_launch.maze
-        else:
-            maze = state
+        assert maze is not None
+
+        def on_name_saved(name: str) -> None:
+            # Fires once, the first time a `generated` maze is saved
+            # mid-session (Story 4.13) -- the breadcrumb has no 4th segment
+            # yet at that point (an unsaved `generated` maze never gets a
+            # `MazeWithName` state), so this always *appends*, never
+            # overwrites. `on_kind_changed` (below) keeps growing the
+            # existing kind segment in sync the same way it always has.
+            top_bar.append_breadcrumb_segment(BreadcrumbSegment(name))
+
         gameplay = GameplayScreen(
             frame,
             maze,
@@ -179,11 +222,14 @@ def mount(
             maze_repository=maze_repository,
             settings_repository=settings_repository,
             navigate=navigate,
+            initial_name=maze_name,
             # Saving a `GENERATED` maze transitions its `kind` to
             # `SAVED_RANDOM` mid-session -- without this, the trailing
-            # breadcrumb segment (built once above, from the *original*
-            # `state.kind`) would keep showing "Random Maze" forever.
+            # kind-derived breadcrumb segment (built once above, from the
+            # *original* `state.kind`) would keep showing "Random Maze"
+            # forever.
             on_kind_changed=lambda kind: top_bar.set_breadcrumb_label(2, _KIND_LABELS[kind]),
+            on_name_saved=on_name_saved,
             on_back_to_builder=(
                 (lambda: navigate(ScreenId.BUILDER, test_launch)) if is_test_launch else None
             ),

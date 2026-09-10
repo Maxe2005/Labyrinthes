@@ -17,6 +17,60 @@ def test_renders_one_label_per_segment_in_order(tk_root):
     assert [label.cget("text") for label in breadcrumb._labels] == ["Home", "Builder"]
 
 
+def test_append_segment_adds_a_trailing_label_without_touching_existing_segments(tk_root):
+    segments = [
+        BreadcrumbSegment("Home", on_click=lambda: None),
+        BreadcrumbSegment("Player", on_click=lambda: None),
+        BreadcrumbSegment("Random Maze"),
+    ]
+    breadcrumb = Breadcrumb(tk_root, segments, theme=Theme.LIGHT)
+    existing_labels = list(breadcrumb._labels)
+    existing_handlers = list(breadcrumb._segment_handlers)
+
+    breadcrumb.append_segment(BreadcrumbSegment("10x10edf"))
+
+    assert [label.cget("text") for label in breadcrumb._labels] == [
+        "Home",
+        "Player",
+        "Random Maze",
+        "10x10edf",
+    ]
+    # Existing segments' own widgets/handlers are the exact same objects --
+    # not rebuilt -- so any test asserting on them by index stays valid.
+    assert breadcrumb._labels[:3] == existing_labels
+    assert breadcrumb._segment_handlers[:3] == existing_handlers
+
+
+def test_append_segment_returns_the_new_segments_index(tk_root):
+    segments = [BreadcrumbSegment("Home", on_click=lambda: None), BreadcrumbSegment("Player")]
+    breadcrumb = Breadcrumb(tk_root, segments, theme=Theme.LIGHT)
+
+    index = breadcrumb.append_segment(BreadcrumbSegment("Classic Maze"))
+
+    assert index == 2
+    assert breadcrumb._labels[2].cget("text") == "Classic Maze"
+
+
+def test_appended_segment_with_no_on_click_has_no_click_handler(tk_root):
+    segments = [BreadcrumbSegment("Home", on_click=lambda: None)]
+    breadcrumb = Breadcrumb(tk_root, segments, theme=Theme.LIGHT)
+
+    breadcrumb.append_segment(BreadcrumbSegment("10x10edf"))
+
+    assert breadcrumb._segment_handlers[1] is None
+    assert breadcrumb._labels[1].cget("foreground") == colors_for(Theme.LIGHT).ink
+
+
+def test_appended_segments_label_can_later_be_updated_via_set_label(tk_root):
+    segments = [BreadcrumbSegment("Home", on_click=lambda: None)]
+    breadcrumb = Breadcrumb(tk_root, segments, theme=Theme.LIGHT)
+    index = breadcrumb.append_segment(BreadcrumbSegment("foo"))
+
+    breadcrumb.set_label(index, "bar")
+
+    assert breadcrumb._labels[index].cget("text") == "bar"
+
+
 def test_set_label_updates_the_segments_text_in_place(tk_root):
     segments = [
         BreadcrumbSegment("Home", on_click=lambda: None),

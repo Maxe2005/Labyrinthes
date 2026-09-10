@@ -25,6 +25,7 @@ from labyrinthes.adapters.tkinter.common.logo_loader import load_logo_image
 from labyrinthes.adapters.tkinter.common.maze_frame import build_maze_frame
 from labyrinthes.adapters.tkinter.common.navigation import (
     BuilderTestLaunch,
+    MazeWithName,
     NavigateFn,
     ScreenId,
     ScreenMountFn,
@@ -68,6 +69,7 @@ __all__ = [
     "IconButton",
     "KbdTag",
     "Keybinding",
+    "MazeWithName",
     "NavigateFn",
     "NewMazeDialog",
     "OnConfirmFn",

@@ -20,13 +20,15 @@ at once, which widens the reach of the pre-existing, already-deferred
 after listing" gap (not fixed here, same codebase-wide posture).
 
 Clicking or activating (`<Return>`/`<space>`) a card calls
-`navigate(ScreenId.PLAYER, maze)` -- the same commit path the old pager's
-"Play" button used -- never gated behind a confirm dialog: Story 2.10's own
-precedent is that *committing* to a maze is not "switching mazes". Story
-2.10's `ConfirmDialog`-gated Previous/Next/Restart/jump-to-number surfaces
-have no equivalent in a grid and are deleted outright, not ported; the two
-settings that gated them (`confirm_switch_maze`/`confirm_invalid_input`)
-are left defined but now unread anywhere (see `deferred-work.md`).
+`navigate(ScreenId.PLAYER, MazeWithName(maze, name))` -- the same commit
+path the old pager's "Play" button used, now also carrying the maze's own
+saved name (Story 4.13) so Player's breadcrumb can show it -- never gated
+behind a confirm dialog: Story 2.10's own precedent is that *committing* to
+a maze is not "switching mazes". Story 2.10's `ConfirmDialog`-gated
+Previous/Next/Restart/jump-to-number surfaces have no equivalent in a grid
+and are deleted outright, not ported; the two settings that gated them
+(`confirm_switch_maze`/`confirm_invalid_input`) are left defined but now
+unread anywhere (see `deferred-work.md`).
 
 "Generate random" keeps its exact pre-existing wiring
 (`GenerateRandomDialog`, shortcut "N", `_on_generation_confirmed`) verbatim,
@@ -44,7 +46,7 @@ import tkinter as tk
 
 from labyrinthes.adapters.tkinter.common.group_heading import build_group_heading
 from labyrinthes.adapters.tkinter.common.keybindings import bind_shortcut, keybinding
-from labyrinthes.adapters.tkinter.common.navigation import NavigateFn, ScreenId
+from labyrinthes.adapters.tkinter.common.navigation import MazeWithName, NavigateFn, ScreenId
 from labyrinthes.adapters.tkinter.common.pill_btn import PillButton
 from labyrinthes.adapters.tkinter.common.scrollable_frame import ScrollableFrame
 from labyrinthes.adapters.tkinter.common.tokens import SPACING, TYPOGRAPHY, Theme, colors_for
@@ -158,7 +160,7 @@ class MazeSelectionGallery(tk.Frame):
                 maze,
                 name,
                 theme=self._theme,
-                on_activate=lambda maze=maze: self._on_card_activated(maze),
+                on_activate=lambda maze=maze, name=name: self._on_card_activated(maze, name),
             )
             row, column = divmod(index, _CARDS_PER_ROW)
             card.grid(
@@ -176,8 +178,8 @@ class MazeSelectionGallery(tk.Frame):
     def _on_card_focus(self, card: MazeCard) -> None:
         self._scrollable.scroll_into_view(card)
 
-    def _on_card_activated(self, maze: Maze) -> None:
-        self._navigate(ScreenId.PLAYER, maze)
+    def _on_card_activated(self, maze: Maze, name: str) -> None:
+        self._navigate(ScreenId.PLAYER, MazeWithName(maze, name))
 
     # -- generate-random -------------------------------------------------
 

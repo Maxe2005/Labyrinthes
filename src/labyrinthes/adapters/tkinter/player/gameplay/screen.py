@@ -94,6 +94,14 @@ callback (`None` in normal gallery-driven gameplay). When set (a Builder
 instead of Continue -- the latter returns to the Builder, restoring the
 session's markers from the `BuilderTestLaunch` payload it was mounted
 with.
+
+Story 4.13 threads the mounted maze's own storage-layer name through an
+optional `initial_name` param (tracked as `self._maze_name`) and an
+optional `on_name_saved` callback, fired once from `_on_save_confirmed`
+the first time a `generated` maze is named via the existing Save Maze
+flow -- lets `player/screen.py` grow its breadcrumb by one trailing
+segment at that exact moment, without this screen needing to know
+anything about breadcrumbs itself.
 """
 
 from __future__ import annotations
@@ -260,7 +268,9 @@ class GameplayScreen(tk.Frame):
         maze_repository: MazeRepository,
         settings_repository: SettingsRepository,
         navigate: Callable[[ScreenId, Maze | None | BuilderTestLaunch], None] | None = None,
+        initial_name: str | None = None,
         on_kind_changed: Callable[[MazeKind], None] | None = None,
+        on_name_saved: Callable[[str], None] | None = None,
         on_back_to_builder: Callable[[], None] | None = None,
     ) -> None:
         colors = colors_for(theme)
@@ -268,7 +278,18 @@ class GameplayScreen(tk.Frame):
         self._theme = theme
         self._maze_repository = maze_repository
         self._maze = maze  # tracks kind/id across a save -- see `_build_save_zone()`
+        # The maze's own saved name (Story 4.13), if already known at mount
+        # (a gallery card carries `(name, maze)` together) -- `None` for a
+        # freshly `generated`, unsaved maze until `_on_save_confirmed` names
+        # it. Tracked here (not just passed through) so a future reader
+        # never needs to re-derive it from `on_name_saved`'s call history.
+        self._maze_name = initial_name
         self._on_kind_changed = on_kind_changed
+        # Fired once, the first time a `generated` maze is named via the
+        # Save Maze flow (`_on_save_confirmed`) -- `None` when the mounted
+        # maze already had a name at construction, or never gets one
+        # (Builder's Test-in-Player launch never wires this).
+        self._on_name_saved = on_name_saved
         # The test-mode "Back to Builder" callback (Builder's Test in
         # Player, Story 3.8): `None` in normal gallery-driven gameplay. When
         # set, the win banner offers Restart + Back to Builder instead of
@@ -923,7 +944,7 @@ class GameplayScreen(tk.Frame):
         if self._navigate is not None:
             self._navigate(ScreenId.PLAYER, new_maze)
 
-    # -- save flow (Story 2.3, unchanged) -------------------------------
+    # -- save flow (Story 2.3; Story 4.13 adds name tracking) -----------
 
     def _on_save_clicked(self) -> None:
         existing_names = self._maze_repository.list_names(MazeKind.SAVED_RANDOM)
@@ -946,3 +967,6 @@ class GameplayScreen(tk.Frame):
         self._build_save_zone()
         if self._on_kind_changed is not None:
             self._on_kind_changed(self._maze.kind)
+        self._maze_name = name
+        if self._on_name_saved is not None:
+            self._on_name_saved(name)
