@@ -1303,68 +1303,40 @@ So that I can browse my library the way the locked UX mockup always intended, no
 
 ## Epic 5: Legacy Data Migration to English
 
-A one-time conversion script that renames the legacy French-named folders/files/CSV headers to the new English-named layout without altering maze content, and backfills the `MazeId` header line on every legacy classic and saved-random maze. Makes the author's existing maze library usable under the rewritten app, and eligible for Personal Records from day one of Epic 6.
+A one-time conversion script that moves the legacy French-named maze folders/files to the new English-named layout — reusing `MazeRepository`'s own save path rather than a bespoke serializer, since the legacy and new file shapes are already identical aside from the additive `MazeId` line — and mints that `MazeId` for every legacy classic, saved-random, and creation maze it converts. Makes the author's existing maze library usable under the rewritten app, and eligible for Personal Records from day one of Epic 6. Settings persistence needs no equivalent conversion: Epic 1's `SettingsRepository` (one JSON file per scope+key, code-level defaults) already fully supersedes the legacy `entité,nom,valeur` settings CSV, so no settings-migration story is needed.
 
 **FRs covered:** FR-23
 
-### Story 5.1: Migration script — folder & file renaming
+### Story 5.1: Migration script — legacy maze data to new layout with MazeId backfill
 
 As the project's author,
-I want a one-time script that renames the legacy French-named data folders and files to the new English-named layout,
-So that my existing maze library becomes usable under the rewritten app.
+I want a one-time script that moves my existing legacy maze files (classic, sketch, creation, saved-random) into the new English-named layout and mints a `MazeId` for every classic, saved-random, and creation maze it converts,
+So that my existing maze library becomes usable under the rewritten app and eligible for Personal Records from day one.
 
 **Acceptance Criteria:**
 
 **Given** the legacy folders (`Labyrinthes_classiques/`, `Labyrinthes_creation/`, `Labyrinthes_croquis/`, `Labyrinthes_aléatoires_enregistrés/`)
 **When** the script runs
-**Then** each is renamed/moved to its new English-named equivalent, using the same path constants `MazeRepository` uses (Story 1.4)
+**Then** each legacy maze file is read using the legacy line format (entry line, exit line, grid rows — structurally identical to the new format) and written through `MazeRepository.save()` under its corresponding new `MazeKind` folder — never a bespoke migration-script writer, since `save()` already handles folder creation and `MazeId` minting
 
-**Given** the maze CSV content (entry/exit lines + grid)
-**When** files are moved
-**Then** their content — including the 0/1/2/3 grid values — is copied byte-for-byte unchanged (this story only renames/relocates; it does not touch file content)
+**Given** a legacy classic, saved-random, or creation maze (the three `ID_ELIGIBLE_KINDS`)
+**When** it's saved via `MazeRepository.save()`
+**Then** it receives a freshly minted `MazeId` exactly as a normal new save would — no bespoke migration-script id serializer
+
+**Given** a legacy sketch (croquis)
+**When** migrated
+**Then** it's saved as a sketch maze with no `MazeId` line, consistent with `SKETCH` not being id-eligible
 
 **Given** the per-folder `#_Doc_index.csv` files
-**When** migrated
-**Then** they're renamed/rewritten consistently so the index still lists the moved files correctly
+**When** the script runs
+**Then** they are not migrated or recreated — `MazeRepository.list_names()` derives the maze listing directly from directory contents, so the index-file concept has no equivalent in the new layout
 
 **Given** the script completes
 **When** the legacy folders are checked
 **Then** the French-named layout no longer exists on disk — no side-by-side copy, no built-in rollback beyond whatever backup the author took beforehand
 
-### Story 5.2: Migration script — settings CSV header renaming
-
-As the project's author,
-I want the legacy settings file's `entité,nom,valeur` header and `builder`/`parcoureur` entity tags renamed to the new English-named layout,
-So that Settings persistence (Epic 1) reads a consistent, English-named file from day one.
-
-**Acceptance Criteria:**
-
-**Given** `Autres/Parametres_defaut.csv`
-**When** the script runs
-**Then** its header and entity-tag values are renamed to their new English equivalents without altering the stored setting values themselves
-
-**Given** the renamed settings file
-**When** `SettingsRepository` (Story 1.5) reads it
-**Then** every existing default setting value is present, unchanged, under its new key
-
-### Story 5.3: Migration script — MazeId backfill
-
-As the project's author,
-I want the migration script to mint and write a `MazeId` for every legacy classic and saved-random maze it converts,
-So that my existing maze library is eligible for Personal Records from day one.
-
-**Acceptance Criteria:**
-
-**Given** a migrated classic or saved-random maze with no `MazeId`
-**When** the script processes it
-**Then** it mints one via `MazeRepository`'s shared minting/writer routine (Story 1.4), not a bespoke migration-script serializer, and inserts it immediately after the entry/exit header lines, before the grid rows
-
-**Given** a migrated sketch
-**When** processed
-**Then** no `MazeId` line is added
-
-**Given** the migration completes
-**When** any migrated classic/saved-random maze is reloaded via `MazeRepository`
+**Given** any migrated classic/saved-random/creation maze
+**When** reloaded via `MazeRepository`
 **Then** it carries a non-`None` `id`
 
 ## Epic 6: Home Enrichment — Personal Records & First-Activation Explainers

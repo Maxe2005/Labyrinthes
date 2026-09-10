@@ -87,9 +87,7 @@ development_status:
   4-12-screen-shortcuts-never-leak-into-dialogs: review
   4-13-breadcrumb-shows-maze-name: backlog
   4-14-player-selection-grid-gallery: review
-  5-1-migration-script-folder-file-renaming: backlog
-  5-2-migration-script-settings-csv-header-renaming: backlog
-  5-3-migration-script-mazeid-backfill: backlog
+  5-1-migration-script-legacy-maze-data-mazeid-backfill: backlog
   6-1-recordsrepository-recordsservice: backlog
   6-2-player-records-a-completion-on-win: backlog
   6-3-home-personal-records-zone-with-record-group: backlog
